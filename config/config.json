@@ -1,0 +1,17 @@
+{
+  "development": {
+    "username": "yourDataBaseUserName",
+    "password": "yourDataBasePassword",
+    "database": "yourDataBaseName",
+    "host": "yourDataBaseHost",
+    "dialect": "mysql"
+  },
+  "test": {
+    "dialect": "sqlite",
+    "storage": "./database.sqlite3"
+  },
+  "production": {
+    "dialect": "sqlite",
+    "storage": "./database.sqlite3"
+  }
+}
