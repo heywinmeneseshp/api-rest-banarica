@@ -1,72 +1,54 @@
+const { response } = require("express");
 const express = require("express");
+
+const ProductosService = require('../services/productos.service');
+
 const router = express.Router();
-
-const { faker } = require("@faker-js/faker");
-
-var productos = []
-for (let i = 0; i < 20; i++) {
-  productos.push({
-    id: i,
-    name: faker.commerce.productName(),
-    id_categoria: faker.commerce.department(),
-    id_proveedor: faker.company.companyName(),
-    salida_sin_stock: faker.datatype.boolean(),
-    serial: faker.datatype.boolean(),
-    traslado: faker.datatype.boolean(),
-    costo: parseInt(faker.commerce.price(), 10),
-    habilitado: faker.datatype.boolean()
-  });
-}
-//Query params, para comportamientos como paginar, filtrar
+const service = new ProductosService();
 
 
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
+  const productos = await service.find();
   res.json(productos);
 });
 
-//Enpoint recibiendo varios parametro
 // Ejemplo localhost:3000/productos/filter?limit=10&offset=12
-router.get("/filter", (req, res) => {
+router.get("/filter", async (req, res) => {
   const { limit, offset } = req.query;
   res.json({ limit: limit, offset: offset })
 });
 
-
-//Endpoint dinamicos recibiendo un parametro
-router.get("/:id", (req, res) => {
+router.get("/:id", async (req, res) => {
   const { id } = req.params;
-  if (id == 999) {
-    res.status(404).json({
-      message: "Artículo no encontrado"
-    })
-  } else {
-    res.status(200).json({
-      id,
-      nombre: "Tapa OT Kraf 18KG",
-      cantidad: 452
-    });
-  }
+  const producto = await service.findOne(id);
+  res.json(producto);
 });
 
 //Crear
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const body = req.body;
-  productos.push(body)
-  res.status(201).json({
-    message: 'creado',
-    data: body
+  const productoNuevo = await service.create(body);
+  res.json({
+    message: "Producto creado",
+    data: productoNuevo
   })
+
 });
 
 //ACTUALIZACIONES PARCIALES
-router.patch("/:id", (req, res) => {
-  const { id } = req.params
-  const body = req.body;
-  res.json({
-    message: 'actualizado',
-    data: body,
-    id
-  })
+router.patch("/:id", async (req, res) => {
+  try {
+    const { id } = req.params
+    const body = req.body;
+    const producto = await service.update(id, body)
+    res.json({
+      message: 'El producto fue actualizado',
+      data: producto,
+      id
+    })
+  } catch (error) {
+    res.status(404).json({messaje: error.message})
+  }
 });
 
 //ACTUALIZACIONES TOTALES
@@ -81,12 +63,10 @@ router.put("/:id", (req, res) => {
 });
 
 //ELIMINAR
-router.put("/:id", (req, res) => {
+router.delete("/:id", async (req, res) => {
   const { id } = req.params
-  res.json({
-    message: 'eliminado',
-    id,
-  })
+  const result = await service.delete(id)
+  res.json(result)
 });
 
 module.exports = router;
