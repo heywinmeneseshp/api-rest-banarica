@@ -12,10 +12,12 @@
   "author": "Heywin Meneses",
   "license": "ISC",
   "dependencies": {
+    "@hapi/boom": "^10.0.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.0",
     "cors": "^2.8.5",
     "express": "^4.18.1",
+    "joi": "^17.6.0",
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
     "mysql3": "^0.6.0",
