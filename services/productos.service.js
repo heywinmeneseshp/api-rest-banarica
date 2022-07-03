@@ -1,5 +1,5 @@
-
 const boom = require('@hapi/boom');
+const { generarIDProAndCat } = require('../middlewares/generarId.handler');
 
 class ProductosService {
 
@@ -9,28 +9,35 @@ class ProductosService {
   }
 
   generate() {
-      this.productos.push({
-        id: "A001",
-        name: "Caja OT 18kg",
-        id_categoria: "C001",
-        id_proveedor: "P001",
-        salida_sin_stock: false,
-        serial: false,
-        permitirTraslados: false,
-        costo: 1000,
-        isBlock: false
-      });
+    this.productos.push({
+      id: "TAP1",
+      name: "Tapa OT 18kg",
+      id_categoria: "C001",
+      id_proveedor: "P001",
+      salida_sin_stock: false,
+      serial: false,
+      permitirTraslados: false,
+      costo: 1000,
+      isBlock: false
+    });
 
   }
 
   async create(data) {
-    const ultimoProducto = this.productos[this.productos.length - 1]
-    const productoNuevo = {
-      id: ultimoProducto.id + 1,
-      ...data
+    try {
+      const isTheSame = (item) => (item.id).substring(0, 3) == (data.name).substring(0, 3).toUpperCase();
+      const lista = this.productos.filter(isTheSame);
+      let id = generarIDProAndCat(data.name, "xxx000")
+      if (lista.length > 0) id = generarIDProAndCat(data.name, lista[lista.length - 1].id);
+      const productoNuevo = {
+        id: id,
+        ...data
+      };
+      this.productos.push(productoNuevo)
+      return productoNuevo
+    } catch (error) {
+      throw boom.badRequest(error)
     }
-    this.productos.push(productoNuevo)
-    return productoNuevo
   }
 
   async find() {
@@ -65,6 +72,7 @@ class ProductosService {
     }
     this.productos.splice(index, 1); //Eliminar en la posicion X una candidad de Y productos
     return { message: "El producto fue eliminado", id, }
+
   }
 
 }

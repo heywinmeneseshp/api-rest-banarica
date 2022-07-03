@@ -13,7 +13,7 @@ const costo = Joi.number();
 const isBlock = Joi.boolean();
 
 const crearProducto = Joi.object({
-  id: id.required(),
+  id: id,
   name: name.required(),
   id_categoria: id_categoria.required(),
   id_proveedor: id_proveedor.required(),

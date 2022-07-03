@@ -1,15 +1,15 @@
 const express = require('express');
 
-const productosRouter = require("./productos.router.js");
-const usuariosRouter = require("./usuarios.router.js");
-const combosRouter = require("./combos.router.js");
-const categoriasRouter = require("./categorias.router.js");
-const proveedoresRouter = require("./proveedores.router.js");
-const bodegasRouter = require("./bodegas.router.js");
-const transportadorasRouter = require("./transportadoras.router.js");
-const conductoresRouter = require("./conductores.router.js");
-const notificacionesRouter = require("./notificaciones.router.js");
-const avisosRouter = require("./avisos.router.js");
+const productosRouter = require("./administrador/productos.router.js");
+const usuariosRouter = require("./administrador/usuarios.router.js");
+const combosRouter = require("./administrador/combos.router.js");
+const categoriasRouter = require("./administrador/categorias.router.js");
+const proveedoresRouter = require("./administrador/proveedores.router.js");
+const almacenesRouter = require("./administrador/almacenes.router.js");
+const transportadorasRouter = require("./administrador/transportadoras.router");
+const conductoresRouter = require("./administrador/conductores.router.js");
+const notificacionesRouter = require("./administrador/notificaciones.router");
+const avisosRouter = require("./administrador/avisos.router.js");
 
 const recepcionRouter = require("./recepcion.router.js");
 const pedidosRouter = require("./pedidos.router.js");
@@ -19,7 +19,7 @@ const movimientosRouter = require("./movimientos.router.js");
 const historialMovimientosRouter = require("./historialMovimientos.router.js");
 const deudasRouter = require("./deudas.router.js");
 
-const semanasRouter = require("./semanas.router.js");
+const semanasRouter = require("./administrador/semanas.router.js");
 
 function routerApi(app) {
   const router = express.Router();
@@ -29,7 +29,7 @@ function routerApi(app) {
   router.use('/combos', combosRouter);
   router.use('/categorias', categoriasRouter);
   router.use('/proveedores', proveedoresRouter);
-  router.use('/bodegas', bodegasRouter);
+  router.use('/almacenes', almacenesRouter);
   router.use('/transportadoras', transportadorasRouter);
   router.use('/conductores', conductoresRouter);
   router.use('/notificaciones', notificacionesRouter);

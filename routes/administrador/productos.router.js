@@ -1,9 +1,8 @@
-const { response } = require("express");
 const express = require("express");
 
-const ProductosService = require('../services/productos.service');
-const validatorHandler = require('./../middlewares/validator.handler');
-const { crearProducto, actualizarProducto } = require('../schema/product.schema');
+const ProductosService = require('./../../services/productos.service');
+const validatorHandler = require("../../middlewares/validator.handler.js");
+const { crearProducto, actualizarProducto } = require('../../schema/product.schema');
 
 const router = express.Router();
 const service = new ProductosService();
@@ -67,17 +66,6 @@ async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
-
-//ACTUALIZACIONES TOTALES
-router.put("/:id", async (req, res) => {
-  const { id } = req.params
-  const body = req.body;
-  res.json({
-    message: 'actualizado',
-    data: body,
-    id
-  })
 });
 
 //ELIMINAR
