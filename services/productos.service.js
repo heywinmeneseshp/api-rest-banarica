@@ -1,5 +1,4 @@
 
-const { faker } = require("@faker-js/faker");
 const boom = require('@hapi/boom');
 
 class ProductosService {
@@ -10,19 +9,18 @@ class ProductosService {
   }
 
   generate() {
-    for (let i = 0; i < 5; i++) {
       this.productos.push({
-        id: i,
-        name: faker.commerce.productName(),
-        id_categoria: faker.commerce.department(),
-        id_proveedor: faker.company.companyName(),
-        salida_sin_stock: faker.datatype.boolean(),
-        serial: faker.datatype.boolean(),
-        traslado: faker.datatype.boolean(),
-        costo: parseInt(faker.commerce.price(), 10),
-        isBlock: faker.datatype.boolean()
+        id: "A001",
+        name: "Caja OT 18kg",
+        id_categoria: "C001",
+        id_proveedor: "P001",
+        salida_sin_stock: false,
+        serial: false,
+        permitirTraslados: false,
+        costo: 1000,
+        isBlock: false
       });
-    }
+
   }
 
   async create(data) {
