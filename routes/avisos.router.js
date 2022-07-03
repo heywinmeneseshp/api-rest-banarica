@@ -1,13 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const { faker } = require("@faker-js/faker");
 
 var avisos = []
 for (let i = 0; i < 20; i++) {
   avisos.push({
     id: i,
-    descripcion: faker.lorem.paragraph()
+    descripcion: ".lorem.paragraph()"
   });
 }
 //Query params, para comportamientos como paginar, filtrar
