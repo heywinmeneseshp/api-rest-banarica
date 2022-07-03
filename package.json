@@ -22,7 +22,8 @@
     "morgan": "^1.10.0",
     "mysql3": "^0.6.0",
     "sequelize": "^6.21.2",
-    "sequelize-cli": "^6.4.1"
+    "sequelize-cli": "^6.4.1",
+    "@faker-js/faker": "^7.3.0"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.3.0",
