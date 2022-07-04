@@ -1,34 +1,130 @@
 const express = require("express");
+
+const UsuariosService = require('../../services/usuarios.service');
+const validatorHandler = require('../../middlewares/validator.handler');
+const { crearUsuario, actualizarUsuario, agregarAlmacenParaUsuario, actualizarUsuarioPorAlmacen } = require('../../schema/usuario.schema');
+
+
 const router = express.Router();
+const service = new UsuariosService();
+
+router.get("/", async (req, res, next) => {
+  try {
+    const items = await service.find();
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/almacen", async (req, res, next) => {
+  try {
+    const items = await service.findAllAlmacenesassigned ();
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/almacen", validatorHandler(agregarAlmacenParaUsuario, "body"), async (req, res, next) => {
+  const body = req.body;
+  try {
+    const item = await service.addAlmacenToUser(body);
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/almacen/:username", async (req, res, next) => {
+  const { username } = req.params;
+  try {
+    const items = await service.findAlmacenByUser(username);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
 
 
-var lista = []
-for (let i = 0; i < 20; i++) {
-  lista.push({
-    id: i,
-    descripcion: "lorem.paragraph()"
+router.patch("/almacen/:username/:id_almacen", validatorHandler(actualizarUsuarioPorAlmacen), async (req, res, next) => {
+  const { username, id_almacen } = req.params;
+  try {
+    const item = await service.updateAlmacenFromUser(username, id_almacen);
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/almacen/:username/:id_almacen", async (req, res, next) => {
+  const { username, id_almacen } = req.params;
+  try {
+    const item = await service.deleteAlmacenFromUser(username, id_almacen);
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+//Crear
+router.post("/",
+  validatorHandler(crearUsuario, "body"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const itemNuevo = await service.create(body);
+      res.json({
+        message: "item creado",
+        data: itemNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
+
   });
-}
-//Query params, para comportamientos como paginar, filtrar
+
+  router.get("/:username", async (req, res, next) => {
+    const { username } = req.params;
+    try {
+      const item = await service.findOne(username);
+      res.json(item);
+    } catch (error) {
+      next(error)
+    }
+  });
 
 
-router.get("/", (req, res) => {
-  res.json(lista);
-});
+//ACTUALIZACIONES PARCIALES
+router.patch("/:username",
+  validatorHandler(actualizarUsuario, "body"),
+  async (req, res, next) => {
+    try {
+      const { username } = req.params
+      const body = req.body;
+      const item = await service.update(username, body)
+      res.json({
+        message: 'El item fue actualizado',
+        data: item,
+        username
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
-//Enpoint recibiendo varios parametro
-// Ejemplo localhost:3000/productos/filter?limit=10&offset=12
-router.get("/filter", (req, res) => {
-  const { limit, offset } = req.query;
-  res.json({limit:limit, offset:offset})
-});
 
 
-//Endpoint dinamicos recibiendo un parametro
-router.get("/:id", (req, res) => {
-  const { id } = req.params;
-  const result = lista.find( (item) => item.id == id)
-  res.send(result);
+//ELIMINAR
+router.delete("/:username", async (req, res, next) => {
+  const { id } = req.params
+  try {
+    const result = await service.delete(username)
+    res.json(result)
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;

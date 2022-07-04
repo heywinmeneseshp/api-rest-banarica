@@ -1,34 +1,76 @@
 const express = require("express");
+
+const ProveedoresService = require('../../services/proveedores.service');
+const validatorHandler = require('../../middlewares/validator.handler');
+const { crearProveedor, actualizarProveedor } = require('../../schema/proveedor.schema');
+
+
 const router = express.Router();
+const service = new ProveedoresService();
 
-
-var lista = []
-for (let i = 0; i < 20; i++) {
-  lista.push({
-    id: i,
-    descripcion: "lorem.paragraph()"
-  });
-}
-//Query params, para comportamientos como paginar, filtrar
-
-
-router.get("/", (req, res) => {
-  res.json(lista);
+router.get("/", async (req, res, next) => {
+  try {
+    const items = await service.find();
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
 });
 
-//Enpoint recibiendo varios parametro
-// Ejemplo localhost:3000/productos/filter?limit=10&offset=12
-router.get("/filter", (req, res) => {
-  const { limit, offset } = req.query;
-  res.json({limit:limit, offset:offset})
-});
-
-
-//Endpoint dinamicos recibiendo un parametro
-router.get("/:id", (req, res) => {
+router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
-  const result = lista.find( (item) => item.id == id)
-  res.send(result);
+  try {
+    const item = await service.findOne(id);
+    res.json(item);
+  } catch (error) {
+    next(error)
+  }
+});
+
+//Crear
+router.post("/",
+validatorHandler(crearProveedor, "body"),
+async (req, res, next) => {
+  try {
+    const body = req.body;
+    const itemNuevo = await service.create(body);
+    res.json({
+      message: "item creado",
+      data: itemNuevo
+    })
+  } catch (error) {
+    next(error);
+  }
+
+});
+
+//ACTUALIZACIONES PARCIALES
+router.patch("/:id",
+validatorHandler(actualizarProveedor, "body"),
+async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const body = req.body;
+    const item = await service.update(id, body)
+    res.json({
+      message: 'El item fue actualizado',
+      data: item,
+      id
+    })
+  } catch (error) {
+    next(error);
+  }
+});
+
+//ELIMINAR
+router.delete("/:id", async (req, res, next) => {
+  const { id } = req.params
+  try {
+    const result = await service.delete(id)
+    res.json(result)
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;
