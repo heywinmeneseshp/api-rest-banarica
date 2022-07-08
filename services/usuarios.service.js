@@ -71,9 +71,8 @@ class UsuariosService {
 
   async addAlmacenToUser(data) {
     const existe = this.almacenPorUsuario.filter(item => item.username == data.username && item.id_almacen == data.id_almacen);
-    console.log("existe", existe);
     if (existe.length > 0) {
-      throw boom.conflict('El almacen ' + data.id_almacen +  ' ya esta asignado al usuario ' + data.username);
+      throw boom.conflict('El almacen ' + data.id_almacen + ' ya esta asignado al usuario ' + data.username);
     }
     this.almacenPorUsuario.push(data);
     return data;

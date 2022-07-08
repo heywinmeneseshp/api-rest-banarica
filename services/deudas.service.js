@@ -2,7 +2,7 @@
 const boom = require('@hapi/boom');
 const { generarID } = require("../middlewares/generarId.handler");
 
-class ProveedoresService {
+class DeudasService {
 
   constructor() {
     this.items = [];
@@ -11,20 +11,21 @@ class ProveedoresService {
 
   generate() {
     this.items.push({
-      id: "TP-0",
-      razon_social: "Ramiro Perez",
-      direccion: "Calle falsa 123",
-      tel: "3226737763",
-      email: "heywin1@gmail.com",
-      isBlock: false
+      id: "DD-0",
+      prestador: "302",
+      deudor: "512",
+      id_producto: "CA-01",
+      cantidad: 22,
     });
   }
 
   async create(data) {
-    const ultimoItem = this.items[this.items.length-1]
-    let id = "TP-0"
+    const existe = this.items.filter((item) => item.prestador == data.prestador && item.deudor == data.deudor && item.id_producto == data.id_producto);
+    if (existe.length > 0) throw boom.conflict('El item ya existe')
+    const ultimoItem = this.items[this.items.length - 1]
+    let id = "DD-0"
     if (ultimoItem) {
-      id = generarID("PV", ultimoItem.id);
+      id = generarID("DD", ultimoItem.id);
     }
     const itemNuevo = {
       id: id,
@@ -33,6 +34,12 @@ class ProveedoresService {
     this.items.push(itemNuevo)
     return itemNuevo
   }
+
+  async filter(prestador, deudor) {
+    const result = this.items.filter((item) => item.prestador == prestador && item.deudor == deudor);
+    return result
+  }
+
 
   async find() {
     return this.items
@@ -70,4 +77,4 @@ class ProveedoresService {
 
 }
 
-module.exports = ProveedoresService
+module.exports = DeudasService

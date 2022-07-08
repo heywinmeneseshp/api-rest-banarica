@@ -2,7 +2,7 @@
 const boom = require('@hapi/boom');
 const { generarID } = require("../middlewares/generarId.handler");
 
-class ProveedoresService {
+class HistorialMovimientosService {
 
   constructor() {
     this.items = [];
@@ -11,20 +11,23 @@ class ProveedoresService {
 
   generate() {
     this.items.push({
-      id: "TP-0",
-      razon_social: "Ramiro Perez",
-      direccion: "Calle falsa 123",
-      tel: "3226737763",
-      email: "heywin1@gmail.com",
-      isBlock: false
+      id: "MV-0",
+      id_producto: "CAT-0",
+      id_almacen_gestor: "302",
+      id_almacen_receptor: 302,
+      id_lista_movimientos: "LQ",
+      tipo_movimiento: "salida",
+      razon_movimiento: "mal estado",
+      cantidad: 200,
+      id_pedido: null
     });
   }
 
   async create(data) {
     const ultimoItem = this.items[this.items.length-1]
-    let id = "TP-0"
+    let id = data.id_lista_movimientos + "-0"
     if (ultimoItem) {
-      id = generarID("PV", ultimoItem.id);
+      id = generarID( data.id_lista_movimientos, ultimoItem.id);
     }
     const itemNuevo = {
       id: id,
@@ -70,4 +73,4 @@ class ProveedoresService {
 
 }
 
-module.exports = ProveedoresService
+module.exports = HistorialMovimientosService

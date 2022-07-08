@@ -1,8 +1,9 @@
 
 const boom = require('@hapi/boom');
 const { generarID } = require("../middlewares/generarId.handler");
+const getDate = require('../middlewares/getDate.handler')
 
-class ProveedoresService {
+class RecepcionService {
 
   constructor() {
     this.items = [];
@@ -11,24 +12,24 @@ class ProveedoresService {
 
   generate() {
     this.items.push({
-      id: "TP-0",
-      razon_social: "Ramiro Perez",
-      direccion: "Calle falsa 123",
-      tel: "3226737763",
-      email: "heywin1@gmail.com",
-      isBlock: false
+      id: "RC-0",
+      remision: "374656",
+      observaciones: "Lorem",
+      id_semana: "S21-22",
+      fecha: getDate()
     });
   }
 
   async create(data) {
     const ultimoItem = this.items[this.items.length-1]
-    let id = "TP-0"
+    let id = "RC-0"
     if (ultimoItem) {
-      id = generarID("PV", ultimoItem.id);
+      id = generarID( "RC", ultimoItem.id);
     }
     const itemNuevo = {
       id: id,
-      ...data
+      ...data,
+      fecha: getDate()
     }
     this.items.push(itemNuevo)
     return itemNuevo
@@ -70,4 +71,4 @@ class ProveedoresService {
 
 }
 
-module.exports = ProveedoresService
+module.exports = RecepcionService
