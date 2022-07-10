@@ -1,9 +1,9 @@
 {
   "development": {
-    "username": "yourDataBaseUserName",
-    "password": "yourDataBasePassword",
-    "database": "yourDataBaseName",
-    "host": "yourDataBaseHost",
+    "username": "sbglasse_banarica",
+    "password": "Banarica2022*",
+    "database": "sbglasse_banarica",
+    "host": "host45.latinoamericahosting.com",
     "dialect": "mysql"
   },
   "test": {

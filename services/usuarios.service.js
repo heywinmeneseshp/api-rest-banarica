@@ -1,25 +1,16 @@
 
 const boom = require('@hapi/boom');
+const db = require('../models');
+
 
 class UsuariosService {
 
   constructor() {
     this.almacenPorUsuario = [];
-    this.items = [];
     this.generate();
   }
 
   generate() {
-    this.items.push({
-      username: "username",
-      nombre: "nombre",
-      apellido: "apellido",
-      email: "email",
-      password: "password",
-      tel: "tel",
-      id_rol: "id_rol",
-      isBlock: true
-    });
     this.almacenPorUsuario.push({
       username: "username",
       id_almacen: "id_almacen",
@@ -28,46 +19,35 @@ class UsuariosService {
   }
 
   async create(data) {
-    if (this.items.find(item => item.username == data.username)) {
-      throw boom.conflict('El usuario ya existe')
-    }
-    this.items.push(data)
-    return data
+    const existe = await db.usuario.findOne({ where: { username: data.username } });
+    if (existe) throw boom.conflict('El usuario ya existe')
+    const newUser = await db.usuario.create(data);
+    return newUser
   }
 
   async find() {
-    return this.items
+    const result = await db.usuario.findAll();
+    return result;
   }
 
   async findOne(username) {
-    const item = this.items.find(item => item.username == username)
-    if (!item) {
-      throw boom.notFound('El item no existe')
-    }
-    return item;
+    const result = await db.usuario.findOne({ where: { username } });
+    return result;
   }
 
   async update(username, changes) {
-    const index = this.items.findIndex(item => item.username == username);
-    if (index === -1) {
+    const user = await db.usuario.findOne({ where: { username } });
+    if (!user) {
       throw boom.notFound('El item no existe')
     }
-    const item = this.items[index]
-    this.items[index] = {
-      ...item,
-      ...changes
-    };
-    return this.items[index];
+    const result = await db.usuario.update(changes, { where: { username } });
+    return result;
   }
 
   async delete(username) {
-    console.log(username)
-    const index = this.items.findIndex(item => item.username == username);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    this.items.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El item fue eliminado", username, }
+    const result = await db.usuario.destroy({ where: { username } });
+    if (!result) throw boom.notFound('El usuario no existe');
+    return { message: "El item fue eliminado", result };
   }
 
   async addAlmacenToUser(data) {

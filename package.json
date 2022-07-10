@@ -20,9 +20,11 @@
     "joi": "^17.6.0",
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
+    "mysql2": "^2.3.3",
     "mysql3": "^0.6.0",
     "sequelize": "^6.21.2",
-    "sequelize-cli": "^6.4.1"
+    "sequelize-cli": "^6.4.1",
+    "sqlite3": "^5.0.8"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.3.0",

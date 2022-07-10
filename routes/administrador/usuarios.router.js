@@ -13,7 +13,7 @@ router.get("/", async (req, res, next) => {
     const items = await service.find();
     res.send(items);
   } catch (error) {
-    next(error);git
+    next(error);
   }
 });
 
