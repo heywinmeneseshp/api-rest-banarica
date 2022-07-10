@@ -24,7 +24,7 @@ class ProveedoresService {
     const ultimoItem = this.items[this.items.length-1]
     let id = "TP-0"
     if (ultimoItem) {
-      id = generarID("PV", ultimoItem.id);
+      id = generarID("TP", ultimoItem.id);
     }
     const itemNuevo = {
       id: id,

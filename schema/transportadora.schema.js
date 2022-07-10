@@ -8,7 +8,6 @@ const email = Joi.string().email();
 const isBlock = Joi.boolean();
 
 const crearTransportadora = Joi.object({
-  id: id,
   razon_social: razon_social.required(),
   direccion: direccion.required(),
   tel: tel.required(),
@@ -17,7 +16,6 @@ const crearTransportadora = Joi.object({
 });
 
 const actualizarTransportadora = Joi.object({
-  id: id,
   razon_social: razon_social,
   direccion: direccion,
   tel: tel,

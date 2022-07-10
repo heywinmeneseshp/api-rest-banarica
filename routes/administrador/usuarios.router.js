@@ -11,9 +11,9 @@ const service = new UsuariosService();
 router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
-    res.json(items);
+    res.send(items);
   } catch (error) {
-    next(error);
+    next(error);git
   }
 });
 
@@ -36,10 +36,20 @@ router.post("/almacen", validatorHandler(agregarAlmacenParaUsuario, "body"), asy
   }
 });
 
+router.get("/almacen/:username/:id_almacen", async (req, res, next) => {
+  const { username, id_almacen } = req.params;
+  try {
+    const items = await service.findAlmacenByUser(username, id_almacen);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/almacen/:username", async (req, res, next) => {
   const { username } = req.params;
   try {
-    const items = await service.findAlmacenByUser(username);
+    const items = await service.findByUser(username);
     res.json(items);
   } catch (error) {
     next(error);
@@ -118,7 +128,7 @@ router.patch("/:username",
 
 //ELIMINAR
 router.delete("/:username", async (req, res, next) => {
-  const { id } = req.params
+  const { username } = req.params
   try {
     const result = await service.delete(username)
     res.json(result)

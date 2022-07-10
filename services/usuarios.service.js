@@ -61,6 +61,7 @@ class UsuariosService {
   }
 
   async delete(username) {
+    console.log(username)
     const index = this.items.findIndex(item => item.username == username);
     if (index === -1) {
       throw boom.notFound('El item no existe')
@@ -96,18 +97,23 @@ class UsuariosService {
     return this.almacenPorUsuario
   }
 
-  async findAlmacenByUser(username) {
+  async findByUser(username) {
     const almacenes = this.almacenPorUsuario.filter(almacen => almacen.username == username)
+    return almacenes;
+  }
+
+  async findAlmacenByUser(username, id_almacen) {
+    const almacenes = this.almacenPorUsuario.filter(almacen => almacen.username == username && almacen.id_almacen == id_almacen);
     return almacenes;
   }
 
   async deleteAlmacenFromUser(username, id_almacen) {
     const index = this.almacenPorUsuario.findIndex(almacen => almacen.username == username && almacen.id_almacen == id_almacen);
     if (index === -1) {
-      throw boom.notFound('El almacen no esta asignado al usuario ' + username);
+      throw boom.notFound('El almacen ' + id_almacen + 'no esta asignado al usuario ' + username);
     }
     this.almacenPorUsuario.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El almacen " + id_almacen + " fue deshabilitado para el usuario " + username }
+    return { message: "El almacen " + id_almacen + " fue eliminado para el usuario " + username }
   }
 
 }
