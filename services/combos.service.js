@@ -1,101 +1,65 @@
 const boom = require('@hapi/boom');
 const { generarIDProAndCat } = require('../middlewares/generarId.handler');
+const db = require("../models");
 
 class combosService {
 
-  constructor() {
-    this.listaItems = [];
-    this.listaCombos = [];
-    this.generate();
-  }
-
-  generate() {
-    this.listaItems.push({
-      id: "OTK1",
-      nombre: "Onkel Tuka 18Kg",
-      isBlock: false
-    });
-  }
+  constructor() { }
 
   async create(data) {
     try {
-      const isTheSame = (item) => (item.id).substring(0, 3) == (data.nombre).substring(0, 3).toUpperCase();
-      const lista = this.listaItems.filter(isTheSame);
-      let id = generarIDProAndCat(data.nombre, "xxx000")
-      if (lista.length > 0) id = generarIDProAndCat(data.nombre, lista[lista.length - 1].id);
-      const nuevoCombo = {
-        id: id,
-        ...data
-      };
-      this.listaItems.push(nuevoCombo)
-      return nuevoCombo
+      const { count } = await db.combos.findAndCountAll();
+      const consecutivo = generarIDProAndCat(data.nombre, "xxx" + count);
+      const combo = { consecutivo, ...data }
+      await db.combos.create(combo);
+      return combo
     } catch (error) {
       throw boom.badRequest(error)
     }
   }
 
-  async armarCombo(id_combo, id_producto) {
+  async armarCombo(body) {
     try {
-      const data = {
-        id_combo: id_combo,
-        id_producto: id_producto
-      }
-      this.listaCombos.push(data)
-      return data
-
+      await db.tabla_combos.create(body);
+      return body;
     } catch (error) {
       throw boom.badRequest(error)
     }
   }
 
   async find() {
-    return this.listaItems
+    return await db.combos.findAll();
   }
 
-  async findOneCombo(id_combo) {
-    const array = this.listaCombos.filter(item => id_combo == item.id_combo)
-    return array
+  async findOneCombo(cons_combo) {
+    return await db.tabla_combos.findAll({ where: { cons_combo } });
   }
 
   async findAllCombos() {
-    return this.listaCombos;
+    return await db.tabla_combos.findAll();
   }
 
-  async findOne(id) {
-    const combo = this.listaItems.find(item => item.id == id)
-    if (!combo) {
-      throw boom.notFound('El combo no existe')
-    }
+  async findOne(consecutivo) {
+    const combo = await db.combos.findOne({ where: { consecutivo } });
+    if (!combo) throw boom.notFound('El combo no existe')
     return combo;
   }
 
-  async update(id, changes) {
-    const index = this.listaItems.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El combo no existe')
-    }
-    const combo = this.listaItems[index]
-    this.listaItems[index] = {
-      ...combo,
-      ...changes
-    };
-    return this.listaItems[index];
+  async update(consecutivo, changes) {
+    const existe = await db.combos.findOne({ where: { consecutivo } });
+    if (!existe) throw boom.notFound('El combo no existe')
+    const combo = await db.combos.update(changes, { where: { consecutivo } });
+    return combo;
   }
 
-  async delete(id) {
+  async delete(consecutivo) {
     //Eliminar combos
-    const index = this.listaItems.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El combo no existe')
-    }
-    this.listaItems.splice(index, 1); //Eliminar en la posicion X una candidad de Y listaItems
-    //Eliminar productos del combo
-    return { message: "El combo fue eliminado", id, }
-  }
-
-  async deleteAllWith(id) {
-    const lista = this.listaCombos.filter((item) => id != item.id_combo);
-    this.listaCombos = lista
+    const combo = await db.combos.findOne({ where: { consecutivo } });
+    if (!combo) throw boom.notFound('El combo no existe')
+    await db.combos.destroy({ where: { consecutivo } });
+    //Eliminar tabla_combos
+    await db.tabla_combos.destroy({ where: { cons_combo: consecutivo } });
+    return { message: "El combo fue eliminado", consecutivo, }
   }
 
 }

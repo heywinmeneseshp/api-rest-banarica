@@ -1,16 +1,16 @@
 const Joi = require('joi');
 
-const id = Joi.string().min(4);
+const consecutivo = Joi.string().min(4);
 const prestador = Joi.string().min(3);
 const deudor = Joi.string().min(3);
-const id_producto = Joi.string();
+const cons_producto = Joi.string();
 const cantidad = Joi.number();
 
 const crearDeuda = Joi.object({
-  id: id,
+  consecutivo: consecutivo,
   prestador: prestador.required(),
   deudor: deudor.required(),
-  id_producto: id_producto.required(),
+  cons_producto: cons_producto.required(),
   cantidad: cantidad.required(),
 });
 

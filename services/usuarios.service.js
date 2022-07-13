@@ -19,39 +19,39 @@ class UsuariosService {
   }
 
   async create(data) {
-    const existe = await db.usuario.findOne({ where: { username: data.username } });
-    if (existe) throw boom.conflict('El usuario ya existe')
-    const newUser = await db.usuario.create(data);
+    const existe = await db.usuarios.findOne({ where: { username: data.username } });
+    if (existe) throw boom.conflict('El usuarios ya existe')
+    const newUser = await db.usuarios.create(data);
     return newUser
   }
 
   async find() {
-    const result = await db.usuario.findAll();
+    const result = await db.usuarios.findAll();
     return result;
   }
 
   async findOne(username) {
-    const result = await db.usuario.findOne({ where: { username } });
+    const result = await db.usuarios.findOne({ where: { username } });
     return result;
   }
 
   async update(username, changes) {
-    const user = await db.usuario.findOne({ where: { username } });
+    const user = await db.usuarios.findOne({ where: { username } });
     if (!user) {
       throw boom.notFound('El item no existe')
     }
-    const result = await db.usuario.update(changes, { where: { username } });
+    const result = await db.usuarios.update(changes, { where: { username } });
     return result;
   }
 
   async delete(username) {
-    const result = await db.usuario.destroy({ where: { username } });
+    const result = await db.usuarios.destroy({ where: { username } });
     if (!result) throw boom.notFound('El usuario no existe');
     return { message: "El item fue eliminado", result };
   }
 
   async addAlmacenToUser(data) {
-    const existe = this.almacenPorUsuario.filter(item => item.username == data.username && item.id_almacen == data.id_almacen);
+    const existe = this.almacenPorUsuarios.filter(item => item.username == data.username && item.id_almacen == data.id_almacen);
     if (existe.length > 0) {
       throw boom.conflict('El almacen ' + data.id_almacen + ' ya esta asignado al usuario ' + data.username);
     }

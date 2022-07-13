@@ -1,6 +1,6 @@
 const Joi = require('joi');
 
-const id = Joi.string().min(4);
+const consecutivo = Joi.string().min(4);
 const razon_social = Joi.string().min(4);
 const direccion = Joi.string().max(100);
 const tel = Joi.string().max(20);
@@ -8,7 +8,7 @@ const email = Joi.string().email();
 const isBlock = Joi.boolean();
 
 const crearProveedor = Joi.object({
-  id: id,
+  consecutivo: consecutivo,
   razon_social: razon_social.required(),
   direccion: direccion.required(),
   tel: tel.required(),
@@ -17,7 +17,7 @@ const crearProveedor = Joi.object({
 });
 
 const actualizarProveedor = Joi.object({
-  id: id,
+  consecutivo: consecutivo,
   razon_social: razon_social,
   direccion: direccion,
   tel: tel,

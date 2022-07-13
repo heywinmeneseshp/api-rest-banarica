@@ -1,6 +1,6 @@
 const Joi = require('joi');
 
-const id = Joi.string().alphanum().min(3);
+const consecutivo = Joi.string().alphanum().min(3);
 const nombre = Joi.string();
 const razon_social = Joi.string();
 const direccion = Joi.string().max(100);
@@ -9,7 +9,7 @@ const email = Joi.string().email();
 const estado = Joi.boolean();
 
 const crearAlmacen = Joi.object({
-      id: id.required(),
+      consecutivo: consecutivo,
       nombre: nombre.required(),
       razon_social: razon_social.required(),
       direccion: direccion.required(),
@@ -19,7 +19,7 @@ const crearAlmacen = Joi.object({
 });
 
 const actualizarAlmacen = Joi.object({
-      id: id,
+      consecutivo: consecutivo,
       nombre: nombre,
       razon_social: razon_social,
       direccion: direccion,

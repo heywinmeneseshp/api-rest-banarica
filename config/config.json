@@ -1,8 +1,8 @@
 {
   "development": {
-    "username": "sbglasse_banarica",
+    "username": "sbglasse_br",
     "password": "Banarica2022*",
-    "database": "sbglasse_banarica",
+    "database": "sbglasse_br",
     "host": "host45.latinoamericahosting.com",
     "dialect": "mysql"
   },

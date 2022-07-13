@@ -1,12 +1,10 @@
 const boom = require('@hapi/boom');
 const { generarIDProAndCat } = require('../middlewares/generarId.handler');
+const db = require('../models');
 
 class CategoriasService {
 
-  constructor() {
-    this.categorias = [];
-    this.generate();
-  }
+  constructor() {}
 
   generate() {
     this.categorias.push({
@@ -19,53 +17,44 @@ class CategoriasService {
 
   async create(data) {
     try {
-      const isTheSame = (item) => (item.id).substring(0, 3) == (data.nombre).substring(0, 3).toUpperCase();
-      const lista = this.categorias.filter(isTheSame);
-      let id = generarIDProAndCat(data.nombre, "xxx000")
-      if (lista.length > 0) id = generarIDProAndCat(data.nombre, lista[lista.length - 1].id);
-      const categoriaNuevo = {
-        id: id,
-        ...data
-      };
-      this.categorias.push(categoriaNuevo)
-      return categoriaNuevo
+      const { count } = await db.categorias.findAndCountAll();
+      const consecutivo = generarIDProAndCat(data.nombre, "xxx" + (count));
+      const categoria = { consecutivo, ...data };
+      await db.categorias.create(categoria);
+      return categoria;
     } catch (error) {
       throw boom.badRequest(error)
     }
   }
 
   async find() {
-    return this.categorias
+    return await db.categorias.findAll();
   }
 
-  async findOne(id) {
-    const categoria = this.categorias.find(item => item.id == id)
+  async findOne(consecutivo) {
+    const categoria = await db.categorias.findOne({ where: { consecutivo } });
     if (!categoria) {
-      throw boom.notFound('El categoria no existe')
+      throw boom.notFound('La categoria no existe')
     }
     return categoria;
   }
 
-  async update(id, changes) {
-    const index = this.categorias.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El categoria no existe')
+  async update(consecutivo, changes) {
+    const existe = await db.categorias.findOne({ where: { consecutivo } });
+    if (!existe) {
+      throw boom.notFound('La categoria no existe')
     }
-    const producto = this.categorias[index]
-    this.categorias[index] = {
-      ...producto,
-      ...changes
-    };
-    return this.categorias[index];
+    const result = await db.categorias.update(changes, { where: { consecutivo } });
+    return result;
   }
 
-  async delete(id) {
-    const index = this.categorias.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El categoria no existe')
+  async delete(consecutivo) {
+    const existe = await db.categorias.findOne({ where: { consecutivo } });
+    if (!existe) {
+      throw boom.notFound('La categoria no existe')
     }
-    this.categorias.splice(index, 1); //Eliminar en la posicion X una candidad de Y categorias
-    return { message: "El categoria fue eliminado", id, }
+    await db.categorias.destroy({ where: { consecutivo } });
+    return { message: "La categoria fue eliminado", consecutivo, }
   }
 
 }

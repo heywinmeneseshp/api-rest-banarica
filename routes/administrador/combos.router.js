@@ -71,7 +71,7 @@ router.post("/listar",
   async (req, res, next) => {
     try {
       const body = req.body;
-      const productoEnCombo = await service.armarCombo(body.id_combo, body.id_producto);
+      const productoEnCombo = await service.armarCombo(body);
       res.json({
         message: "Items creado",
         data: productoEnCombo
@@ -103,7 +103,6 @@ router.patch("/:id",
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {
-    await service.deleteAllWith(id);
     const result = await service.delete(id)
     res.json(result)
   } catch (error) {

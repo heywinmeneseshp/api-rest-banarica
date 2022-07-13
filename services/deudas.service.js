@@ -1,6 +1,7 @@
 
 const boom = require('@hapi/boom');
 const { generarID } = require("../middlewares/generarId.handler");
+const db = require('../models')
 
 class DeudasService {
 
@@ -9,29 +10,20 @@ class DeudasService {
     this.generate();
   }
 
-  generate() {
-    this.items.push({
-      id: "DD-0",
-      prestador: "302",
-      deudor: "512",
-      id_producto: "CA-01",
-      cantidad: 22,
-    });
+  async generate(){
+    this.items = await db.deudas.findAll()
   }
 
+
   async create(data) {
+    this.items = await db.deudas.findAll()
     const existe = this.items.filter((item) => item.prestador == data.prestador && item.deudor == data.deudor && item.id_producto == data.id_producto);
     if (existe.length > 0) throw boom.conflict('El item ya existe')
     const ultimoItem = this.items[this.items.length - 1]
-    let id = "DD-0"
-    if (ultimoItem) {
-      id = generarID("DD", ultimoItem.id);
-    }
-    const itemNuevo = {
-      id: id,
-      ...data
-    }
-    this.items.push(itemNuevo)
+    let consecutivo = "DD-0"
+    if (ultimoItem) consecutivo = generarID("DD", ultimoItem.consecutivo);
+    const itemNuevo = { consecutivo, ...data }
+    await db.deudas.create(itemNuevo)
     return itemNuevo
   }
 
@@ -42,11 +34,11 @@ class DeudasService {
 
 
   async find() {
-    return this.items
+    return await db.deudas.findAll()
   }
 
-  async findOne(id) {
-    const item = this.items.find(item => item.id == id)
+  async findOne(consecutivo) {
+    const item = await db.deudas.findOne()
     if (!item) {
       throw boom.notFound('El item no existe')
     }
@@ -54,25 +46,17 @@ class DeudasService {
   }
 
   async update(id, changes) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    const item = this.items[index]
-    this.items[index] = {
-      ...item,
-      ...changes
-    };
-    return this.items[index];
+    const item = await db.deudas.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe')
+    const rta = await item.update(changes)
+    return rta;
   }
 
   async delete(id) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    this.items.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El item fue eliminado", id, }
+    const item = await db.deudas.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe');
+    await item.destroy({ where: { id } });
+    return { message: "El item fue eliminado", item: item.consecutivo }
   }
 
 }

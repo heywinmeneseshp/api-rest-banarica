@@ -1,73 +1,52 @@
 
 const boom = require('@hapi/boom');
 const { generarID } = require("../middlewares/generarId.handler");
+const db = require("../models");
 
 class ConductoresService {
 
-  constructor() {
-    this.items = [];
-    this.generate();
-  }
-
-  generate() {
-    this.items.push({
-      id: "CO-0",
-      conductor: "Ramiro Perez",
-      id_transportadora: "TR-1",
-      email: "heywin1@gmail.com",
-      tel: "3226737763",
-      isBlock: false
-    });
-  }
+  constructor() { }
 
   async create(data) {
-    const ultimoItem = this.items[this.items.length-1]
-    let id = "CO-0"
-    if (ultimoItem) {
-      id = generarID("CO", ultimoItem.id);
-    }
-    const itemNuevo = {
-      id: id,
-      ...data
-    }
-    this.items.push(itemNuevo)
-    return itemNuevo
+    const heywin = await this.find();
+    let consecutivo = "CO-0"
+    if (heywin.length > 0) consecutivo = generarID("CO", heywin[heywin.length - 1].consecutivo);
+    const conductor = { consecutivo, ...data };
+    await db.conductores.create(conductor);
+    return conductor;
   }
 
   async find() {
-    return this.items
+    return await db.conductores.findAll();
   }
 
-  async findOne(id) {
-    const item = this.items.find(item => item.id == id)
-    if (!item) {
-      throw boom.notFound('El item no existe')
-    }
+  async findOne(consecutivo) {
+    const item = await db.conductores.findOne({ where: { consecutivo } });
+    if (!item) throw boom.notFound('El item no existe');
     return item;
   }
 
-  async update(id, changes) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
+  async update(consecutivo, changes) {
+    try {
+      const item = await db.conductores.findOne({ where: { consecutivo } });
+      if (!item) throw boom.notFound('El item no existe');
+      await db.conductores.update(changes, { where: { consecutivo } });
+      return { message: "El item fue actualizado", consecutivo, changes }
+    } catch (error) {
+      throw boom.badRequest(error);
     }
-    const item = this.items[index]
-    this.items[index] = {
-      ...item,
-      ...changes
-    };
-    return this.items[index];
-  }
+  };
 
-  async delete(id) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
+  async delete(consecutivo) {
+    try {
+      const item = await db.conductores.findOne({ where: { consecutivo } });
+      if (!item) throw boom.notFound('El item no existe');
+      await db.conductores.destroy({ where: { consecutivo } });
+      return { message: "El item fue eliminado", consecutivo, }
+    } catch (error) {
+      throw boom.badRequest(error);
     }
-    this.items.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El item fue eliminado", id, }
   }
-
 }
 
 module.exports = ConductoresService

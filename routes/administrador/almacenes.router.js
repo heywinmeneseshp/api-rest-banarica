@@ -21,10 +21,10 @@ router.get("/filter", (req, res) => {
   res.json({ limit: limit, offset: offset })
 });
 
-router.get("/:id", async (req, res, next) => {
+router.get("/:consecutivo", async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const result = await service.findOne(id);
+    const { consecutivo } = req.params;
+    const result = await service.findOne(consecutivo);
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -46,26 +46,26 @@ async (req, res, next) => {
   }
 });
 
-router.patch("/:id",
+router.patch("/:consecutivo",
 validatorHandler(actualizarAlmacen, "body"),
 async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { consecutivo } = req.params;
     const body = req.body;
-    const almacen = await service.update(id, body)
+    await service.update(consecutivo, body)
     res.json({
       message: "Almacen actualizado",
-      data: almacen
+      data: body
     })
   } catch (error) {
     next(error)
   }
 });
 
-router.delete("/:id", async (req, res, next) => {
-  const { id } = req.params;
+router.delete("/:consecutivo", async (req, res, next) => {
+  const { consecutivo } = req.params;
   try {
-    const result = await service.delete(id)
+    const result = await service.delete(consecutivo)
     res.json(result)
   } catch (error) {
     next(error);
