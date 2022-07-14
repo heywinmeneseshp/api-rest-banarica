@@ -37,7 +37,8 @@ const ingresarConsPedido = Joi.object({
 
 const recibirPedido = Joi.object({
   consecutivo: consecutivo,
-  pendiente: pendiente.required(),
+  observaciones: observaciones,
+  pendiente: pendiente,
 })
 
 module.exports = { crearPedido, editarPedido, ingresarConsPedido, recibirPedido };

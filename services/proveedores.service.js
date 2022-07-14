@@ -1,6 +1,7 @@
 
 const boom = require('@hapi/boom');
 const { generarID } = require("../middlewares/generarId.handler");
+const db = require('../models');
 
 class ProveedoresService {
 
@@ -21,51 +22,35 @@ class ProveedoresService {
   }
 
   async create(data) {
-    const ultimoItem = this.items[this.items.length-1]
-    let id = "PV-0"
-    if (ultimoItem) {
-      id = generarID("PV", ultimoItem.id);
-    }
-    const itemNuevo = {
-      id: id,
-      ...data
-    }
-    this.items.push(itemNuevo)
-    return itemNuevo
+    const { count } = await db.proveedores.findAndCountAll()
+    let consecutivo = "PV-" + count;
+    const itemNuevo = { consecutivo, ...data }
+    await db.proveedores.create(itemNuevo);
+    return itemNuevo;
   }
 
   async find() {
-    return this.items
+    return await db.proveedores.findAll();
   }
 
-  async findOne(id) {
-    const item = this.items.find(item => item.id == id)
-    if (!item) {
-      throw boom.notFound('El item no existe')
-    }
-    return item;
+  async findOne(consecutivo) {
+    const proveedor = await db.proveedores.findOne({ where: { consecutivo: consecutivo } });
+    if (!proveedor) throw boom.notFound('El proveedor no existe');
+    return proveedor;
   }
 
   async update(id, changes) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    const item = this.items[index]
-    this.items[index] = {
-      ...item,
-      ...changes
-    };
-    return this.items[index];
+    const proveedor = await db.proveedores.findByPk(id);
+    if (!proveedor) throw boom.notFound('El item no existe');
+    await proveedor.update(changes);
+    return proveedor;
   }
 
   async delete(id) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    this.items.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El item fue eliminado", id, }
+    const item = await db.proveedores.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe');
+    await item.destroy({ where: { id } });
+    return { message: "El item fue eliminado" };
   }
 
 }

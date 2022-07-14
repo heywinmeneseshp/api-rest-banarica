@@ -18,6 +18,7 @@ const movimientosRouter = require("./movimientos.router.js");
 
 const historialMovimientosRouter = require("./historialMovimientos.router.js");
 const deudasRouter = require("./deudas.router.js");
+const stock = require("./stock.router.js");
 
 const semanasRouter = require("./administrador/semanas.router.js");
 
@@ -42,6 +43,7 @@ function routerApi(app) {
 
   router.use('/historial-movimientos', historialMovimientosRouter);
   router.use('/deudas', deudasRouter);
+  router.use('/stock', stock);
 
   router.use('/semanas', semanasRouter);
 }

@@ -2,6 +2,7 @@
 const boom = require('@hapi/boom');
 const { generarID } = require("../middlewares/generarId.handler");
 const getDate = require('../middlewares/getDate.handler')
+const db = require('../models');
 
 
 
@@ -23,54 +24,41 @@ class MovimientosService {
   }
 
   async create(data) {
-    const ultimoItem = this.items[this.items.length-1]
-    let id = data.prefijo + "-0"
-    if (ultimoItem) {
-      id = generarID( data.prefijo, ultimoItem.id);
-    }
+    const { count } = await db.movimientos.findAndCountAll()
+    let consecutivo = data.prefijo + "-" + count
     const itemNuevo = {
-      id: id,
+      consecutivo,
       pendiente: data.pendiente,
       observaciones: data.observaciones,
-      id_semana: data.id_semana,
+      cons_semana: data.cons_semana,
       fecha: getDate()
     }
-    this.items.push(itemNuevo)
+    await db.movimientos.create(itemNuevo);
     return itemNuevo
   }
 
   async find() {
-    return this.items
+    return await db.movimientos.findAll()
   }
 
-  async findOne(id) {
-    const item = this.items.find(item => item.id == id)
-    if (!item) {
-      throw boom.notFound('El item no existe')
-    }
+  async findOne(consecutivo) {
+    const item = await db.movimientos.findOne({ where: { consecutivo: consecutivo } })
+    if (!item) throw boom.notFound('El item no existe');
     return item;
   }
 
   async update(id, changes) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    const item = this.items[index]
-    this.items[index] = {
-      ...item,
-      ...changes
-    };
-    return this.items[index];
+    const item = await db.movimientos.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe')
+    await item.update(changes)
+    return item;
   }
 
   async delete(id) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    this.items.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El item fue eliminado", id, }
+    const item = await db.movimientos.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe');
+    await item.destroy({ where: { id } });
+    return { message: "El item fue eliminado" }
   }
 
 }

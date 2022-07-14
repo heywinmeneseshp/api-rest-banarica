@@ -1,7 +1,7 @@
 
 const boom = require('@hapi/boom');
-const { generarID } = require("../middlewares/generarId.handler");
 const getDate = require('../middlewares/getDate.handler')
+const db = require('../models');
 
 class RecepcionService {
 
@@ -26,53 +26,35 @@ class RecepcionService {
   }
 
   async create(data) {
-    const ultimoItem = this.items[this.items.length-1]
-    let id = "TR-0"
-    if (ultimoItem) {
-      id = generarID( "TR", ultimoItem.id);
-    }
-    const itemNuevo = {
-      id: id,
-      ...data,
-      fecha_salida: getDate(),
-      fecha_entrada: null
-    }
-    this.items.push(itemNuevo)
+    const { count } = await db.traslados.findAndCountAll();
+    const consecutivo = "TR-" + count;
+    const itemNuevo = { consecutivo, ...data }
+    await db.traslados.create(itemNuevo);
     return itemNuevo
   }
 
   async find() {
-    return this.items
+    return await db.traslados.findAll();
   }
 
-  async findOne(id) {
-    const item = this.items.find(item => item.id == id)
-    if (!item) {
-      throw boom.notFound('El item no existe')
-    }
+  async findOne(consecutivo) {
+    const item = await db.traslados.findOne({ where: { consecutivo: consecutivo } });
+    if (!item) throw boom.notFound('El item no existe')
     return item;
   }
 
   async update(id, changes) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    const item = this.items[index]
-    this.items[index] = {
-      ...item,
-      ...changes
-    };
-    return this.items[index];
+    const traslados = await db.traslados.findByPk(id);
+    if (!traslados) throw boom.notFound('El item no existe');
+    await traslados.update(changes)
+    return traslados
   }
 
   async delete(id) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    this.items.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El item fue eliminado", id, }
+    const traslados = await db.traslados.findByPk(id);
+    if (!traslados) throw boom.notFound('El item no existe');
+    await traslados.destroy({ where: { id } });
+    return { message: "El item fue eliminado" };
   }
 
 }

@@ -7,13 +7,7 @@ class DeudasService {
 
   constructor() {
     this.items = [];
-    this.generate();
   }
-
-  async generate(){
-    this.items = await db.deudas.findAll()
-  }
-
 
   async create(data) {
     this.items = await db.deudas.findAll()
@@ -28,6 +22,7 @@ class DeudasService {
   }
 
   async filter(prestador, deudor) {
+    this.items = await db.deudas.findAll()
     const result = this.items.filter((item) => item.prestador == prestador && item.deudor == deudor);
     return result
   }
@@ -38,15 +33,13 @@ class DeudasService {
   }
 
   async findOne(consecutivo) {
-    const item = await db.deudas.findOne()
-    if (!item) {
-      throw boom.notFound('El item no existe')
-    }
+    const item = await db.deudas.findOne({ where: { consecutivo } })
+    if (!item) throw boom.notFound('El item no existe')
     return item;
   }
 
   async update(id, changes) {
-    const item = await db.deudas.findByPk(id);
+    const item = await db.deudas.findOne({ where: { id } });
     if (!item) throw boom.notFound('El item no existe')
     const rta = await item.update(changes)
     return rta;

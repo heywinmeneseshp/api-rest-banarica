@@ -2,17 +2,18 @@
 const boom = require('@hapi/boom');
 const { generarID } = require("../middlewares/generarId.handler");
 const getDate = require('../middlewares/getDate.handler');
+const db = require('../models');
 
-class PedidosService {
+class pedidosService {
 
   constructor() {
-    this.listaConsPedidos = [];
-    this.items = [];
+    this.tabla_pedidos = [];
+    this.tabla = [];
     this.generate();
   }
 
   generate() {
-    this.listaConsPedidos.push({
+    this.tabla_pedidos.push({
       id: "PD-0",
       pendiente: true,
       observaciones: "observaciones.required()",
@@ -20,7 +21,7 @@ class PedidosService {
       semana: "S2-22",
       usuario: "heywinmeneses"
     })
-    this.items.push({
+    this.tabla.push({
       id_pedido: "PD-0",
       id_producto: "CAT-0",
       id_almacen_destino: "302",
@@ -29,99 +30,66 @@ class PedidosService {
   }
 
   async create(data) {
-
-    const itemNuevo = {
-      ...data
-    }
-    this.items.push(itemNuevo)
-    return itemNuevo
+    await db.pedidos.create(data);
+    return data
   }
 
   async find() {
-    return this.items
+    return await db.pedidos.findAll();
   }
 
-  async findOne(id) {
-    const item = this.items.find(item => item.id == id)
-    if (!item) {
-      throw boom.notFound('El item no existe')
-    }
-    return item;
+  async findOne(consecutivo) {
+    const items = await db.pedidos.findAll({ where: { cons_pedido: consecutivo } })
+    if (items == 0) throw boom.notFound('El item no existe')
+    return items
   }
 
   async update(id, changes) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    const item = this.items[index]
-    this.items[index] = {
-      ...item,
-      ...changes
-    };
-    return this.items[index];
+    const item = await db.pedidos.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe')
+    await item.update(changes)
+    return item;
   }
 
   async delete(id) {
-    const index = this.items.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    this.items.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El item fue eliminado", id, }
+    const item = await db.pedidos.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe');
+    await item.destroy({ where: { id } });
+    return { message: "El item fue eliminado" };
   }
 
   async findAllCons() {
-    return this.listaConsPedidos
+    return await db.tabla_pedidos.findAll()
   }
 
-  async findOneCons(id) {
-    const item = this.listaConsPedidos.find(item => item.id == id)
-    if (!item) {
-      throw boom.notFound('El item no existe')
-    }
+  async findOneCons(consecutivo) {
+    const item = await db.tabla_pedidos.findOne({ where: { consecutivo: consecutivo } })
+    if (!item) throw boom.notFound('El item no existe')
     return item;
   }
 
   async createCons(data) {
+    const { count } = await db.tabla_pedidos.findAndCountAll();
+    let consecutivo = "PD-" + count;
     console.log(data)
-    const existe = this.listaConsPedidos.filter((item) => item.id == data.id);
-    if (existe.length > 0) throw boom.conflict('El pedido ya existe')
-    const ultimoItem = this.listaConsPedidos[this.listaConsPedidos.length - 1]
-    let id = "PD-0"
-    if (ultimoItem) {
-      id = generarID("PD", ultimoItem.id);
-    }
-    const itemNuevo = {
-      id: id,
-      ...data
-    }
-    this.listaConsPedidos.push(itemNuevo)
+    const itemNuevo = { ...data, consecutivo };
+    await db.tabla_pedidos.create(itemNuevo)
     return itemNuevo
   }
 
   async receiveOrder(id, changes) {
-    const index = this.listaConsPedidos.findIndex(item => item.id == id);
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    const item = this.listaConsPedidos[index]
-    this.listaConsPedidos[index] = {
-      ...item,
-      ...changes
-    };
-    return this.listaConsPedidos[index];
+    const pedido = await db.tabla_pedidos.findByPk(id)
+    if (!pedido) throw boom.notFound('El item no existe')
+    await pedido.update(changes)
+    return pedido
   }
 
   async deleteCons(id) {
-    const index = this.listaConsPedidos.findIndex(item => item.id == id);
-    console.log(index)
-    if (index === -1) {
-      throw boom.notFound('El item no existe')
-    }
-    this.listaConsPedidos.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El item fue eliminado", id, }
+    const item = await db.tabla_pedidos.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe');
+    await item.destroy({ where: { id } });
+    return { message: "El item fue eliminado" };
   }
 }
 
-module.exports = PedidosService
+module.exports = pedidosService

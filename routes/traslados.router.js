@@ -74,8 +74,11 @@ validatorHandler(realizarTraslado, "body"),
 async (req, res, next) => {
   try {
     const body = req.body;
-    console.log(body)
-    const itemNuevo = await service.create(body);
+    const data = {
+      ...body,
+      fecha_salida: getDate()
+    }
+    const itemNuevo = await service.create(data);
     res.json({
       message: "item creado",
       data: itemNuevo
