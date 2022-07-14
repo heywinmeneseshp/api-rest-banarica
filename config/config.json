@@ -11,7 +11,10 @@
     "storage": "./database.sqlite3"
   },
   "production": {
-    "dialect": "sqlite",
-    "storage": "./database.sqlite3"
+    "username": "sbglasse_br",
+    "password": "Banarica2022*",
+    "database": "sbglasse_br",
+    "host": "host45.latinoamericahosting.com",
+    "dialect": "mysql"
   }
 }
