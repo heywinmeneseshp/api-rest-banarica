@@ -23,6 +23,7 @@ const crearUsuario = Joi.object({
 });
 
 const actualizarUsuario = Joi.object({
+  username: username,
   nombre: nombre,
   apellido: apellido,
   email: email,

@@ -31,8 +31,12 @@ class UsuariosService {
   }
 
   async findOne(username) {
+    try{
     const result = await db.usuarios.findOne({ where: { username } });
     return result;
+    }catch(err){
+      throw boom.notFound('El usuario no existe')
+    }
   }
 
   async update(username, changes) {
