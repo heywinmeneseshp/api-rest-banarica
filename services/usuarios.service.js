@@ -100,6 +100,17 @@ class UsuariosService {
     return { message: "El almacen " + id_almacen + " fue eliminado para el usuario " + username }
   }
 
+  async paginate(offset, limit) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset)-1 )* newlimit;
+    const result = await db.usuarios.findAll({
+    limit: newlimit,
+    offset: newoffset
+    });
+
+    return result;
+  }
+
 }
 
 module.exports = UsuariosService
