@@ -36,13 +36,13 @@ const actualizarUsuario = Joi.object({
 const agregarAlmacenParaUsuario = Joi.object({
   id_almacen: id_almacen.required(),
   username: username.required(),
-  isBlock: isBlock.required(),
+  habilitado: isBlock.required(),
 })
 
 const actualizarUsuarioPorAlmacen = Joi.object({
   id_almacen: id_almacen.required(),
   username: username.required(),
-  isBlock: isBlock
+  habilitado: isBlock
 })
 
 module.exports = { crearUsuario, actualizarUsuario, agregarAlmacenParaUsuario, actualizarUsuarioPorAlmacen  };
