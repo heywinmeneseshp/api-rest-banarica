@@ -10,6 +10,7 @@ const id_rol = Joi.string();
 const isBlock = Joi.boolean();
 
 const id_almacen = Joi.string();
+const habilitado = Joi.boolean();
 
 const crearUsuario = Joi.object({
   username: username.required(),
@@ -36,13 +37,13 @@ const actualizarUsuario = Joi.object({
 const agregarAlmacenParaUsuario = Joi.object({
   id_almacen: id_almacen.required(),
   username: username.required(),
-  habilitado: isBlock.required(),
+  habilitado: habilitado.required(),
 })
 
 const actualizarUsuarioPorAlmacen = Joi.object({
   id_almacen: id_almacen.required(),
   username: username.required(),
-  habilitado: isBlock
+  habilitado: habilitado
 })
 
 module.exports = { crearUsuario, actualizarUsuario, agregarAlmacenParaUsuario, actualizarUsuarioPorAlmacen  };
