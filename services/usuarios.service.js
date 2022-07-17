@@ -55,37 +55,37 @@ class UsuariosService {
   }
 
   async addAlmacenToUser(data) {
-    const existe = await db.almacen_por_usuario.findOne({ where: { username: data.username, id_almacen: data.id_almacen } });
+    const existe = await db.almacenes_por_usuario.findOne({ where: { username: data.username, id_almacen: data.id_almacen } });
     if (existe) throw boom.conflict('El item ya existe')
-    const newUser = await db.almacen_por_usuario.create(data);
+    const newUser = await db.almacenes_por_usuario.create(data);
     return newUser;
   }
 
   async updateAlmacenFromUser(username, id_almacen) {
-    const almacen = await db.almacen_por_usuario.findOne({ where: { username, id_almacen } });
+    const almacen = await db.almacenes_por_usuario.findAll({ where: { username, id_almacen } });
     if (!almacen) {
       throw boom.notFound('El item no existe')
     }
-    const result = await db.almacen_por_usuario.update({ habilitado: !almacen.habilitado }, { where: { username, id_almacen } });
+    const result = await db.almacenes_por_usuario.update({ habilitado: !almacen.habilitado }, { where: { username, id_almacen } });
     return result;
   }
 
   async findAllAlmacenesassigned() {
-    return await db.almacen_por_usuario.findAll();
+    return await db.almacenes_por_usuario.findAll();
   }
 
   async findByUser(username) {
-    const almacenes = await db.almacen_por_usuario.findAll({ where: { username } });
+    const almacenes = await db.almacenes_por_usuario.findAll({ where: { username } });
     return almacenes;
   }
 
   async findAlmacenByUser(username, id_almacen) {
-    const almacenes = await db.almacen_por_usuario.findOne({ where: { username, id_almacen } });
+    const almacenes = await db.almacenes_por_usuario.findOne({ where: { username, id_almacen } });
     return almacenes;
   }
 
   async deleteAlmacenFromUser(username, id_almacen) {
-    const index = await db.almacen_por_usuario.destroy({ where: { username, id_almacen } });
+    const index = await db.almacenes_por_usuario.destroy({ where: { username, id_almacen } });
     if (!index) throw boom.notFound('El item no existe');
     return { message: "El item fue eliminado", index };
   }
