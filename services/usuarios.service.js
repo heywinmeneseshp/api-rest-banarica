@@ -54,17 +54,11 @@ class UsuariosService {
     return { message: "El item fue eliminado", result };
   }
 
-  async findOrCreateAlmacenToUser(data) {
-    const result = await db.almacen_por_usuario.findOrCreate({
-      where: {
-        username: data.username,
-        id_almacen: data.id_almacen
-      },
-      defaults: {
-       habilitado: data.habilitado
-      }
-    });
-    return result;
+  async addAlmacenToUser(data) {
+    const existe = await db.almacen_por_usuario.findOne({ where: { username: data.username, id_almacen: data.id_almacen } });
+    if (existe) throw boom.conflict('El item ya existe')
+    const newUser = await db.almacen_por_usuario.create(data);
+    return newUser;
   }
 
   async updateAlmacenFromUser(username, id_almacen) {

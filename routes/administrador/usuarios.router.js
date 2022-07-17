@@ -41,7 +41,7 @@ router.get("/almacen", async (req, res, next) => {
 router.post("/almacen", validatorHandler(agregarAlmacenParaUsuario, "body"), async (req, res, next) => {
   const body = req.body;
   try {
-    const item = await service.findOrCreateAlmacenToUser(body);
+    const item = await service.addAlmacenToUser(body);
     res.json(item);
   } catch (error) {
     next(error);
