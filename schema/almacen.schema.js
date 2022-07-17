@@ -6,7 +6,7 @@ const razon_social = Joi.string();
 const direccion = Joi.string().max(100);
 const telefono = Joi.string().min(7);
 const email = Joi.string().email();
-const estado = Joi.boolean();
+const isBlock = Joi.boolean();
 
 const crearAlmacen = Joi.object({
       consecutivo: consecutivo,
@@ -15,7 +15,7 @@ const crearAlmacen = Joi.object({
       direccion: direccion.required(),
       telefono: telefono.required(),
       email: email.required(),
-      estado: estado.required()
+      isBlock: isBlock.required()
 });
 
 const actualizarAlmacen = Joi.object({
@@ -25,7 +25,7 @@ const actualizarAlmacen = Joi.object({
       direccion: direccion,
       telefono: telefono,
       email: email,
-      estado: estado
+      isBlock: isBlock
 });
 
 module.exports = { crearAlmacen, actualizarAlmacen };
