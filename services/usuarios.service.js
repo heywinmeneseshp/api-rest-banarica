@@ -54,50 +54,46 @@ class UsuariosService {
     return { message: "El item fue eliminado", result };
   }
 
-  async addAlmacenToUser(data) {
-    const existe = this.almacenPorUsuarios.filter(item => item.username == data.username && item.id_almacen == data.id_almacen);
-    if (existe.length > 0) {
-      throw boom.conflict('El almacen ' + data.id_almacen + ' ya esta asignado al usuario ' + data.username);
-    }
-    this.almacenPorUsuario.push(data);
-    return data;
+  async findOrCreateAlmacenToUser(data) {
+    const result = await db.almacen_por_usuario.findOrCreate({
+      where: {
+        username: data.username,
+        id_almacen: data.id_almacen
+      },
+      defaults: {
+       habilitado: data.habilitado
+      }
+    });
+    return result;
   }
 
   async updateAlmacenFromUser(username, id_almacen) {
-    const index = this.almacenPorUsuario.findIndex(almacen => almacen.username == username && almacen.id_almacen == id_almacen);
-    if (index === -1) {
-      throw boom.notFound('El almacen no esta asignado al usuario ' + username);
+    const almacen = await db.almacen_por_usuario.findOne({ where: { username, id_almacen } });
+    if (!almacen) {
+      throw boom.notFound('El item no existe')
     }
-    const almacen = this.almacenPorUsuario[index]
-    const boolean = !almacen.isBlock;
-    this.almacenPorUsuario[index] = {
-      ...almacen,
-      isBlock: boolean
-    };
-    return this.almacenPorUsuario[index];
+    const result = await db.almacen_por_usuario.update({ habilitado: !almacen.habilitado }, { where: { username, id_almacen } });
+    return result;
   }
 
   async findAllAlmacenesassigned() {
-    return this.almacenPorUsuario
+    return await db.almacen_por_usuario.findAll();
   }
 
   async findByUser(username) {
-    const almacenes = this.almacenPorUsuario.filter(almacen => almacen.username == username)
+    const almacenes = await db.almacen_por_usuario.findAll({ where: { username } });
     return almacenes;
   }
 
   async findAlmacenByUser(username, id_almacen) {
-    const almacenes = this.almacenPorUsuario.filter(almacen => almacen.username == username && almacen.id_almacen == id_almacen);
+    const almacenes = await db.almacen_por_usuario.findOne({ where: { username, id_almacen } });
     return almacenes;
   }
 
   async deleteAlmacenFromUser(username, id_almacen) {
-    const index = this.almacenPorUsuario.findIndex(almacen => almacen.username == username && almacen.id_almacen == id_almacen);
-    if (index === -1) {
-      throw boom.notFound('El almacen ' + id_almacen + 'no esta asignado al usuario ' + username);
-    }
-    this.almacenPorUsuario.splice(index, 1); //Eliminar en la posicion X una candidad de Y items
-    return { message: "El almacen " + id_almacen + " fue eliminado para el usuario " + username }
+    const index = await db.almacen_por_usuario.destroy({ where: { username, id_almacen } });
+    if (!index) throw boom.notFound('El item no existe');
+    return { message: "El item fue eliminado", index };
   }
 
   async paginate(offset, limit) {

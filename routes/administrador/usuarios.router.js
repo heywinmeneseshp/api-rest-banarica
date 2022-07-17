@@ -41,7 +41,7 @@ router.get("/almacen", async (req, res, next) => {
 router.post("/almacen", validatorHandler(agregarAlmacenParaUsuario, "body"), async (req, res, next) => {
   const body = req.body;
   try {
-    const item = await service.addAlmacenToUser(body);
+    const item = await service.findOrCreateAlmacenToUser(body);
     res.json(item);
   } catch (error) {
     next(error);
@@ -69,7 +69,7 @@ router.get("/almacen/:username", async (req, res, next) => {
 });
 
 
-router.patch("/almacen/:username/:id_almacen", validatorHandler(actualizarUsuarioPorAlmacen), async (req, res, next) => {
+router.patch("/almacen/:username/:id_almacen", validatorHandler(actualizarUsuarioPorAlmacen, "params"), async (req, res, next) => {
   const { username, id_almacen } = req.params;
   try {
     const item = await service.updateAlmacenFromUser(username, id_almacen);
