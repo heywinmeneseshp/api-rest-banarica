@@ -47,6 +47,16 @@ class ConductoresService {
       throw boom.badRequest(error);
     }
   }
+
+  async paginate(offset, limit) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset)-1 )* newlimit;
+    const result = await db.conductores.findAll({
+    limit: newlimit,
+    offset: newoffset
+    });
+    return result;
+  }
 }
 
 module.exports = ConductoresService

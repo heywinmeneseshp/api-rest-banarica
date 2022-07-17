@@ -36,10 +36,20 @@ class ProductosService {
   }
 
   async delete(id) {
-    const item = await db.tabla_pedidos.findByPk(id);
+    const item = await db.productos.findByPk(id);
     if (!item) throw boom.notFound('El item no existe');
     await item.destroy({ where: { id } });
     return { message: "El item fue eliminado" };
+  }
+
+  async paginate(offset, limit) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset)-1 )* newlimit;
+    const result = await db.productos.findAll({
+    limit: newlimit,
+    offset: newoffset
+    });
+    return result;
   }
 
 }

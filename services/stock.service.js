@@ -16,7 +16,7 @@ class StockServices {
 
   async filter(cons_almacen, cons_producto) {
     const item = await db.stock.findOne({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    if(!item) throw boom.notFound('El item no existe')
+    if (!item) throw boom.notFound('El item no existe')
     return item;
   }
 
@@ -50,10 +50,22 @@ class StockServices {
     return { message: "El item fue actualizado", cantidad: resta };
   }
 
-  async delete(cons_almacen, cons_producto ) {
+  async delete(cons_almacen, cons_producto) {
     const item = await db.stock.destroy({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     if (!item) throw boom.notFound('El item no existe')
     return { message: "El item fue eliminado" };
+  }
+
+  async paginate(offset, limit, const_almacen) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset) - 1) * newlimit;
+    const result = await db.stock.findAll({
+      where: {
+        limit: newlimit,
+        offset: newoffset
+      }
+    });
+    return result;
   }
 
 }

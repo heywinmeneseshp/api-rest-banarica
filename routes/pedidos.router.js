@@ -17,6 +17,19 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+
+// Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
+//Paginar
+router.get("/paginar", async (req, res, next) => {
+  try {
+    const { page, limit } = req.query;
+    const items = await service.paginate(page, limit);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
 //Listar consecutivos de pedidos
 router.get("/listar", async (req, res, next) => {
   try {

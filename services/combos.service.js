@@ -62,6 +62,16 @@ class combosService {
     return { message: "El combo fue eliminado", consecutivo, }
   }
 
+  async paginate(offset, limit) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset)-1 )* newlimit;
+    const result = await db.combos.findAll({
+    limit: newlimit,
+    offset: newoffset
+    });
+    return result;
+  }
+
 }
 
 module.exports = combosService

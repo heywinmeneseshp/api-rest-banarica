@@ -107,7 +107,6 @@ class UsuariosService {
     limit: newlimit,
     offset: newoffset
     });
-
     return result;
   }
 

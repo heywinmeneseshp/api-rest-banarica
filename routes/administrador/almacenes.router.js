@@ -16,9 +16,16 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.get("/filter", (req, res) => {
-  const { limit, offset } = req.query;
-  res.json({ limit: limit, offset: offset })
+// Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
+//Paginar
+router.get("/paginar", async (req, res, next) => {
+  try {
+    const { page, limit } = req.query;
+    const items = await service.paginate(page, limit);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.get("/:consecutivo", async (req, res, next) => {

@@ -52,6 +52,16 @@ class DeudasService {
     return { message: "El item fue eliminado", item: item.consecutivo }
   }
 
+  async paginate(offset, limit) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset)-1 )* newlimit;
+    const result = await db.deudas.findAll({
+    limit: newlimit,
+    offset: newoffset
+    });
+    return result;
+  }
+
 }
 
 module.exports = DeudasService

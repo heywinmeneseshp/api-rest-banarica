@@ -57,6 +57,16 @@ class CategoriasService {
     return { message: "La categoria fue eliminado", consecutivo, }
   }
 
+  async paginate(offset, limit) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset)-1 )* newlimit;
+    const result = await db.categorias.findAll({
+    limit: newlimit,
+    offset: newoffset
+    });
+    return result;
+  }
+
 }
 
 module.exports = CategoriasService

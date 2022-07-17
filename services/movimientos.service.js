@@ -61,6 +61,16 @@ class MovimientosService {
     return { message: "El item fue eliminado" }
   }
 
+  async paginate(offset, limit) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset)-1 )* newlimit;
+    const result = await db.movimientos.findAll({
+    limit: newlimit,
+    offset: newoffset
+    });
+    return result;
+  }
+
 }
 
 module.exports = MovimientosService

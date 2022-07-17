@@ -90,6 +90,16 @@ class pedidosService {
     await item.destroy({ where: { id } });
     return { message: "El item fue eliminado" };
   }
+
+  async paginate(offset, limit) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset)-1 )* newlimit;
+    const result = await db.tabla_pedidos.findAll({
+    limit: newlimit,
+    offset: newoffset
+    });
+    return result;
+  }
 }
 
 module.exports = pedidosService

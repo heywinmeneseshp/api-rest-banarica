@@ -24,7 +24,18 @@ async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
 
+// Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
+//Paginar
+router.get("/paginar", async (req, res, next) => {
+  try {
+    const { page, limit } = req.query;
+    const items = await service.paginate(page, limit);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.get("/", async (req, res, next) => {
@@ -107,10 +118,6 @@ router.get("/:id", async (req, res, next) => {
     next(error)
   }
 });
-
-
-
-
 
 //ELIMINAR
 router.delete("/:cons_almacen/:cons_producto", async (req, res, next) => {

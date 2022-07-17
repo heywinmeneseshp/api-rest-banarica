@@ -39,6 +39,16 @@ class AlmacenesService {
     return { message: "El almacen fue eliminado", consecutivo }
   }
 
+  async paginate(offset, limit) {
+    let newlimit = parseInt(limit);
+    let newoffset = (parseInt(offset)-1 )* newlimit;
+    const result = await db.almacenes.findAll({
+    limit: newlimit,
+    offset: newoffset
+    });
+    return result;
+  }
+
 }
 
 module.exports = AlmacenesService
