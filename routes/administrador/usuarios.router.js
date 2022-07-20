@@ -37,10 +37,10 @@ router.get("/almacen", async (req, res, next) => {
   }
 });
 
-router.patch("/almacen", validatorHandler(actualizarUsuarioPorAlmacen, "body"), async (req, res, next) => {
-  const body = req.body
+router.patch("/almacen/actualizar", validatorHandler(actualizarUsuarioPorAlmacen, "body"), async (req, res, next) => {
+  const { username, id_almacen, habilitado } = req.body;
   try {
-    const item = await service.updateAlmacenFromUser(body);
+    const item = await service.updateAlmacenFromUser(username, id_almacen, habilitado);
     res.json(item);
   } catch (error) {
     next(error);

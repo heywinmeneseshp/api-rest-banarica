@@ -48,6 +48,16 @@ class UsuariosService {
     return result;
   }
 
+
+  async updateAlmacenFromUser(username, id_almacen, changes) {
+    const almacen = await db.almacenes_por_usuario.findAll({ where: { username: username, id_almacen: id_almacen } });
+    if (!almacen) {
+      throw boom.notFound('El item no existe')
+    }
+    const result = await db.almacenes_por_usuario.update({habilitado: changes}, { where: { username: username, id_almacen: id_almacen } });
+    return result;
+  }
+
   async delete(username) {
     const result = await db.usuarios.destroy({ where: { username } });
     if (!result) throw boom.notFound('El usuario no existe');
@@ -61,14 +71,11 @@ class UsuariosService {
     return newUser;
   }
 
-  async updateAlmacenFromUser(body) {
-    const almacen = await db.almacenes_por_usuario.findAll({ where: { username: body.username, id_almacen: body.id_almacen } });
-    if (!almacen) {
-      throw boom.notFound('El item no existe')
-    }
-    const result = await db.almacenes_por_usuario.update({ habilitado: body.habilitado }, { where: { username: body.username, id_almacen: body.id_almacen } });
-    return result;
-  }
+
+
+
+
+
 
   async findAllAlmacenesassigned() {
     return await db.almacenes_por_usuario.findAll();
