@@ -61,12 +61,12 @@ class UsuariosService {
     return newUser;
   }
 
-  async updateAlmacenFromUser(username, id_almacen) {
-    const almacen = await db.almacenes_por_usuario.findAll({ where: { username, id_almacen } });
+  async updateAlmacenFromUser(body) {
+    const almacen = await db.almacenes_por_usuario.findAll({ where: { username: body.username, id_almacen: body.id_almacen } });
     if (!almacen) {
       throw boom.notFound('El item no existe')
     }
-    const result = await db.almacenes_por_usuario.update({ habilitado: !almacen.habilitado }, { where: { username, id_almacen } });
+    const result = await db.almacenes_por_usuario.update({ habilitado: body.habilitado }, { where: { username: body.username, id_almacen: body.id_almacen } });
     return result;
   }
 

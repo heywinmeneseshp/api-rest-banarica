@@ -28,11 +28,20 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
-
 router.get("/almacen", async (req, res, next) => {
   try {
     const items = await service.findAllAlmacenesassigned();
     res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/almacen", validatorHandler(actualizarUsuarioPorAlmacen, "body"), async (req, res, next) => {
+  const body = req.body
+  try {
+    const item = await service.updateAlmacenFromUser(body);
+    res.json(item);
   } catch (error) {
     next(error);
   }
@@ -63,17 +72,6 @@ router.get("/almacen/:username", async (req, res, next) => {
   try {
     const items = await service.findByUser(username);
     res.json(items);
-  } catch (error) {
-    next(error);
-  }
-});
-
-
-router.patch("/almacen/:username/:id_almacen", validatorHandler(actualizarUsuarioPorAlmacen, "params"), async (req, res, next) => {
-  const { username, id_almacen } = req.params;
-  try {
-    const item = await service.updateAlmacenFromUser(username, id_almacen);
-    res.json(item);
   } catch (error) {
     next(error);
   }
