@@ -34,6 +34,10 @@ class StockServices {
     return await db.stock.findAll({ where: { cons_almacen: cons_almacen } });
   }
 
+  async findOneProductInAll(cons_producto) {
+    return await db.stock.findAll({ where: { cons_producto: cons_producto } });
+  }
+
   async addAmounts(cons_almacen, cons_producto, body) {
     const item = await db.stock.findAll({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     if (!item[0]) throw boom.notFound('El item no existe')

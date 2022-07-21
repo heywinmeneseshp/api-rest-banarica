@@ -56,8 +56,20 @@ router.get("/filter/:cons_almacen", async (req, res, next) => {
     next(error);
   }
 }
-
 )
+
+router.get("/filter/product/:cons_producto", async (req, res, next) => {
+  try {
+    const { cons_producto } = req.params;
+    const item = await service.findOneProductInAll(cons_producto);
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+}
+)
+
+//findOneProductInAll
 
 router.get("/filter/:cons_almacen/:cons_producto", async (req, res, next) => {
   try {
