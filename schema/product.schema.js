@@ -2,10 +2,10 @@ const Joi = require('joi');
 
 //Validar esquemas de los datos recibidos.
 
-const consecutivo = Joi.string().alphanum().min(4);
+const consecutivo = Joi.string().min(4);
 const name = Joi.string().min(4).max(35);
-const cons_categoria = Joi.string().alphanum().min(4);
-const cons_proveedor = Joi.string().alphanum().min(4);
+const cons_categoria = Joi.string().min(4);
+const cons_proveedor = Joi.string().min(4);
 const salida_sin_stock = Joi.boolean();
 const serial = Joi.boolean();
 const permitir_traslados = Joi.boolean();
