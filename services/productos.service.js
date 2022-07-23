@@ -28,6 +28,12 @@ class ProductosService {
     return producto;
   }
 
+  async findAllByCategory(category) {
+    const productos = await db.productos.findAll({ where: { cons_categoria: category } })
+    if (!productos) throw boom.notFound('No existen productos en esta categoria')
+    return productos;
+  }
+
   async update(id, changes) {
     const producto = await db.productos.findByPk(id)
     if (!producto) throw boom.notFound('El item no existe')

@@ -17,6 +17,17 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get('/categoria/:categoria', async (req, res, next) => {
+  try {
+    const {categoria } = req.params
+    console.log(categoria)
+    const productos = await service.findAllByCategory(categoria);
+    res.json(productos);
+  } catch (error) {
+    next(error);
+  }
+  });
+
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
 router.get("/paginar", async (req, res, next) => {
