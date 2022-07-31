@@ -4,7 +4,7 @@ const consecutivo = Joi.string().min(3);
 const remision = Joi.string().min(2);
 const observaciones = Joi.string().max(150);
 const cons_semana = Joi.string().min(5);
-const fecha = joi.string();
+const fecha = Joi.date().format('YYYY-MM-DD');
 
 const ingresarRemision = Joi.object({
   consecutivo: consecutivo,
