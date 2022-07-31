@@ -41,7 +41,7 @@ class StockServices {
   async addAmounts(cons_almacen, cons_producto, body) {
     const item = await db.stock.findAll({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     if (!item[0]) throw boom.notFound('El item no existe')
-    const suma = item[0].cantidad + body.cantidad;
+    const suma = parseFloat(item[0].cantidad) + parseFloat(body.cantidad);
     await db.stock.update({ cantidad: suma }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     return { message: "El item fue actualizado", cantidad: suma };
   }
@@ -49,7 +49,7 @@ class StockServices {
   async subtractAmounts(cons_almacen, cons_producto, body) {
     const item = await db.stock.findAll({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     if (!item[0]) throw boom.notFound('El item no existe')
-    const resta = item[0].cantidad - body.cantidad;
+    const resta = parseFloat(item[0].cantidad) - parseFloat(body.cantidad);
     await db.stock.update({ cantidad: resta }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     return { message: "El item fue actualizado", cantidad: resta };
   }
