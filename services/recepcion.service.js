@@ -10,7 +10,7 @@ class RecepcionService {
   async create(data) {
     const { count } = await db.recepcion.findAndCountAll();
     let consecutivo = "RC-" + count;
-    const itemNuevo = { consecutivo, ...data, fecha: getDate() }
+    const itemNuevo = { consecutivo, ...data }
     await db.recepcion.create(itemNuevo);
     return itemNuevo;
   }
