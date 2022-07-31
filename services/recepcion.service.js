@@ -1,4 +1,5 @@
 
+const db = require('../models');
 const boom = require('@hapi/boom');
 const getDate = require('../middlewares/getDate.handler')
 
@@ -12,6 +13,11 @@ class RecepcionService {
     const itemNuevo = { consecutivo, ...data, fecha: getDate() }
     await db.recepcion.create(itemNuevo);
     return itemNuevo;
+  }
+
+  async find() {
+    const item = await db.recepcion.findAll();
+    return item;
   }
 
   async findOne(consecutivo) {
