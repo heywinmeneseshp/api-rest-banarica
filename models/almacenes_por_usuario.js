@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   almacenes_por_usuario.init({
     id_almacen: DataTypes.STRING,
     username: DataTypes.STRING,
-    habilitado: DataTypes.STRING
+    habilitado: DataTypes.BOOLEAN
   }, {
     sequelize,
     modelName: 'almacenes_por_usuario',

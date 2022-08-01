@@ -21,7 +21,7 @@ module.exports = {
         type: Sequelize.STRING
       },
       salida_sin_stock: {
-        type: Sequelize.STRING
+        type: Sequelize.BOOLEAN
       },
       serial: {
         type: Sequelize.BOOLEAN

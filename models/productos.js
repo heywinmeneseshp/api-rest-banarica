@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
     name: DataTypes.STRING,
     cons_categoria: DataTypes.STRING,
     cons_proveedor: DataTypes.STRING,
-    salida_sin_stock: DataTypes.STRING,
+    salida_sin_stock: DataTypes.BOOLEAN,
     serial: DataTypes.BOOLEAN,
     permitir_traslados: DataTypes.BOOLEAN,
     costo: DataTypes.FLOAT,

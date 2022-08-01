@@ -19,7 +19,7 @@ module.exports = (sequelize, DataTypes) => {
     cons_transportadora: DataTypes.STRING,
     email: DataTypes.STRING,
     tel: DataTypes.STRING,
-    isBlock: DataTypes.STRING
+    isBlock: DataTypes.BOOLEAN
   }, {
     sequelize,
     modelName: 'conductores',
