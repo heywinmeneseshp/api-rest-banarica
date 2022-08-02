@@ -7,6 +7,7 @@ const origen = Joi.string().min(3);
 const destino = Joi.string().min(3);
 const estado = Joi.string();
 const semana = Joi.string().min(4);
+const fecha = Joi.string();
 
 const realizarTraslado = Joi.object({
       transportadora: transportadora.required(),
@@ -15,7 +16,8 @@ const realizarTraslado = Joi.object({
       origen: origen.required(),
       destino: destino.required(),
       estado: estado.required(),
-      semana: semana.required()
+      semana: semana.required(),
+      fecha_entrada: fecha.required()
 });
 
 const modificarTraslado = Joi.object({
@@ -25,7 +27,8 @@ const modificarTraslado = Joi.object({
   origen: origen,
   destino: destino,
   estado: estado,
-  semana: semana
+  semana: semana,
+  fecha_salida: fecha
 });
 
 const recibirTraslado = Joi.object({

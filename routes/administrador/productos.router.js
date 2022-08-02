@@ -7,7 +7,6 @@ const { crearProducto, actualizarProducto } = require('../../schema/product.sche
 const router = express.Router();
 const service = new ProductosService();
 
-
 router.get("/", async (req, res) => {
   try {
     const productos = await service.find();

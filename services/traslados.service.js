@@ -6,23 +6,6 @@ const db = require('../models');
 class RecepcionService {
 
   constructor() {
-    this.items = [];
-    this.generate();
-  }
-
-  generate() {
-    this.items.push({
-      id: "TR-0",
-      transportadora: "374656",
-      conductor: "Lorem",
-      vehiculo: "S21-22",
-      origen: "302",
-      destino: "202",
-      estado: "enviado",
-      semana: "S2-22",
-      fecha_salida: getDate(),
-      fecha_entrada: getDate()
-    });
   }
 
   async create(data) {
