@@ -22,7 +22,7 @@ class HistorialMovimientosService {
   }
 
   async filter(body) {
-    const items = await db.notificaciones.findAll({ where: body })
+    const items = await db.historial_movimientos.findAll({ where: body })
     return items;
 
   }
