@@ -1,11 +1,11 @@
 const Joi = require('joi');
 
-const consecutivo = Joi.string().min(4);
-const almacen_emisor = Joi.string().min(4);
-const almacen_receptor = Joi.string().min(4);
-const cons_movimiento = Joi.string().min(4);
-const tipo_movimiento = Joi.string().min(4);
-const descripcion = Joi.string().min(4);
+const consecutivo = Joi.string();
+const almacen_emisor = Joi.string();
+const almacen_receptor = Joi.string();
+const cons_movimiento = Joi.string();
+const tipo_movimiento = Joi.string();
+const descripcion = Joi.string();
 const aprobado = Joi.boolean();
 const visto = Joi.boolean();
 
