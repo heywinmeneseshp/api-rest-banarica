@@ -17,7 +17,7 @@ const realizarTraslado = Joi.object({
   destino: destino.required(),
   estado: estado.required(),
   semana: semana.required(),
-  fecha_entrada: fecha.required()
+  fecha_salida: fecha.required()
 });
 
 const modificarTraslado = Joi.object({
@@ -28,7 +28,7 @@ const modificarTraslado = Joi.object({
   destino: destino,
   estado: estado,
   semana: semana,
-  fecha_salida: fecha
+  fecha_entrada: fecha,
 });
 
 const recibirTraslado = Joi.object({
