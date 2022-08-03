@@ -19,11 +19,12 @@ router.get("/", async (req, res, next) => {
 
 
 //Crear
+// query localhost:3000/api/administrador/notificaciones/filter?titulo=titulo&descripcion=descripcion&tipo=tipo&estado=estado
 router.get("/filter",
-validatorHandler(actualizarNotificacion, "body"),
+validatorHandler(actualizarNotificacion, "query"),
 async (req, res, next) => {
   try {
-    const body = req.body;
+    const body = req.query;
     const items = await service.filter(body);
     res.json(items)
   } catch (error) {
