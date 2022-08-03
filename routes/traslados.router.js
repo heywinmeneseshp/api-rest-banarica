@@ -56,8 +56,7 @@ async (req, res, next) => {
     const { id } = req.params
     const body = req.body;
     const data = {
-      ...body,
-      fecha_entrada: getDate()
+      ...body
     }
     const item = await service.update(id, data)
     res.json({
@@ -88,8 +87,7 @@ async (req, res, next) => {
   try {
     const body = req.body;
     const data = {
-      ...body,
-      fecha_salida: getDate()
+      ...body
     }
     const itemNuevo = await service.create(data);
     res.json({
