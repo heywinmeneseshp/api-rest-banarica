@@ -10,14 +10,14 @@ const semana = Joi.string().min(4);
 const fecha = Joi.string();
 
 const realizarTraslado = Joi.object({
-      transportadora: transportadora.required(),
-      conductor: conductor.required(),
-      vehiculo: vehiculo.required(),
-      origen: origen.required(),
-      destino: destino.required(),
-      estado: estado.required(),
-      semana: semana.required(),
-      fecha_entrada: fecha.required()
+  transportadora: transportadora.required(),
+  conductor: conductor.required(),
+  vehiculo: vehiculo.required(),
+  origen: origen.required(),
+  destino: destino.required(),
+  estado: estado.required(),
+  semana: semana.required(),
+  fecha_entrada: fecha.required()
 });
 
 const modificarTraslado = Joi.object({
@@ -32,7 +32,7 @@ const modificarTraslado = Joi.object({
 });
 
 const recibirTraslado = Joi.object({
-      estado: estado.required()
+  estado: estado.required()
 });
 
 module.exports = { realizarTraslado, recibirTraslado, modificarTraslado };
