@@ -25,6 +25,12 @@ class NotificacionesService {
     return item;
   }
 
+  async filter(body) {
+    const items = await db.notificaciones.findAll({ where: body })
+    return items;
+
+  }
+
   async update(id, changes) {
     const item = await db.notificaciones.findByPk(id);
     if (!item) throw boom.notFound('El item no existe')

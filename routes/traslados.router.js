@@ -3,7 +3,6 @@ const express = require("express");
 const TrasladosService = require('../services/traslados.service');
 const validatorHandler = require('../middlewares/validator.handler');
 const { realizarTraslado, modificarTraslado, recibirTraslado } = require('../schema/traslado.schema');
-const getDate = require('../middlewares/getDate.handler')
 
 
 const router = express.Router();
@@ -99,8 +98,6 @@ async (req, res, next) => {
   }
 
 });
-
-
 
 //ELIMINAR
 router.delete("/:id", async (req, res, next) => {

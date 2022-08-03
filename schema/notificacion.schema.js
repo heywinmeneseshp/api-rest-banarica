@@ -31,5 +31,15 @@ const actualizarNotificacion = Joi.object({
   visto: visto,
 });
 
+const filtrarPorAlamcen = Joi.object({
+  almacen_emisor: almacen_emisor,
+  almacen_receptor: almacen_receptor,
+  cons_movimiento: cons_movimiento,
+  tipo_movimiento: tipo_movimiento,
+  descripcion: descripcion,
+  aprobado: aprobado,
+  visto: visto,
+});
 
-module.exports = { crearNotificacion, actualizarNotificacion };
+
+module.exports = { crearNotificacion, actualizarNotificacion, filtrarPorAlamcen };

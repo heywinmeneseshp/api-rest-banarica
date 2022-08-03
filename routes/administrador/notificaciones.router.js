@@ -17,6 +17,20 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+
+//Crear
+router.get("/filter",
+validatorHandler(actualizarNotificacion, "body"),
+async (req, res, next) => {
+  try {
+    const body = req.body;
+    const items = await service.filter(body);
+    res.json(items)
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
