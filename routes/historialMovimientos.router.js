@@ -17,6 +17,19 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+// query localhost:3000/api/administrador/notificaciones/filter?titulo=titulo&descripcion=descripcion&tipo=tipo&estado=estado
+router.get("/filter",
+validatorHandler(actualizarHistorialMovimiento, "query"),
+async (req, res, next) => {
+  try {
+    const body = req.query;
+    const items = await service.filter(body);
+    res.json(items)
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
 router.get("/paginar", async (req, res, next) => {

@@ -21,6 +21,12 @@ class HistorialMovimientosService {
     return items;
   }
 
+  async filter(body) {
+    const items = await db.notificaciones.findAll({ where: body })
+    return items;
+
+  }
+
   async update(id, changes) {
     const item = await db.historial_movimientos.findByPk(id);
     if (!item) throw boom.notFound('El item no existe')
