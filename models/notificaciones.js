@@ -15,8 +15,11 @@ module.exports = (sequelize, DataTypes) => {
   }
   notificaciones.init({
     consecutivo: DataTypes.STRING,
-    cons_almacen: DataTypes.STRING,
+    almacen_emisor: DataTypes.STRING,
+    almacen_receptor: DataTypes.STRING,
     cons_movimiento: DataTypes.STRING,
+    tipo_movimiento: DataTypes.STRING,
+    descripcion: DataTypes.STRING,
     aprobado: DataTypes.BOOLEAN,
     visto: DataTypes.BOOLEAN
   }, {

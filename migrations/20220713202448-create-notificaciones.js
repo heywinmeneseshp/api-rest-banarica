@@ -11,10 +11,19 @@ module.exports = {
       consecutivo: {
         type: Sequelize.STRING
       },
-      cons_almacen: {
+      almacen_emisor: {
+        type: Sequelize.STRING
+      },
+      almacen_receptor: {
         type: Sequelize.STRING
       },
       cons_movimiento: {
+        type: Sequelize.STRING
+      },
+      tipo_movimiento: {
+        type: Sequelize.STRING
+      },
+      descripcion: {
         type: Sequelize.STRING
       },
       aprobado: {
