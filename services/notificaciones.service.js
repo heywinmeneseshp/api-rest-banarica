@@ -36,8 +36,8 @@ class NotificacionesService {
 
   async filterPost(data) {
     var list = data.array
-    const items = await db.notificaciones.findAll(
-      { where: { aprobado: data.aprobado, visto: data.visto } })
+    let busqueda = data.data
+    const items = await db.notificaciones.findAll({ where: busqueda })
     let lista = []
     items.map(item =>{
       lista.push(item.dataValues)
