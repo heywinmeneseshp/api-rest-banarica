@@ -5,7 +5,9 @@ const db = require('../models')
 
 class NotificacionesService {
 
-  constructor() { }
+  constructor() {
+    this.notiLista = []
+  }
 
   async create(data) {
     const { count } = await db.notificaciones.findAndCountAll();
@@ -16,7 +18,8 @@ class NotificacionesService {
   }
 
   async find() {
-    return await db.notificaciones.findAll()
+    let result = await db.notificaciones.findAll()
+    return result.reverse()
   }
 
   async findOne(consecutivo) {
@@ -26,24 +29,42 @@ class NotificacionesService {
   }
 
   async filter(body) {
-    const items = await db.notificaciones.findAll({ where: body })
-    return items;
+    let items = await db.notificaciones.findAll({ where: body })
+    return items.reverse();
 
   }
+
+  async filterPost(data) {
+    var list = data.array
+    const items = await db.notificaciones.findAll(
+      { where: { aprobado: data.aprobado, visto: data.visto } })
+    let lista = []
+    items.map(item =>{
+      lista.push(item.dataValues)
+    })
+    var newList = []
+    list.map((almacen)=>{
+      lista.map((notifacion)=>{
+        if(almacen == notifacion.almacen_receptor) newList.push(notifacion)
+      })
+    })
+    return newList.reverse()
+  }
+
 
   async update(id, changes) {
-    const item = await db.notificaciones.findByPk(id);
-    if (!item) throw boom.notFound('El item no existe')
-    await item.update(changes)
-    return item;
-  }
+  const item = await db.notificaciones.findByPk(id);
+  if (!item) throw boom.notFound('El item no existe')
+  await item.update(changes)
+  return item;
+}
 
-  async delete(id) {
-    const item = await db.notificaciones.findByPk(id);
-    if (!item) throw boom.notFound('El item no existe');
-    await item.destroy({ where: { id } });
-    return { message: "El item fue eliminado" };
-  }
+  async delete (id) {
+  const item = await db.notificaciones.findByPk(id);
+  if (!item) throw boom.notFound('El item no existe');
+  await item.destroy({ where: { id } });
+  return { message: "El item fue eliminado" };
+}
 
 }
 

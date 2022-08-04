@@ -30,6 +30,8 @@ async (req, res, next) => {
   }
 });
 
+
+
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
 router.get("/paginar", async (req, res, next) => {

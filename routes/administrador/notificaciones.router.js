@@ -32,6 +32,17 @@ async (req, res, next) => {
   }
 });
 
+router.post("/filter",
+async (req, res, next) => {
+  try {
+    const body = req.body;
+    const items = await service.filterPost(body);
+    res.json(items)
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
