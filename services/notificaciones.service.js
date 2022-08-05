@@ -1,6 +1,6 @@
 
 const boom = require('@hapi/boom');
-const { generarID } = require("../middlewares/generarId.handler");
+const { Op } = require('sequelize');
 const db = require('../models')
 
 class NotificacionesService {
@@ -35,17 +35,23 @@ class NotificacionesService {
   }
 
   async filterPost(data) {
+    let items;
     var list = data.array
     let busqueda = data.data
-    const items = await db.notificaciones.findAll({ where: busqueda })
+    let busqueda2 = [{visto: busqueda.visto},{aprobado: busqueda.aprobado}]
+    if (data.operador == "or") {
+      items = await db.notificaciones.findAll({ where: { [Op.or]: busqueda2 } })
+    } else {
+      items = await db.notificaciones.findAll({ where: busqueda })
+    }
     let lista = []
-    items.map(item =>{
+    items.map(item => {
       lista.push(item.dataValues)
     })
     var newList = []
-    list.map((almacen)=>{
-      lista.map((notifacion)=>{
-        if(almacen == notifacion.almacen_receptor) newList.push(notifacion)
+    list.map((almacen) => {
+      lista.map((notifacion) => {
+        if (almacen == notifacion.almacen_receptor) newList.push(notifacion)
       })
     })
     return newList.reverse()
@@ -53,18 +59,18 @@ class NotificacionesService {
 
 
   async update(id, changes) {
-  const item = await db.notificaciones.findByPk(id);
-  if (!item) throw boom.notFound('El item no existe')
-  await item.update(changes)
-  return item;
-}
+    const item = await db.notificaciones.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe')
+    await item.update(changes)
+    return item;
+  }
 
-  async delete (id) {
-  const item = await db.notificaciones.findByPk(id);
-  if (!item) throw boom.notFound('El item no existe');
-  await item.destroy({ where: { id } });
-  return { message: "El item fue eliminado" };
-}
+  async delete(id) {
+    const item = await db.notificaciones.findByPk(id);
+    if (!item) throw boom.notFound('El item no existe');
+    await item.destroy({ where: { id } });
+    return { message: "El item fue eliminado" };
+  }
 
 }
 
