@@ -46,13 +46,15 @@ validatorHandler(crearMovimiento, "body"),
 async (req, res, next) => {
   try {
     const body = req.body;
-    console.log(body)
     const itemNuevo = await service.create(body);
     res.json({
       message: "item creado",
       data: itemNuevo
     })
   } catch (error) {
+    res.json({
+      message: error.message
+    })
     next(error);
   }
 

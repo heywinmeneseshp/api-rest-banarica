@@ -31,7 +31,7 @@ class MovimientosService {
       pendiente: data.pendiente,
       observaciones: data.observaciones,
       cons_semana: data.cons_semana,
-      fecha: getDate()
+      fecha: data.fecha
     }
     await db.movimientos.create(itemNuevo);
     return itemNuevo
