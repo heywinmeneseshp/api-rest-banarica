@@ -9,7 +9,7 @@ const fecha = Joi.string();
 const crearMovimiento = Joi.object({
   prefijo: prefijo.required(),
   pendiente: pendiente.required(),
-  observaciones: observaciones.required(),
+  observaciones: observaciones,
   cons_semana: semana.required(),
   fecha: fecha.required()
 });
