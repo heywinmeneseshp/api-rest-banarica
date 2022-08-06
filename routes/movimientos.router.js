@@ -17,6 +17,16 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+router.post("/document", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const items = await service.findDocument(body);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar

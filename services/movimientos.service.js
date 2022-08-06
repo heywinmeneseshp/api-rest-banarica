@@ -41,6 +41,38 @@ class MovimientosService {
     return await db.movimientos.findAll()
   }
 
+  async findDocument(body) {
+
+    const movimiento = await db.movimientos.findOne({ where: {consecutivo: body.consecutivo} })
+    const historial = await db.historial_movimientos.findAll({ where:{cons_movimiento: body.consecutivo} })
+    const productos = await db.productos.findAll()
+    let array = []
+    historial.map(item => {
+      console.log(item.dataValues)
+      const cantidad = item.dataValues.cantidad
+      const consProducto = item.dataValues.cons_producto
+      productos.map(producto => {
+        if(producto.dataValues.consecutivo == consProducto){
+          const data = {
+            cantidad: cantidad,
+            cons_producto: producto.dataValues.consecutivo,
+            nombre: producto.dataValues.name,
+          }
+          array.push(data)
+        }
+      })
+    })
+
+    const result = {
+      movimiento: movimiento.dataValues,
+      tipo_movimiento: historial[0].dataValues.tipo_movimiento,
+      razon_movimiento: historial[0].dataValues.razon_movimiento,
+      lista: array
+    }
+
+    return result
+  }
+
   async findOne(consecutivo) {
     const item = await db.movimientos.findOne({ where: { consecutivo: consecutivo } })
     if (!item) throw boom.notFound('El item no existe');
