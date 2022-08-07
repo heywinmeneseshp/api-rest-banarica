@@ -121,14 +121,12 @@ class StockServices {
     return { message: "El item fue eliminado" };
   }
 
-  async paginate(offset, limit, const_almacen) {
+  async paginate(offset, limit) {
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset) - 1) * newlimit;
+    let newoffset = (parseInt(offset)-1 )* newlimit;
     const result = await db.stock.findAll({
-      where: {
-        limit: newlimit,
-        offset: newoffset
-      }
+    limit: newlimit,
+    offset: newoffset
     });
     return result;
   }
