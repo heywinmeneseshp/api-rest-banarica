@@ -13,8 +13,8 @@ const serviceMovimiento = new MovimientosService();
 class StockServices {
 
   constructor() {
-    this.array = []
-   }
+
+  }
 
   async create(data) {
     const item = await db.stock.findOrCreate({ where: { cons_almacen: data.cons_almacen, cons_producto: data.cons_producto }, defaults: data });
@@ -51,7 +51,8 @@ class StockServices {
     if (!item[0]) throw boom.notFound('El item no existe')
     const suma = parseFloat(item[0].cantidad) + parseFloat(body.cantidad);
     await db.stock.update({ cantidad: suma }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    return { message: "El item fue actualizado", cantidad: suma };
+    const data = { cons_producto: cons_producto, cantidad: suma}
+    return { message: "El item fue actualizado", data: data  };
   }
 
   async subtractAmounts(cons_almacen, cons_producto, body) {
@@ -59,11 +60,11 @@ class StockServices {
     if (!item[0]) throw boom.notFound('El item no existe')
     const resta = parseFloat(item[0].cantidad) - parseFloat(body.cantidad);
     await db.stock.update({ cantidad: resta }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    return { message: "El item fue actualizado", cantidad: resta };
+    const data = { cons_producto: cons_producto, cantidad: resta}
+    return { message: "El item fue actualizado", data: data  };
   }
 
   async exportCombo(body) {
-    const productos = await db.productos.findAll()
     const almacen = body.cons_almacen;
     const comboList = body.comboList;
     const movimiento = {
@@ -73,24 +74,37 @@ class StockServices {
     await serviceMovimiento.create(movimiento).then(res => {
       movimientoR = res
     });
-    comboList.forEach(async element => {
-      await serviceCombo.findOneCombo(element.cons_combo).then(res => {
-        res.forEach(async producto => {
-          const consProducto = producto.dataValues.cons_producto;
-          const cantidad = parseFloat(element.cantidad);
-          const historial = {
-            cons_movimiento: movimientoR.consecutivo,
-            cons_producto: consProducto,
-            cons_almacen_gestor: almacen,
-            cons_lista_movimientos: "EX",
-            tipo_movimiento: "Salida",
-            razon_movimiento: "Exportacion",
-            cantidad: cantidad,
-          }
-          await serviceHistorial.create(historial)
-        })
-      })
+    const resultado = comboList.map(async element => {
+      return await db.tabla_combos.findAll({ where: { cons_combo: element.cons_combo } });
     })
+    const res = (await Promise.all(resultado)).flat()
+    const resB = res.map(element => element.dataValues)
+    const resC = resB.map(element => {
+      const prodcutosByCant = comboList.map(element2 => {
+        if (element.cons_combo === element2.cons_combo) {
+          return { cons_producto: element.cons_producto, cantidad: element2.cantidad }
+        }
+      })
+      return prodcutosByCant
+    })
+    const resD = resC.flat().filter(element => element !== undefined)
+    let objeto = {};
+    resD.forEach(element => {
+      objeto[element.cons_producto] = element.cantidad + (objeto[element.cons_producto] || 0);
+    })
+    for (const key in objeto) {
+      this.subtractAmounts(almacen, key, { cantidad: objeto[key] })
+      const historial = {
+        cons_movimiento: movimientoR.consecutivo,
+        cons_producto: key,
+        cons_almacen_gestor: almacen,
+        cons_lista_movimientos: "EX",
+        tipo_movimiento: "Salida",
+        razon_movimiento: "Exportacion",
+        cantidad: objeto[key],
+      }
+      await serviceHistorial.create(historial).then(res => console.log(res))
+    }
     const result = {
       cons_almacen: almacen,
       tipo_movimiento: "Salida",
