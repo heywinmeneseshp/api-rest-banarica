@@ -76,9 +76,8 @@ class StockServices {
     comboList.forEach(async element => {
       await serviceCombo.findOneCombo(element.cons_combo).then(res => {
         res.forEach(async producto => {
-          const consProducto = producto.dataValues.cons_producto
-          const cantidad = parseFloat(element.cantidad)
-          await this.subtractAmounts(almacen, consProducto, { cantidad: cantidad });
+          const consProducto = producto.dataValues.cons_producto;
+          const cantidad = parseFloat(element.cantidad);
           const historial = {
             cons_movimiento: movimientoR.consecutivo,
             cons_producto: consProducto,
@@ -98,7 +97,6 @@ class StockServices {
       razon_movimiento: "Exportacion",
       movimiento: movimientoR
     }
-
     return result
   }
 
