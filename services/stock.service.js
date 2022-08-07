@@ -90,10 +90,11 @@ class StockServices {
     const resD = resC.flat().filter(element => element !== undefined)
     let objeto = {};
     resD.forEach(element => {
-      objeto[element.cons_producto] = element.cantidad + (objeto[element.cons_producto] || 0);
+      objeto[element.cons_producto] = parseFloat(element.cantidad) + parseFloat(objeto[element.cons_producto] || 0);
     })
     for (const key in objeto) {
-      this.subtractAmounts(almacen, key, { cantidad: objeto[key] })
+      const number = parseFloat(objeto[key]);
+      this.subtractAmounts(almacen, key, { cantidad: number })
       const historial = {
         cons_movimiento: movimientoR.consecutivo,
         cons_producto: key,
