@@ -77,7 +77,7 @@ class StockServices {
       await serviceCombo.findOneCombo(element.cons_combo).then(res => {
         res.forEach(async producto => {
           const consProducto = producto.dataValues.cons_producto
-          const cantidad = element.cantidad
+          const cantidad = parseFloat(element.cantidad)
           await this.subtractAmounts(almacen, consProducto, { cantidad: cantidad });
           const historial = {
             cons_movimiento: movimientoR.consecutivo,
