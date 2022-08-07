@@ -42,14 +42,12 @@ class MovimientosService {
   }
 
   async findDocument(body) {
-
     const movimiento = await db.movimientos.findOne({ where: { consecutivo: body.consecutivo } })
     const historial = await db.historial_movimientos.findAll({ where: { cons_movimiento: body.consecutivo } })
     const productos = await db.productos.findAll()
     const almacenes = await db.almacenes.findAll()
     let array = []
     historial.map(item => {
-      console.log(item.dataValues)
       const cantidad = item.dataValues.cantidad
       const consProducto = item.dataValues.cons_producto
       productos.map(producto => {
