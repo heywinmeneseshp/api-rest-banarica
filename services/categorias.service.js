@@ -6,14 +6,6 @@ class CategoriasService {
 
   constructor() {}
 
-  generate() {
-    this.categorias.push({
-      id: "CAR1",
-      nombre: "CARTON",
-      isBlock: false
-    });
-
-  }
 
   async create(data) {
     try {
@@ -32,7 +24,8 @@ class CategoriasService {
   }
 
   async findOne(consecutivo) {
-    const categoria = await db.categorias.findOne({ where: { consecutivo } });
+    const categoria = await db.categorias.findOne({ where: { consecutivo } },
+      { include: ['productos'] });
     if (!categoria) {
       throw boom.notFound('La categoria no existe')
     }

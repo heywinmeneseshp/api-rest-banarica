@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
+      this.hasMany(models.tabla_combos, {
+        foreignKey: 'cons_combo',
+        as: 'tabla_combos'
+      });
       // define association here
     }
   }

@@ -9,7 +9,12 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       cons_combo: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false,
+        references: {
+          model: 'combos',
+          key: 'consecutivo'
+        }
       },
       cons_producto: {
         type: Sequelize.STRING

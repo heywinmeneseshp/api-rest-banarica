@@ -3,12 +3,14 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('notificaciones', {
       id: {
+        unique: true,
         allowNull: false,
         autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER
       },
       consecutivo: {
+        allowNull: false,
+        primaryKey: true,
         type: Sequelize.STRING
       },
       almacen_emisor: {

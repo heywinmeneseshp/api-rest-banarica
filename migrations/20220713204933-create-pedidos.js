@@ -3,9 +3,9 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('pedidos', {
       id: {
+        unique: true,
         allowNull: false,
         autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER
       },
       cons_pedido: {

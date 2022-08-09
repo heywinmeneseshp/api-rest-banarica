@@ -3,19 +3,25 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('productos', {
       id: {
+        unique: true,
         allowNull: false,
         autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER
       },
       consecutivo: {
+        allowNull: false,
+        primaryKey: true,
         type: Sequelize.STRING
       },
       name: {
         type: Sequelize.STRING
       },
       cons_categoria: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        references: {
+          model: 'categorias',
+          key: 'consecutivo'
+        }
       },
       cons_proveedor: {
         type: Sequelize.STRING

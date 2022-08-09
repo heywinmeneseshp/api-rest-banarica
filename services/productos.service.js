@@ -8,7 +8,7 @@ class ProductosService {
 
   async create(data) {
     try {
-      const { count } = await db.productos.findAndCountAll()
+      const { count } = await db.productos.findAndCountAll();
       let consecutivo = generarIDProAndCat(data.name, ("xxx" + count))
       const producto = { consecutivo, ...data }
       await db.productos.create(producto)
@@ -19,7 +19,9 @@ class ProductosService {
   }
 
   async find() {
-    return await db.productos.findAll()
+    return await db.productos.findAll({
+      include: ['categoria']
+    })
   }
 
   async findOne(consecutivo) {
