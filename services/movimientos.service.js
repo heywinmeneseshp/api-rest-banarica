@@ -8,20 +8,8 @@ const db = require('../models');
 
 class MovimientosService {
 
-  constructor() {
-    this.items = [];
-    this.generate();
-  }
+  constructor() { }
 
-  generate() {
-    this.items.push({
-      id: "MV-0",
-      pendiente: true,
-      observaciones: "Lorem",
-      id_semana: "S21-22",
-      fecha: getDate()
-    });
-  }
 
   async create(data) {
     const { count } = await db.movimientos.findAndCountAll()

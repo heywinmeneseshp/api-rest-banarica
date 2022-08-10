@@ -20,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   movimientos.init({
     consecutivo: DataTypes.STRING,
+    remision: DataTypes.STRING,
     pendiente: DataTypes.BOOLEAN,
     observaciones: DataTypes.STRING,
     cons_semana: DataTypes.STRING,

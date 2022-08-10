@@ -1,7 +1,7 @@
 const Joi = require('joi');
 
 const consecutivo = Joi.string().min(4);
-const razon_social = Joi.string().min(4);
+const razon_social = Joi.string();
 const direccion = Joi.string().max(100);
 const tel = Joi.string().max(20);
 const email = Joi.string().email();

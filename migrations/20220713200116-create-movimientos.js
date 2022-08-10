@@ -11,7 +11,10 @@ module.exports = {
       consecutivo: {
         allowNull: false,
         primaryKey: true,
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+      },
+      remision: {
+        type: Sequelize.BOOLEAN
       },
       pendiente: {
         type: Sequelize.BOOLEAN

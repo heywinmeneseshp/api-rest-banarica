@@ -3,6 +3,7 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('historial_movimientos', {
       id: {
+        unique: true,
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
@@ -13,6 +14,7 @@ module.exports = {
         references: {
           model: 'movimientos',
           key: 'consecutivo'
+        }
       },
       cons_producto: {
         type: Sequelize.STRING

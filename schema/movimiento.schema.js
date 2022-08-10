@@ -5,9 +5,11 @@ const pendiente = Joi.boolean();
 const observaciones = Joi.string().max(150);
 const semana = Joi.string().min(5);
 const fecha = Joi.string();
+const remision = Joi.string();
 
 const crearMovimiento = Joi.object({
   prefijo: prefijo.required(),
+  remision: remision,
   pendiente: pendiente.required(),
   observaciones: observaciones,
   cons_semana: semana.required(),
@@ -16,6 +18,7 @@ const crearMovimiento = Joi.object({
 
 const actualizarMovimiento = Joi.object({
   prefijo: prefijo,
+  remision: remision,
   pendiente: pendiente,
   observaciones: observaciones,
   cons_semana: semana,

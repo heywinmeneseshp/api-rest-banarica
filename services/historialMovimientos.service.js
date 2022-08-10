@@ -12,7 +12,7 @@ class HistorialMovimientosService {
   }
 
   async find() {
-    return await db.historial_movimientos.findAll();
+    return await db.historial_movimientos.findAll({include: ['movimiento']});
   }
 
   async findOne(consecutivo) {
