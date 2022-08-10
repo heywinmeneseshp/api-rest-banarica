@@ -8,7 +8,7 @@ const router = express.Router();
 const service = new CategoriasServices();
 
 
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
   try {
     const categorias = await service.find();
     res.json(categorias);

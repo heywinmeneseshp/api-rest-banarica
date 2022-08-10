@@ -24,8 +24,7 @@ class CategoriasService {
   }
 
   async findOne(consecutivo) {
-    const categoria = await db.categorias.findOne({ where: { consecutivo } },
-      { include: ['productos'] });
+    const categoria = await db.categorias.findOne({ where: { consecutivo } });
     if (!categoria) {
       throw boom.notFound('La categoria no existe')
     }

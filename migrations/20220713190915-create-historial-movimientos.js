@@ -9,7 +9,10 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       cons_movimiento: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        references: {
+          model: 'movimientos',
+          key: 'consecutivo'
       },
       cons_producto: {
         type: Sequelize.STRING

@@ -19,13 +19,12 @@ class ProductosService {
   }
 
   async find() {
-    return await db.productos.findAll({
-      include: ['categoria']
-    })
-  }
+    return await db.productos.findAll({include: ['categoria']});
+    }
 
   async findOne(consecutivo) {
-    const producto = await db.productos.findOne({ where: { consecutivo: consecutivo } })
+    const producto = await db.productos.findOne({ where: { consecutivo: consecutivo },
+      include: ['categoria'] });
     if (!producto) throw boom.notFound('El producto no existe')
     return producto;
   }
