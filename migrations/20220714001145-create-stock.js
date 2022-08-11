@@ -10,10 +10,18 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       cons_almacen: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        references: {
+          model: 'almacenes',
+          key: 'consecutivo'
+        }
       },
       cons_producto: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        references: {
+          model: 'productos',
+          key: 'consecutivo'
+        }
       },
       cantidad: {
         type: Sequelize.FLOAT

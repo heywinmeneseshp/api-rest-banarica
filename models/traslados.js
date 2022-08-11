@@ -10,6 +10,11 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
+      this.hasMany(models.historial_movimientos, {
+        as: 'traslado',
+        foreignKey: 'cons_movimiento',
+        sourceKey: 'consecutivo'
+      })
       // define association here
     }
   }

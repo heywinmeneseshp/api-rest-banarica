@@ -15,7 +15,7 @@ class RecepcionService {
   }
 
   async find() {
-    const item = await db.movimientos.findAll();
+    const item = await db.movimientos.findAll({});
     return item;
   }
 

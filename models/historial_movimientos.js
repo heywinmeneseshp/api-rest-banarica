@@ -15,6 +15,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'consecutivo',
         sourceKey: 'cons_movimiento'
       })
+      this.hasOne(models.productos, {
+        as: 'Producto',
+        foreignKey: 'consecutivo',
+        sourceKey: 'cons_producto'
+      })
       // define association here
     }
   }

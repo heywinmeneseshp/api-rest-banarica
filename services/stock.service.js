@@ -23,13 +23,13 @@ class StockServices {
   }
 
   async filter(cons_almacen, cons_producto) {
-    const item = await db.stock.findOne({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
+    const item = await db.stock.findOne({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto }, include: ['almacen', 'producto'] });
     if (!item) throw boom.notFound('El item no existe')
     return item;
   }
 
   async find() {
-    return await db.stock.findAll();
+    return await db.stock.findAll({include: ['almacen', 'producto']});
   }
 
   async update(cons_almacen, cons_producto, changes) {
@@ -39,11 +39,11 @@ class StockServices {
   }
 
   async findOneAlmacen(cons_almacen) {
-    return await db.stock.findAll({ where: { cons_almacen: cons_almacen } });
+    return await db.stock.findAll({ where: { cons_almacen: cons_almacen }, include: ['almacen', 'producto'] });
   }
 
   async findOneProductInAll(cons_producto) {
-    return await db.stock.findAll({ where: { cons_producto: cons_producto } });
+    return await db.stock.findAll({ where: { cons_producto: cons_producto }, include: ['almacen', 'producto'] });
   }
 
   async addAmounts(cons_almacen, cons_producto, body) {
@@ -126,7 +126,8 @@ class StockServices {
     let newoffset = (parseInt(offset)-1 )* newlimit;
     const result = await db.stock.findAll({
     limit: newlimit,
-    offset: newoffset
+    offset: newoffset,
+    include: ['almacen', 'producto']
     });
     return result;
   }

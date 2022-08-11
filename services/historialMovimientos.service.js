@@ -12,7 +12,7 @@ class HistorialMovimientosService {
   }
 
   async find() {
-    return await db.historial_movimientos.findAll({include: ['movimiento']});
+    return await db.historial_movimientos.findAll({include: ['Producto', 'movimiento']});
   }
 
   async findOne(consecutivo) {
@@ -22,7 +22,7 @@ class HistorialMovimientosService {
   }
 
   async filter(body) {
-    const items = await db.historial_movimientos.findAll({ where: body })
+    const items = await db.historial_movimientos.findAll({ where: body, include: ['Producto', 'movimiento']  })
     return items;
 
   }

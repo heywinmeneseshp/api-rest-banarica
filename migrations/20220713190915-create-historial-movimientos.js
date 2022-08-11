@@ -11,13 +11,20 @@ module.exports = {
       },
       cons_movimiento: {
         type: Sequelize.STRING,
-        references: {
+        references: [{
           model: 'movimientos',
           key: 'consecutivo'
-        }
+        }, {
+          model: 'traslados',
+          key: 'consecutivo'
+        }]
       },
       cons_producto: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        references: {
+          model: 'productos',
+          key: 'consecutivo'
+        }
       },
       cons_almacen_gestor: {
         type: Sequelize.STRING
