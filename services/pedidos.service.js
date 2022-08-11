@@ -6,28 +6,7 @@ const db = require('../models');
 
 class pedidosService {
 
-  constructor() {
-    this.tabla_pedidos = [];
-    this.tabla = [];
-    this.generate();
-  }
-
-  generate() {
-    this.tabla_pedidos.push({
-      id: "PD-0",
-      pendiente: true,
-      observaciones: "observaciones.required()",
-      fecha: getDate(),
-      semana: "S2-22",
-      usuario: "heywinmeneses"
-    })
-    this.tabla.push({
-      id_pedido: "PD-0",
-      id_producto: "CAT-0",
-      id_almacen_destino: "302",
-      cantidad: 300
-    });
-  }
+  constructor() { }
 
   async create(data) {
     await db.pedidos.create(data);
@@ -63,7 +42,7 @@ class pedidosService {
   }
 
   async findOneCons(consecutivo) {
-    const item = await db.tabla_pedidos.findOne({ where: { consecutivo: consecutivo } })
+    const item = await db.tabla_pedidos.findOne({ where: { consecutivo: consecutivo }, include: ['pedido'] })
     if (!item) throw boom.notFound('El item no existe')
     return item;
   }

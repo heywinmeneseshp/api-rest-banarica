@@ -11,6 +11,11 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      this.hasMany(models.pedidos, {
+        foreignKey: 'cons_pedido',
+        sourceKey: 'consecutivo',
+        as: 'pedido'
+      });
     }
   }
   tabla_pedidos.init({
