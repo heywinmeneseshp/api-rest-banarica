@@ -21,9 +21,11 @@ class RecepcionService {
   }
 
   async findOne(consecutivo) {
-    const item = await db.traslados.findOne({ where: { consecutivo: consecutivo } });
-    if (!item) throw boom.notFound('El item no existe')
-    return item;
+    const items = await db.historial_movimientos.findAll({
+      where: { cons_movimiento: consecutivo },
+      include: ['Producto', 'traslado']
+    })
+    return items;
   }
 
   async update(id, changes) {
@@ -42,10 +44,10 @@ class RecepcionService {
 
   async paginate(offset, limit) {
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
+    let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.traslados.findAll({
-    limit: newlimit,
-    offset: newoffset
+      limit: newlimit,
+      offset: newoffset
     });
     return result;
   }
