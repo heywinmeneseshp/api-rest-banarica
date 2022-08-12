@@ -5,18 +5,7 @@ const db = require('../models');
 
 class UsuariosService {
 
-  constructor() {
-    this.almacenPorUsuario = [];
-    this.generate();
-  }
-
-  generate() {
-    this.almacenPorUsuario.push({
-      username: "username",
-      id_almacen: "id_almacen",
-      isBlock: true
-    });
-  }
+  constructor() { }
 
   async create(data) {
     const existe = await db.usuarios.findOne({ where: { username: data.username } });
@@ -31,10 +20,10 @@ class UsuariosService {
   }
 
   async findOne(username) {
-    try{
-    const result = await db.usuarios.findOne({ where: { username } });
-    return result;
-    }catch(err){
+    try {
+      const result = await db.usuarios.findOne({ where: { username } });
+      return result;
+    } catch (err) {
       throw boom.notFound('El usuario no existe')
     }
   }
@@ -51,11 +40,13 @@ class UsuariosService {
 
   async updateAlmacenFromUser(username, id_almacen, changes) {
     const almacen = await db.almacenes_por_usuario.findAll({ where: { username: username, id_almacen: id_almacen } });
-    if (!almacen) {
-      throw boom.notFound('El item no existe')
+    if (almacen.length == 0) {
+      const newUser = await db.almacenes_por_usuario.create({username: username, id_almacen: id_almacen, habilitado: changes});
+      return newUser;
+    } else {
+      const result = await db.almacenes_por_usuario.update({ habilitado: changes }, { where: { username: username, id_almacen: id_almacen } });
+      return result;
     }
-    const result = await db.almacenes_por_usuario.update({habilitado: changes}, { where: { username: username, id_almacen: id_almacen } });
-    return result;
   }
 
   async delete(username) {
@@ -99,10 +90,10 @@ class UsuariosService {
 
   async paginate(offset, limit) {
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
+    let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.usuarios.findAll({
-    limit: newlimit,
-    offset: newoffset
+      limit: newlimit,
+      offset: newoffset
     });
     return result;
   }

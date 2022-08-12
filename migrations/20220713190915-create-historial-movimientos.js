@@ -21,10 +21,7 @@ module.exports = {
       },
       cons_producto: {
         type: Sequelize.STRING,
-        references: {
-          model: 'productos',
-          key: 'consecutivo'
-        }
+
       },
       cons_almacen_gestor: {
         type: Sequelize.STRING
