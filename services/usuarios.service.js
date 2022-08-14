@@ -62,12 +62,6 @@ class UsuariosService {
     return newUser;
   }
 
-
-
-
-
-
-
   async findAllAlmacenesassigned() {
     return await db.almacenes_por_usuario.findAll();
   }

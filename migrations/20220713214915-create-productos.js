@@ -3,7 +3,9 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('productos', {
       id: {
+        unique: true,
         allowNull: false,
+        autoIncrement: true,
         type: Sequelize.INTEGER
       },
       consecutivo: {
