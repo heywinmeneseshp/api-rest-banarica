@@ -19,25 +19,26 @@ router.get("/", async (req, res, next) => {
 
 // query localhost:3000/api/administrador/notificaciones/filter?titulo=titulo&descripcion=descripcion&tipo=tipo&estado=estado
 router.get("/filter",
-validatorHandler(actualizarHistorialMovimiento, "query"),
-async (req, res, next) => {
-  try {
-    const body = req.query;
-    const items = await service.filter(body);
-    res.json(items)
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(actualizarHistorialMovimiento, "query"),
+  async (req, res, next) => {
+    try {
+      const body = req.query;
+      const items = await service.filter(body);
+      res.json(items)
+    } catch (error) {
+      next(error);
+    }
+  });
 
 
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
-router.get("/paginar", async (req, res, next) => {
+router.post("/paginar", async (req, res, next) => {
   try {
+    const { almacenes } = req.body;
     const { page, limit } = req.query;
-    const items = await service.paginate(page, limit);
+    const items = await service.paginate(page, limit, almacenes);
     res.json(items);
   } catch (error) {
     next(error);
@@ -56,39 +57,39 @@ router.get("/:id", async (req, res, next) => {
 
 //Crear
 router.post("/",
-validatorHandler(crearHistorialMovimiento, "body"),
-async (req, res, next) => {
-  try {
-    const body = req.body;
-    console.log(body)
-    const itemNuevo = await service.create(body);
-    res.json({
-      message: "item creado",
-      data: itemNuevo
-    })
-  } catch (error) {
-    next(error);
-  }
+  validatorHandler(crearHistorialMovimiento, "body"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      console.log(body)
+      const itemNuevo = await service.create(body);
+      res.json({
+        message: "item creado",
+        data: itemNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
 
-});
+  });
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/:id",
-validatorHandler(actualizarHistorialMovimiento, "body"),
-async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const body = req.body;
-    const item = await service.update(id, body)
-    res.json({
-      message: 'El item fue actualizado',
-      data: item,
-      id
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(actualizarHistorialMovimiento, "body"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params
+      const body = req.body;
+      const item = await service.update(id, body)
+      res.json({
+        message: 'El item fue actualizado',
+        data: item,
+        id
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 //ELIMINAR
 router.delete("/:id", async (req, res, next) => {

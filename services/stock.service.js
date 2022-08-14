@@ -1,12 +1,9 @@
 
 const boom = require('@hapi/boom');
-const { date } = require('joi');
 const db = require('../models');
-const combosService = require('./combos.service');
+const { Op } = require('sequelize');
 const HistorialMovimientosService = require('./historialMovimientos.service');
 const MovimientosService = require('./movimientos.service')
-
-const serviceCombo = new combosService();
 const serviceHistorial = new HistorialMovimientosService();
 const serviceMovimiento = new MovimientosService();
 
@@ -29,7 +26,7 @@ class StockServices {
   }
 
   async find() {
-    return await db.stock.findAll({include: ['almacen', 'producto']});
+    return await db.stock.findAll({ include: ['almacen', 'producto'] });
   }
 
   async update(cons_almacen, cons_producto, changes) {
@@ -51,8 +48,8 @@ class StockServices {
     if (!item[0]) throw boom.notFound('El item no existe')
     const suma = parseFloat(item[0].cantidad) + parseFloat(body.cantidad);
     await db.stock.update({ cantidad: suma }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    const data = { cons_producto: cons_producto, cantidad: suma}
-    return { message: "El item fue actualizado", data: data  };
+    const data = { cons_producto: cons_producto, cantidad: suma }
+    return { message: "El item fue actualizado", data: data };
   }
 
   async subtractAmounts(cons_almacen, cons_producto, body) {
@@ -60,8 +57,8 @@ class StockServices {
     if (!item[0]) throw boom.notFound('El item no existe')
     const resta = parseFloat(item[0].cantidad) - parseFloat(body.cantidad);
     await db.stock.update({ cantidad: resta }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    const data = { cons_producto: cons_producto, cantidad: resta}
-    return { message: "El item fue actualizado", data: data  };
+    const data = { cons_producto: cons_producto, cantidad: resta }
+    return { message: "El item fue actualizado", data: data };
   }
 
   async exportCombo(body) {
@@ -121,17 +118,24 @@ class StockServices {
     return { message: "El item fue eliminado" };
   }
 
-  async paginate(offset, limit) {
+  async paginate(offset, limit, almacenes) {
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
+    let newoffset = (parseInt(offset) - 1) * newlimit;
+    const total = await db.stock.count({ where: { cons_almacen: { [Op.in]: almacenes } } });
     const result = await db.stock.findAll({
-    limit: newlimit,
-    offset: newoffset,
-    include: ['almacen', 'producto']
+      limit: newlimit,
+      offset: newoffset,
+      where: {
+        cons_almacen: {
+          [Op.or]: almacenes
+        }
+      },
+      include: ['almacen', 'producto']
     });
-    return result;
+    return {data: result, total: total};
   }
-
 }
+
+
 
 module.exports = StockServices
