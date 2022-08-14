@@ -46,17 +46,18 @@ class HistorialMovimientosService {
   }
 
   async paginate(offset, limit, almacenes) {
+    let almacenesCons = almacenes.map(almacen => almacen.consecutivo);
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const total = await db.historial_movimientos.count({
       where: {
-        cons_almacen_gestor: { [Op.in]: almacenes },
+        cons_almacen_gestor: { [Op.in]: almacenesCons },
         cons_lista_movimientos: { [Op.ne]: ["TR"] }
       },
     });
     const result = await db.historial_movimientos.findAll({
       where: {
-        cons_almacen_gestor: { [Op.or]: almacenes },
+        cons_almacen_gestor: { [Op.or]: almacenesCons },
         cons_lista_movimientos: { [Op.ne]: ["TR"] }
       },
       limit: newlimit,

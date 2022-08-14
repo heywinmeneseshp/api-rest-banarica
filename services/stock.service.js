@@ -119,15 +119,16 @@ class StockServices {
   }
 
   async paginate(offset, limit, almacenes) {
+    let almacenesCons = almacenes.map(almacen => almacen.consecutivo);
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
-    const total = await db.stock.count({ where: { cons_almacen: { [Op.in]: almacenes } } });
+    const total = await db.stock.count({ where: { cons_almacen: { [Op.in]: almacenesCons } } });
     const result = await db.stock.findAll({
       limit: newlimit,
       offset: newoffset,
       where: {
         cons_almacen: {
-          [Op.or]: almacenes
+          [Op.or]: almacenesCons
         }
       },
       include: ['almacen', 'producto']
