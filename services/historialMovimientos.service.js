@@ -16,7 +16,8 @@ class HistorialMovimientosService {
   }
 
   async findOne(consecutivo) {
-    const items = await db.historial_movimientos.findAll({ where: { cons_movimiento: consecutivo } })
+    const items = await db.historial_movimientos.findAll({ where: { cons_movimiento: consecutivo },
+      include: ['Producto', 'movimiento'] })
     if (items == 0) throw boom.notFound('El item no existe')
     return items;
   }
@@ -46,7 +47,8 @@ class HistorialMovimientosService {
     let newoffset = (parseInt(offset)-1 )* newlimit;
     const result = await db.historial_movimientos.findAll({
     limit: newlimit,
-    offset: newoffset
+    offset: newoffset,
+    include: ['Producto', 'movimiento']
     });
     return result;
   }
