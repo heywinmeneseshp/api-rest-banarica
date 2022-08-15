@@ -53,16 +53,16 @@ class HistorialMovimientosService {
       where: {
         cons_almacen_gestor: { [Op.in]: almacenesCons },
         cons_lista_movimientos: { [Op.ne]: ["TR"] }
-      },
+      }
     });
     const result = await db.historial_movimientos.findAll({
       where: {
         cons_almacen_gestor: { [Op.or]: almacenesCons },
         cons_lista_movimientos: { [Op.ne]: ["TR"] }
       },
+      include: ['Producto', 'movimiento'],
       limit: newlimit,
-      offset: newoffset,
-      include: ['Producto', 'movimiento']
+      offset: newoffset
     });
     return { data: result, total: total };
   }

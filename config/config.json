@@ -1,9 +1,9 @@
 {
   "development": {
-    "username": "sbglasse_br",
-    "password": "Banarica2022*",
-    "database": "sbglasse_br",
-    "host": "host45.latinoamericahosting.com",
+    "username": "joeyropa_heywin",
+    "password": "Banarica2018*",
+    "database": "joeyropa_prueba_banarica",
+    "host": "host7.latinoamericahosting.com",
     "dialect": "mysql"
   },
   "test": {

@@ -1,6 +1,6 @@
 
 const boom = require('@hapi/boom');
-const getDate = require('../middlewares/getDate.handler')
+const { Op } = require("sequelize");
 const db = require('../models');
 
 class RecepcionService {
@@ -42,14 +42,26 @@ class RecepcionService {
     return { message: "El item fue eliminado" };
   }
 
-  async paginate(offset, limit) {
+  async paginate(offset, limit, almacenes) {
+    let almacenesCons = almacenes.map(almacen => almacen.consecutivo);
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
-    const result = await db.traslados.findAll({
+    const total = await db.historial_movimientos.count({
+      where: {
+        [Op.or]: [{cons_almacen_gestor: {[Op.in]: almacenesCons} }, {cons_almacen_receptor: {[Op.in]: almacenesCons}}],
+        cons_lista_movimientos: { [Op.in]: ["TR"] }
+      }
+    });
+    const result = await db.historial_movimientos.findAll({
+      where: {
+        [Op.or]: [{cons_almacen_gestor: {[Op.in]: almacenesCons} }, {cons_almacen_receptor: {[Op.in]: almacenesCons}}],
+        cons_lista_movimientos: { [Op.in]: ["TR"] }
+      },
+      include: ['Producto', 'traslado'],
       limit: newlimit,
       offset: newoffset
     });
-    return result;
+    return { data: result, total: total };
   }
 
 }
