@@ -7,7 +7,7 @@ const { crearAviso, actualizarAviso } = require('../../schema/aviso.schema');
 const router = express.Router();
 const service = new AvisosService();
 
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
   try {
     const avisos = await service.find();
     res.json(avisos);

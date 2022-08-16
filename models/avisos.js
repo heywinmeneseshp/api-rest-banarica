@@ -14,7 +14,6 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   avisos.init({
-    consecutivo: DataTypes.STRING,
     descripcion: DataTypes.STRING
   }, {
     sequelize,

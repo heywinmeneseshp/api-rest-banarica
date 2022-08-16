@@ -8,11 +8,6 @@ module.exports = {
         autoIncrement: true,
         type: Sequelize.INTEGER
       },
-      consecutivo: {
-        allowNull: false,
-        primaryKey: true,
-        type: Sequelize.STRING
-      },
       descripcion: {
         type: Sequelize.STRING
       },
