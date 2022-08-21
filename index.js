@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require('cors');
 const routerApi = require('./routes');
+const { checkApiKey } = require('./middlewares/auth.handler');
 
 //Middlewares error
 const { logErrors, errorHandler, boomErrorHandler } = require('./middlewares/error.handler')
@@ -23,8 +24,10 @@ const corsOptions = {
 app.use(cors(corsOptions)); */
 app.use(cors()); //Acceso a todos los dominios
 
-app.get("/", (req, res) => {
-  res.send("Hola, soy el servidor de la CI Banarica SA");
+require('./utils/auth')
+
+app.get("/", checkApiKey, (req, res) => {
+  res.send("<h3>Hola, soy el servidor de la CI Banarica SA</h3>");
 });
 
 routerApi(app);

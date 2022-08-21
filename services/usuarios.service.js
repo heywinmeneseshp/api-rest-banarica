@@ -1,5 +1,6 @@
 
 const boom = require('@hapi/boom');
+const bcrypt = require('bcryptjs');
 const db = require('../models');
 
 
@@ -10,7 +11,10 @@ class UsuariosService {
   async create(data) {
     const existe = await db.usuarios.findOne({ where: { username: data.username } });
     if (existe) throw boom.conflict('El usuarios ya existe')
-    const newUser = await db.usuarios.create(data);
+    const password = await bcrypt.hash(data.password, 10);
+    const user = { ...data, password: password };
+    const newUser = await db.usuarios.create(user);
+    delete newUser.dataValues.password;
     return newUser
   }
 
@@ -33,8 +37,11 @@ class UsuariosService {
     if (!user) {
       throw boom.notFound('El item no existe')
     }
-    const result = await db.usuarios.update(changes, { where: { username } });
-    return result;
+    const password = await bcrypt.hash(changes.password, 10);
+    const userUpdated = { ...changes, password: password };
+    await db.usuarios.update(userUpdated, { where: { username } });
+    delete userUpdated.password;
+    return userUpdated;
   }
 
 

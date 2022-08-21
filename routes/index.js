@@ -1,5 +1,6 @@
 const express = require('express');
 
+const authRouter = require('./auth.router');
 const productosRouter = require("./administrador/productos.router.js");
 const usuariosRouter = require("./administrador/usuarios.router.js");
 const combosRouter = require("./administrador/combos.router.js");
@@ -25,6 +26,7 @@ const semanasRouter = require("./administrador/semanas.router.js");
 function routerApi(app) {
   const router = express.Router();
   app.use('/api/v1', router);
+  router.use('/auth', authRouter);
   router.use('/productos', productosRouter);
   router.use('/usuarios', usuariosRouter);
   router.use('/combos', combosRouter);

@@ -6,7 +6,6 @@ class AvisosService {
 
   constructor() { }
 
-
   async create(data) {
     const aviso = await db.avisos.create(data);
     return aviso;
