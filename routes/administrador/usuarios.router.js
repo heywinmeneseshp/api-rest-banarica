@@ -1,32 +1,39 @@
 const express = require("express");
-
 const UsuariosService = require('../../services/usuarios.service');
 const validatorHandler = require('../../middlewares/validator.handler');
 const { crearUsuario, actualizarUsuario, agregarAlmacenParaUsuario, actualizarUsuarioPorAlmacen } = require('../../schema/usuario.schema');
 
+const passport = require("passport");
+const { checkSuperAdminRole } = require('../../middlewares/auth.handler');
 
 const router = express.Router();
 const service = new UsuariosService();
 
-router.get("/", async (req, res, next) => {
-  try {
-    const items = await service.find();
-    res.send(items);
-  } catch (error) {
-    next(error);
-  }
-});
+router.get("/",
+  passport.authenticate('jwt', { session: false }),
+  checkSuperAdminRole,
+  async (req, res, next) => {
+    try {
+      const items = await service.find();
+      res.send(items);
+    } catch (error) {
+      next(error);
+    }
+  });
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
-router.get("/paginar", async (req, res, next) => {
-  try {
-    const { page, limit } = req.query;
-    const items = await service.paginate(page, limit);
-    res.json(items);
-  } catch (error) {
-    next(error);
-  }
-});
+router.get("/paginar",
+  passport.authenticate('jwt', { session: false }),
+  checkSuperAdminRole,
+  async (req, res, next) => {
+    try {
+      const { page, limit } = req.query;
+      const items = await service.paginate(page, limit);
+      res.json(items);
+    } catch (error) {
+      next(error);
+    }
+  });
 
 router.get("/almacen", async (req, res, next) => {
   try {
@@ -90,6 +97,8 @@ router.delete("/almacen/:username/:id_almacen", async (req, res, next) => {
 
 //Crear
 router.post("/",
+  passport.authenticate('jwt', { session: false }),
+  checkSuperAdminRole,
   validatorHandler(crearUsuario, "body"),
   async (req, res, next) => {
     try {
@@ -118,6 +127,7 @@ router.get("/:username", async (req, res, next) => {
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/:username",
+  passport.authenticate('jwt', { session: false }),
   validatorHandler(actualizarUsuario, "body"),
   async (req, res, next) => {
     try {
@@ -137,14 +147,17 @@ router.patch("/:username",
 
 
 //ELIMINAR
-router.delete("/:username", async (req, res, next) => {
-  const { username } = req.params
-  try {
-    const result = await service.delete(username)
-    res.json(result)
-  } catch (error) {
-    next(error);
-  }
-});
+router.delete("/:username",
+  passport.authenticate('jwt', { session: false }),
+  checkSuperAdminRole,
+  async (req, res, next) => {
+    const { username } = req.params
+    try {
+      const result = await service.delete(username)
+      res.json(result)
+    } catch (error) {
+      next(error);
+    }
+  });
 
 module.exports = router;

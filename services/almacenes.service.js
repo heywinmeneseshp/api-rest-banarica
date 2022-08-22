@@ -4,10 +4,6 @@ const db = require('../models');
 
 class AlmacenesService {
 
-  constructor() {
-    this.almacenes = [];
-  }
-
   async create(data) {
     const existe = await db.almacenes.findOne({ where: { consecutivo: data.consecutivo } });
     if (existe) throw boom.conflict('El almacen ya existe')

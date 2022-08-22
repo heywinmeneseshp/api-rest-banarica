@@ -24,6 +24,10 @@ module.exports = {
       password: {
         type: Sequelize.STRING
       },
+      recovery_token: {
+        allowNull: true,
+        type: Sequelize.STRING
+      },
       tel: {
         type: Sequelize.STRING
       },

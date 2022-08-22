@@ -2,20 +2,19 @@ const { Strategy } = require('passport-local');
 const bcrypt = require('bcryptjs');
 const boom = require('@hapi/boom');
 
-const userServices = require('../../../services/usuarios.service');
-const service = new userServices();
+const AuthService = require('../../../services/auth.service');
+const service = new AuthService();
 
-const LocalStrategy = new Strategy(async (username, password, done) => {
+const LocalStrategy = new Strategy({
+  usernameField: 'username',
+  passwordField: 'password',
+},async (username, password, done) => {
   try {
-    const user = await service.findOne(username)
-    if (!user) done(boom.unauthorized(), false)
-    const hash = user.password
-    const isValid = await bcrypt.compare(password, hash)
-    if (!isValid) done(boom.unauthorized("Contraseña incorrecta"), false)
+    const user = await service.getUser(username, password);
     done(null, user)
   } catch (err) {
     done(err, false);
   }
 });
 
-module.exports = { LocalStrategy };
+module.exports = LocalStrategy;

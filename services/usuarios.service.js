@@ -37,8 +37,13 @@ class UsuariosService {
     if (!user) {
       throw boom.notFound('El item no existe')
     }
-    const password = await bcrypt.hash(changes.password, 10);
-    const userUpdated = { ...changes, password: password };
+    let userUpdated;
+    if (changes.password) {
+      const password = await bcrypt.hash(changes.password, 10);
+      userUpdated = { ...changes, password: password };
+    } else {
+      userUpdated = { ...changes };
+    }
     await db.usuarios.update(userUpdated, { where: { username } });
     delete userUpdated.password;
     return userUpdated;
@@ -48,7 +53,7 @@ class UsuariosService {
   async updateAlmacenFromUser(username, id_almacen, changes) {
     const almacen = await db.almacenes_por_usuario.findAll({ where: { username: username, id_almacen: id_almacen } });
     if (almacen.length == 0) {
-      const newUser = await db.almacenes_por_usuario.create({username: username, id_almacen: id_almacen, habilitado: changes});
+      const newUser = await db.almacenes_por_usuario.create({ username: username, id_almacen: id_almacen, habilitado: changes });
       return newUser;
     } else {
       const result = await db.almacenes_por_usuario.update({ habilitado: changes }, { where: { username: username, id_almacen: id_almacen } });

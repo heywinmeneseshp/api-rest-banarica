@@ -3,6 +3,8 @@ const AvisosService = require('../../services/avisos.service');
 const validatorHandler = require('../../middlewares/validator.handler');
 const { crearAviso, actualizarAviso } = require('../../schema/aviso.schema');
 
+const passport = require("passport");
+const { checkSuperAdminRole } = require('../../middlewares/auth.handler');
 
 const router = express.Router();
 const service = new AvisosService();
@@ -28,38 +30,40 @@ router.get("/:id", async (req, res, next) => {
 
 //Crear
 router.post("/",
-validatorHandler(crearAviso, "body"),
-async (req, res, next) => {
-  try {
-    const body = req.body;
-    const avisoNuevo = await service.create(body);
-    res.json({
-      message: "Aviso creado",
-      data: avisoNuevo
-    })
-  } catch (error) {
-    next(error);
-  }
+  passport.authenticate('jwt', { session: false }),
+  checkSuperAdminRole,
+  validatorHandler(crearAviso, "body"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const avisoNuevo = await service.create(body);
+      res.json({
+        message: "Aviso creado",
+        data: avisoNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
 
-});
+  });
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/:id",
-validatorHandler(actualizarAviso, "body"),
-async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const body = req.body;
-    const aviso = await service.update(id, body)
-    res.json({
-      message: 'El aviso fue actualizado',
-      data: aviso,
-      id
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(actualizarAviso, "body"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params
+      const body = req.body;
+      const aviso = await service.update(id, body)
+      res.json({
+        message: 'El aviso fue actualizado',
+        data: aviso,
+        id
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 //ELIMINAR
 router.delete("/:id", async (req, res, next) => {

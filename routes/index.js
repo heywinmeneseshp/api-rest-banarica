@@ -1,4 +1,5 @@
 const express = require('express');
+const passport = require('passport');
 
 const authRouter = require('./auth.router');
 const productosRouter = require("./administrador/productos.router.js");

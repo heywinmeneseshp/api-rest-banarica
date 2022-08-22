@@ -1,6 +1,9 @@
 const express = require('express');
 const passport = require('passport');
 
+const AuthService = require('../services/auth.service');
+const service = new AuthService();
+
 
 const router = express.Router();
 
@@ -8,10 +11,34 @@ router.post('/login',
   passport.authenticate('local', { session: false }),
   async (req, res, next) => {
     try {
-      res.json(req.user);
+      const token = service.singToken(req.user);
+      res.json({ usuario: req.user, token: token });
     } catch (err) {
       next(err);
     }
   });
 
-  module.exports = router;
+
+router.post('/recovery',
+  async (req, res, next) => {
+    try {
+      const { username } = req.body;
+      const user = await service.recoveryPassword(username);
+      res.json(user);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/changePassword',
+  async (req, res, next) => {
+    try {
+      const { token, password } = req.body;
+      const user = await service.changePassword(token, {password: password});
+      res.json(user);
+    } catch (err) {
+      next(err);
+    }
+  })
+
+module.exports = router;

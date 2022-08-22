@@ -7,7 +7,6 @@ const { crearcategoria, actualizarCategoria } = require('../../schema/categoria.
 const router = express.Router();
 const service = new CategoriasServices();
 
-
 router.get("/", async (req, res, next) => {
   try {
     const categorias = await service.find();
