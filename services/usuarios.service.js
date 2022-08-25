@@ -79,17 +79,24 @@ class UsuariosService {
   }
 
   async findByUser(username) {
-    const almacenes = await db.almacenes_por_usuario.findAll({ where: { username } });
+    const almacenes = await db.almacenes_por_usuario.findAll({
+      where: { username },
+      include: ['almacen']
+    });
     return almacenes;
   }
 
   async findAlmacenByUser(username, id_almacen) {
-    const almacenes = await db.almacenes_por_usuario.findOne({ where: { username, id_almacen } });
+    const almacenes = await db.almacenes_por_usuario.findOne({
+      where: { username, id_almacen }
+    });
     return almacenes;
   }
 
   async deleteAlmacenFromUser(username, id_almacen) {
-    const index = await db.almacenes_por_usuario.destroy({ where: { username, id_almacen } });
+    const index = await db.almacenes_por_usuario.destroy({
+      where: { username, id_almacen }
+    });
     if (!index) throw boom.notFound('El item no existe');
     return { message: "El item fue eliminado", index };
   }

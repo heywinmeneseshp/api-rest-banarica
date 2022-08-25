@@ -9,6 +9,7 @@ const tipo_movimiento = Joi.string();
 const razon_movimiento = Joi.string();
 const cantidad = Joi.number();
 const cons_pedido = Joi.any();
+const Producto = Joi.object();
 
 const crearHistorialMovimiento = Joi.object({
   cons_movimiento: cons_movimiento,
@@ -32,6 +33,7 @@ const actualizarHistorialMovimiento = Joi.object({
   razon_movimiento: razon_movimiento,
   cantidad: cantidad,
   cons_pedido: cons_pedido,
+  Producto: Producto
 });
 
 module.exports = { crearHistorialMovimiento, actualizarHistorialMovimiento };

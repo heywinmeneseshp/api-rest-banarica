@@ -30,6 +30,17 @@ router.get("/filter",
     }
   });
 
+  router.post("/filter",
+  validatorHandler(actualizarHistorialMovimiento, "query"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const items = await service.generalFilter(body);
+      res.json(items)
+    } catch (error) {
+      next(error);
+    }
+  });
 
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4

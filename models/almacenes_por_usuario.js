@@ -10,7 +10,11 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      this.hasOne(models.almacenes, {
+        as: 'almacen',
+        foreignKey: 'consecutivo',
+        sourceKey: 'id_almacen'
+      })
     }
   }
   almacenes_por_usuario.init({

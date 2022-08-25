@@ -7,7 +7,7 @@ const { checkApiKey } = require('./middlewares/auth.handler');
 const { logErrors, errorHandler, boomErrorHandler } = require('./middlewares/error.handler')
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3000 || process.env.PORT2;
 
 app.use(express.json());
 /* Configuracion para limitar pediciones de otros dominios

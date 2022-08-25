@@ -5,6 +5,7 @@ const AuthService = require('../services/auth.service');
 const service = new AuthService();
 
 
+
 const router = express.Router();
 
 router.post('/login',
@@ -13,6 +14,17 @@ router.post('/login',
     try {
       const token = service.singToken(req.user);
       res.json({ usuario: req.user, token: token });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get('/profile',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const profile = await service.getProfile(req.user.username)
+      res.json(profile);
     } catch (err) {
       next(err);
     }

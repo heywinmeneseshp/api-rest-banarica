@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const boom = require('@hapi/boom');
 const bcrypt = require('bcryptjs');
 const env = require('../config/env');
+const db = require('../models');
 
 const userService = require('./usuarios.service');
 const service = new userService();
@@ -19,12 +20,22 @@ class AuthService {
     return user
   }
 
+  async getProfile(username) {
+    const user = await service.findOne(username)
+    delete user.dataValues.password
+    const lista = await db.almacenes_por_usuario.findAll({
+      where: { username: username, habilitado: true },
+      include: ['almacen']
+    });
+    return {usuario: user, almacenes: lista.map(item => item.almacen)}
+  }
+
   singToken(user) {
     const payload = {
       username: user.username,
       id_rol: user.id_rol,
     };
-    return jwt.sign(payload, env.secret, { expiresIn: '1h' });
+    return jwt.sign(payload, env.secret, { expiresIn: '24h' });
   }
 
   async recoveryPassword(username) {
