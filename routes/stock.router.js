@@ -69,6 +69,16 @@ router.get("/filter/:cons_almacen", async (req, res, next) => {
 }
 )
 
+router.post("/filter", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const item = await service.generalFilter(body);
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+})
+
 router.get("/filter/product/:cons_producto", async (req, res, next) => {
   try {
     const { cons_producto } = req.params;

@@ -9,9 +9,7 @@ const serviceMovimiento = new MovimientosService();
 
 class StockServices {
 
-  constructor() {
-
-  }
+  constructor() { }
 
   async create(data) {
     const item = await db.stock.findOrCreate({ where: { cons_almacen: data.cons_almacen, cons_producto: data.cons_producto }, defaults: data });
@@ -23,6 +21,39 @@ class StockServices {
     const item = await db.stock.findOne({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto }, include: ['almacen', 'producto'] });
     if (!item) throw boom.notFound('El item no existe')
     return item;
+  }
+
+  async generalFilter(body) {
+    if (body?.pagination) {
+      let newlimit = parseInt(body.pagination.limit);
+      let newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
+      const data = await db.stock.findAll({
+        where: body.stock, include: ['almacen', {
+          model: db.productos,
+          as: "producto",
+          where: body.producto
+        }],
+        offset: newoffset,
+        limit: newlimit
+      });
+      const total = await db.stock.count({
+        where: body.stock, include: ['almacen', {
+          model: db.productos,
+          as: "producto",
+          where: body.producto
+        }],
+      });
+      return {data: data, total: total};
+    } else {
+      const item = await db.stock.findAll({
+        where: body.main, include: ['almacen', {
+          model: db.productos,
+          as: "producto",
+          where: body.second
+        }]
+      });
+      return item;
+    }
   }
 
   async find() {
@@ -101,7 +132,7 @@ class StockServices {
         razon_movimiento: "Exportacion",
         cantidad: objeto[key],
       }
-      await serviceHistorial.create(historial).then(res => console.log(res))
+      await serviceHistorial.create(historial)
     }
     const result = {
       cons_almacen: almacen,
@@ -133,7 +164,7 @@ class StockServices {
       },
       include: ['almacen', 'producto']
     });
-    return {data: result, total: total};
+    return { data: result, total: total };
   }
 }
 

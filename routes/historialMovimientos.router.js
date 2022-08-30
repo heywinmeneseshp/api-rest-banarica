@@ -4,7 +4,6 @@ const HistorialMovimientosService = require('../services/historialMovimientos.se
 const validatorHandler = require('../middlewares/validator.handler');
 const { crearHistorialMovimiento, actualizarHistorialMovimiento } = require('../schema/historialMovimiento.schema');
 
-
 const router = express.Router();
 const service = new HistorialMovimientosService();
 
