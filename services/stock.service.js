@@ -45,14 +45,14 @@ class StockServices {
       });
       return { data: data, total: total };
     } else {
-      const item = await db.stock.findAll({
-        where: body.main, include: ['almacen', {
+      const data = await db.stock.findAll({
+        where: body.stock, include: ['almacen', {
           model: db.productos,
           as: "producto",
-          where: body.second
-        }]
+          where: body.producto
+        }],
       });
-      return item;
+      return data;
     }
   }
 
