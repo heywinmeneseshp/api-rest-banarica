@@ -43,7 +43,7 @@ class StockServices {
           where: body.producto
         }],
       });
-      return {data: data, total: total};
+      return { data: data, total: total };
     } else {
       const item = await db.stock.findAll({
         where: body.main, include: ['almacen', {
@@ -76,11 +76,15 @@ class StockServices {
 
   async addAmounts(cons_almacen, cons_producto, body) {
     const item = await db.stock.findAll({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    if (!item[0]) throw boom.notFound('El item no existe')
+    if (!item[0]) {
+      await db.stock.findOrCreate({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto, cantidad: body.cantidad, isBlock: false } });
+      return item[0];
+    } else {
     const suma = parseFloat(item[0].cantidad) + parseFloat(body.cantidad);
     await db.stock.update({ cantidad: suma }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     const data = { cons_producto: cons_producto, cantidad: suma }
     return { message: "El item fue actualizado", data: data };
+    }
   }
 
   async subtractAmounts(cons_almacen, cons_producto, body) {
