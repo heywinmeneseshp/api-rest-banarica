@@ -85,7 +85,7 @@ async (req, res, next) => {
 });
 
 //ELIMINAR
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {
     const result = await service.delete(id)
