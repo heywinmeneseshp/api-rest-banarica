@@ -16,13 +16,10 @@ class MovimientosService {
     let consecutivo = data.prefijo + "-" + count
     const itemNuevo = {
       consecutivo,
-      pendiente: data.pendiente,
-      observaciones: data.observaciones,
-      cons_semana: data.cons_semana,
-      fecha: data.fecha
+      ...data
     }
-    await db.movimientos.create(itemNuevo);
-    return itemNuevo
+    const item = await db.movimientos.create(itemNuevo);
+    return item
   }
 
   async find() {

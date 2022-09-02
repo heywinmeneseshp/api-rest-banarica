@@ -14,12 +14,15 @@ module.exports = {
         type: Sequelize.STRING,
       },
       remision: {
-        type: Sequelize.BOOLEAN
+        type: Sequelize.STRING
       },
       pendiente: {
         type: Sequelize.BOOLEAN
       },
       observaciones: {
+        type: Sequelize.STRING
+      },
+      respuesta: {
         type: Sequelize.STRING
       },
       cons_semana: {

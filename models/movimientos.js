@@ -23,6 +23,7 @@ module.exports = (sequelize, DataTypes) => {
     remision: DataTypes.STRING,
     pendiente: DataTypes.BOOLEAN,
     observaciones: DataTypes.STRING,
+    respuesta: DataTypes.STRING,
     cons_semana: DataTypes.STRING,
     fecha: DataTypes.STRING
   }, {

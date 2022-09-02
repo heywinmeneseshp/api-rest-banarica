@@ -26,6 +26,7 @@ module.exports = (sequelize, DataTypes) => {
     origen: DataTypes.STRING,
     destino: DataTypes.STRING,
     semana: DataTypes.STRING,
+    observaciones: DataTypes.STRING,
     fecha_salida: DataTypes.STRING,
     fecha_entrada: DataTypes.STRING,
     estado: DataTypes.STRING

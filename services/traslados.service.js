@@ -12,8 +12,8 @@ class RecepcionService {
     const { count } = await db.traslados.findAndCountAll();
     const consecutivo = "TR-" + count;
     const itemNuevo = { consecutivo, ...data }
-    await db.traslados.create(itemNuevo);
-    return itemNuevo
+    const res = await db.traslados.create(itemNuevo);
+    return res
   }
 
   async find() {

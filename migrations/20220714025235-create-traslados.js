@@ -31,6 +31,9 @@ module.exports = {
       semana: {
         type: Sequelize.STRING
       },
+      observaciones: {
+        type: Sequelize.STRING
+      },
       fecha_salida: {
         type: Sequelize.STRING
       },
