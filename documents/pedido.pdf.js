@@ -8,7 +8,6 @@ module.exports = async (cons_pedido) => {
 
     let contenidoHTML = `<!doctype html>
     <html>
-
     <head>
       <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
         integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
@@ -27,58 +26,51 @@ module.exports = async (cons_pedido) => {
           color: #555;
           font-size: 10px;
         }
-
-
-
         .imagen {
           text-align: center;
           margin-bottom: 10px;
         }
-
-
         .border-dark {
           text-align: center;
           border: 1px solid rgba(189, 189, 189, 0.568);
           width: 315px;
         }
-
         .autorizado {
           text-align: end;
         }
-
         .margin-top {
           margin-top: 5px;
         }
-
         .margin-top2 {
           margin-top: 5px;
         }
-
         .descripcion {
           text-align: center;
           margin-bottom: 15px;
         }
-
         .info,
         .imagen {
           width: 50%;
         }
-
         .info-containter {
           display: flex;
         }
-
         .parrafo {
           margin: -10px 0px;
         }
-
         h6 {
-          font-size: 10px;
-          font-weight: 500;
+          font-size: 9px;
+          font-weight: 700;
         }
         th {
           height: 12px;
         }
+        .logo{
+          width: 70%;
+        }
+        .table-second {
+    background-color: #e5e5e5;
+    }
       </style>
     </head>
 
@@ -87,7 +79,7 @@ module.exports = async (cons_pedido) => {
         <div>
           <div>
             <div class="imagen col-xs-6">
-              <img class="logo" src="../images/9124824.png" />
+              <img class="logo" src="https://img.swapcard.com/?u=https%3A%2F%2Fcdn-api.swapcard.com%2Fpublic%2Fimages%2Fd1ed882b55264657a86f0110fb8a5240.png&q=0.8&m=fit&w=400&h=200" />
               <h6>
                 Comercializadora Internacional Bana Rica S.A
               </h6>
@@ -117,7 +109,7 @@ module.exports = async (cons_pedido) => {
                   </tr>
                 </tbody>
                 <tbody class="table">
-                  <tr>
+                  <tr >
                     <td class="col-5">
                       <b>Fecha</b>
                     </td>
@@ -140,7 +132,7 @@ module.exports = async (cons_pedido) => {
               <table class="table">
 
                 <tbody class="table-active">
-                  <tr>
+                  <tr class="table-second">
                     <td class="col-6">
                       <b>Semana</b>
                     </td>
@@ -148,7 +140,7 @@ module.exports = async (cons_pedido) => {
                       {{semana}}
                     </td>
                   </tr>
-                  <tr>
+                  <tr class="table-second">
                     <td class="col-6">
                       <b>Pedido</b>
                     </td>
@@ -270,7 +262,7 @@ module.exports = async (cons_pedido) => {
 
     let tabla = ""
     for ( var i = 0; i <  productos.length; i++ ) {
-      let clase = (i%2 == 0) ? "table-active" : "table-primary";
+      let clase = (i%2 == 0) ? "table-secondary" : "table-primary";
       tabla = tabla + `
       <tr class="${clase}">
       <td class="col-2">
