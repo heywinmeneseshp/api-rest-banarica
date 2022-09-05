@@ -16,6 +16,12 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: 'consecutivo',
         as: 'pedido'
       });
+
+      this.hasOne(models.usuarios, {
+        foreignKey: 'username',
+        sourceKey: 'usuario',
+        as: 'user'
+      });
     }
   }
   tabla_pedidos.init({

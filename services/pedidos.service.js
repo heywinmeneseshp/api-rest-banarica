@@ -1,7 +1,5 @@
 
 const boom = require('@hapi/boom');
-const { generarID } = require("../middlewares/generarId.handler");
-const getDate = require('../middlewares/getDate.handler');
 const db = require('../models');
 
 class pedidosService {
@@ -42,7 +40,21 @@ class pedidosService {
   }
 
   async findOneCons(consecutivo) {
-    const item = await db.tabla_pedidos.findOne({ where: { consecutivo: consecutivo }, include: ['pedido'] })
+    const item = await db.tabla_pedidos.findOne({
+      where: { consecutivo: consecutivo },
+      include: [ {
+        model: db.pedidos,
+        as: "pedido",
+        include: ["producto", {
+          model: db.almacenes,
+          as: "almacen"
+        }]
+      },
+      {
+        model: db.usuarios,
+        as: "user"
+      }]
+    })
     if (!item) throw boom.notFound('El item no existe')
     return item;
   }
@@ -50,7 +62,6 @@ class pedidosService {
   async createCons(data) {
     const { count } = await db.tabla_pedidos.findAndCountAll();
     let consecutivo = "PD-" + count;
-    console.log(data)
     const itemNuevo = { ...data, consecutivo };
     await db.tabla_pedidos.create(itemNuevo)
     return itemNuevo
