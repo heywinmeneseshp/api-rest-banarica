@@ -5,13 +5,9 @@ const db = require('../models')
 
 class NotificacionesService {
 
-  constructor() {
-    this.notiLista = []
-  }
 
   async create(data) {
-    const { count } = await db.notificaciones.findAndCountAll();
-    let consecutivo = "NT-" + count
+    let consecutivo = "NT-" + (Date.now()-1662564279341);
     const itemNuevo = await { consecutivo, ...data }
     await db.notificaciones.create(itemNuevo)
     return itemNuevo
@@ -35,26 +31,20 @@ class NotificacionesService {
   }
 
   async filterPost(data) {
-    let items;
-    var list = data.array
-    let busqueda = data.data
+    let busqueda = data
+    let almacen_receptor = data.almacen_receptor
     let busqueda2 = [{visto: busqueda.visto},{aprobado: busqueda.aprobado}]
-    if (data.operador == "or") {
-      items = await db.notificaciones.findAll({ where: { [Op.or]: busqueda2 } })
+    delete busqueda.visto
+    delete busqueda.aprobado
+    delete busqueda.almacen_receptor
+    if (busqueda == {}){
+      const items = await db.notificaciones.findAll({ where: { almacen_receptor, [Op.or]: busqueda2 } })
+      return items
     } else {
-      items = await db.notificaciones.findAll({ where: busqueda })
+      const items = await db.notificaciones.findAll({ where: { almacen_receptor, ...busqueda, [Op.or]: busqueda2 } })
+      return items
     }
-    let lista = []
-    items.map(item => {
-      lista.push(item.dataValues)
-    })
-    var newList = []
-    list.map((almacen) => {
-      lista.map((notifacion) => {
-        if (almacen == notifacion.almacen_receptor) newList.push(notifacion)
-      })
-    })
-    return newList.reverse()
+
   }
 
 

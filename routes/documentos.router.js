@@ -37,9 +37,6 @@ router.get('/pedido', async (req, res) => {
   console.log(__dirname)
   const newDirname = __dirname.replace("routes", "") + "/result.pdf"
   res.sendFile(newDirname)
-  service.delete(newDirname)
 });
-
-
 
 module.exports = router;

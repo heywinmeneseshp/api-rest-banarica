@@ -12,7 +12,9 @@ class pedidosService {
   }
 
   async find() {
-    return await db.pedidos.findAll();
+    return await db.pedidos.findAll({
+      include: ["tabla", "producto", "almacen"]
+    });
   }
 
   async findOne(consecutivo) {
@@ -84,11 +86,17 @@ class pedidosService {
   async paginate(offset, limit) {
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset)-1 )* newlimit;
-    const result = await db.tabla_pedidos.findAll({
+    const total = await db.pedidos.count({
+      limit: newlimit,
+      offset: newoffset,
+      include: ["tabla", "producto", "almacen"]
+      });
+    const result = await db.pedidos.findAll({
     limit: newlimit,
-    offset: newoffset
+    offset: newoffset,
+    include: ["tabla", "producto", "almacen"]
     });
-    return result;
+    return {data: result, total: total};
   }
 }
 
