@@ -33,7 +33,9 @@ class NotificacionesService {
   async filterPost(data) {
     let busqueda = data
     let almacen_receptor = data.almacen_receptor
-    let busqueda2 = [{visto: busqueda.visto},{aprobado: busqueda.aprobado}]
+    let busqueda2 = []
+    if (busqueda.visto != null ) busqueda2 = [...busqueda2, {visto: busqueda.visto}]
+    if(busqueda.aprobado != null ) busqueda2 = [...busqueda2, {aprobado: busqueda.aprobado} ]
     delete busqueda.visto
     delete busqueda.aprobado
     delete busqueda.almacen_receptor
@@ -44,7 +46,6 @@ class NotificacionesService {
       const items = await db.notificaciones.findAll({ where: { almacen_receptor, ...busqueda, [Op.or]: busqueda2 } })
       return items
     }
-
   }
 
 

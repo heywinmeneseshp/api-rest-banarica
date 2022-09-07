@@ -70,7 +70,7 @@ class pedidosService {
   }
 
   async receiveOrder(id, changes) {
-    const pedido = await db.tabla_pedidos.findByPk(id)
+    const pedido = await db.tabla_pedidos.findOne({where: { consecutivo: id}})
     if (!pedido) throw boom.notFound('El item no existe')
     await pedido.update(changes)
     return pedido
