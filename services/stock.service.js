@@ -28,20 +28,28 @@ class StockServices {
       let newlimit = parseInt(body.pagination.limit);
       let newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
       const data = await db.stock.findAll({
-        where: body.stock, include: ['almacen', {
+        where: body.stock, include: [{
           model: db.productos,
           as: "producto",
           where: body.producto
+        },{
+          model: db.almacenes,
+          as: "almacen",
+          where: body.almacen
         }],
         offset: newoffset,
         limit: newlimit
       });
       const total = await db.stock.count({
-        where: body.stock, include: ['almacen', {
+        where: body.stock, include: [{
           model: db.productos,
           as: "producto",
           where: body.producto
-        }],
+        },{
+          model: db.almacenes,
+          as: "almacen",
+          where: body.almacen
+        }]
       });
       return { data: data, total: total };
     } else {
@@ -50,7 +58,11 @@ class StockServices {
           model: db.productos,
           as: "producto",
           where: body.producto
-        }],
+        },{
+          model: db.almacenes,
+          as: "almacen",
+          where: body.almacen
+        }]
       });
       return data;
     }
@@ -62,7 +74,7 @@ class StockServices {
 
   async update(cons_almacen, cons_producto, changes) {
     const updatedItem = await db.stock.update(changes, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    if (!updatedItem) throw boom.conflict('El item no existe')
+    if (updatedItem == 0) throw boom.conflict('El item no existe')
     return changes;
   }
 
