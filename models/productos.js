@@ -15,6 +15,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'consecutivo',
         sourceKey: 'cons_categoria'
       });
+      this.hasMany(models.stock, {
+        as: "habilitados",
+        foreignKey: "cons_producto",
+        sourceKey: "consecutivo"
+      })
       // define association here
 
     }
