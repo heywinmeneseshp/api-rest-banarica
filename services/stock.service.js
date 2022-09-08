@@ -31,7 +31,7 @@ class StockServices {
         where: body.stock, include: [{
           model: db.productos,
           as: "producto",
-          where: body.producto
+          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%`}, name: { [Op.like]: `%${body.producto.name}%`}}
         },{
           model: db.almacenes,
           as: "almacen",
@@ -44,7 +44,7 @@ class StockServices {
         where: body.stock, include: [{
           model: db.productos,
           as: "producto",
-          where: body.producto
+          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%`}, name: { [Op.like]: `%${body.producto.name}%`}}
         },{
           model: db.almacenes,
           as: "almacen",
@@ -57,7 +57,7 @@ class StockServices {
         where: body.stock, include: ['almacen', {
           model: db.productos,
           as: "producto",
-          where: body.producto
+          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%`}, name: { [Op.like]: `%${body.producto.name}%`}}
         },{
           model: db.almacenes,
           as: "almacen",
