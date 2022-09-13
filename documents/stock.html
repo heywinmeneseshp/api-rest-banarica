@@ -7,7 +7,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Stock</title>
+  <title>Pedido</title>
   <style>
     .invoice-box {
       max-width: 800px;
@@ -36,39 +36,33 @@
     }
 
     .margin-top {
-      margin-top: 10px;
+      margin-top: 5px;
     }
 
     .margin-top2 {
-      margin-top: 20px;
+      margin-top: 5px;
     }
 
     .descripcion {
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
     }
 
     .info,
     .imagen {
       width: 50%;
-
     }
 
     .info-containter {
       display: flex;
     }
 
-    .heigt {
-      height: 100px;
+    .parrafo {
+      margin: -10px 0px;
     }
 
     h6 {
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .h7 {
-      font-size: 8px;
+      font-size: 9px;
       font-weight: 700;
     }
 
@@ -83,208 +77,142 @@
     .table-second {
       background-color: #e5e5e5;
     }
-
-    .title {
-      text-align: center;
-
-    }
-
-    .boder {
-      border: none;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 0.5fr 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
-    }
   </style>
 </head>
 
 <body>
-  <div class="container-fluid invoice-box">
-    <div class="row">
-      <div class="col-xs-6">
-        <table class="table table-sm">
-          <thead>
-
-          </thead>
-          <tbody>
-            <tr class="title">
-              <td>
-                <h6>Inventario de cartón</h6>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                Finca:
-              </td>
-              <td>
-                {{finca}}
-              </td>
-            </tr>
-            <tr>
-              <td>
-                Fecha:
-              </td>
-              <td>
-                {{fecha}}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="col-xs-6">
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-xs-12">
-
-        <table class="table table-bordered table-sm">
-
-          <thead>
-            <tr>
-              <th>
-                #
-              </th>
-              <th>
-                Artículo
-              </th>
-              <th>
-                Buen estado
-              </th>
-              <th>
-                Mal estado <b>X</b> manejo
-              </th>
-              <th>
-                Mal estado <b>X</b> defecto
-              </th>
-              <th>
-                Teórico
-              </th>
-              <th>
-                Físcio
-              </th>
-              <th>
-                Diferencia
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-
-              </td>
-              <td>
-              </td>
-              <td>
-
-              </td>
-              <td>
-
-              </td>
-              <td>
-
-              </td>
-              <td>
-
-              </td>
-              <td>
-
-              </td>
-              <td>
-
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="row">
-          <div class="col-xs-12">
-            <div class="col-xs-4">
-              ¿La bodega de encontraba limpia y organizada?
+  <div class="invoice-box">
+    <div>
+      <div>
+        <div class="imagen col-xs-6">
+          <img class="logo"
+            src="https://img.swapcard.com/?u=https%3A%2F%2Fcdn-api.swapcard.com%2Fpublic%2Fimages%2Fd1ed882b55264657a86f0110fb8a5240.png&q=0.8&m=fit&w=400&h=200" />
+          <h6>
+            Comercializadora Internacional Bana Rica S.A
+          </h6>
+          <span>
+            <div class="parrafo">
+              Cra 43a 16a Sur 38 IN 1008, Medellin, Antioquia
             </div>
-            <div class="col-xs-4">
-              SI ____
+            <div class="parrafo">
+              Tel: (604) 480 5034 - (604) 4805022
             </div>
-            <div class="col-xs-4">
-              NO ____
+            <div class="parrafo">
+              www.banarica.com
             </div>
-          </div>
-          <div class="col-xs-12">
-            <div class="col-xs-4">
-              ¿El personal acargo se encontraba disponible?
-            </div>
-            <div class="col-xs-4">
-              SI ____
-            </div>
-            <div class="col-xs-4">
-              NO ____
-            </div>
-          </div>
+          </span>
+
+        </div>
+        <div class="info col-xs-6">
+          <table class="table table-sm">
+            <tbody class="table">
+              <tr>
+                <td class="col-5">
+                  <b>Movimiento:</b>
+                </td>
+                <td class="col-7">
+                  {{movimiento}}
+                </td>
+              </tr>
+            </tbody>
+            <tbody class="table">
+              <tr>
+                <td class="col-5">
+                  <b>Fecha</b>
+                </td>
+                <td class="col-7">
+                  {{fecha}}
+                </td>
+              </tr>
+            </tbody>
+            <tbody class="table">
+              <tr>
+                <td class="col-6">
+                  <b>Comercializadora</b>
+                </td>
+                <td class="col-6">
+                  {{comercializadora}}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <table class="table">
+
+            <tbody class="table-active">
+              <tr class="table-second">
+                <td class="col-6">
+                  <b>Semana</b>
+                </td>
+                <td class="col-6">
+                  {{semana}}
+                </td>
+              </tr>
+              <tr class="table-second">
+                <td class="col-6">
+                  <b>Consecutivo:</b>
+                </td>
+                <td class="col-6">
+                  {{consecutivo}}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
-    <div class="row margin-top2">
-      <div class="col-xs-6">
-        <table class="table">
-          <tbody>
-            <tr>
-              <td class="heigt">
-                Nombre Representante Comercializadora:
-              </td>
-              <td>
-
-              </td>
-            </tr>
-            <tr>
-              <td class="heigt">
-                Nombre Representante Finca:
-              </td>
-              <td>
-
-              </td>
-            </tr>
-            <tr>
-              <td>
-
-              </td>
-              <td>
-
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="row">
+        <div class="col-xs-12">
+          <table class="table table-hover table-sm">
+            <thead>
+              <tr>
+                <th class="col-xs-3">
+                  Almacen
+                </th>
+                <th class="col-xs-1">
+                  Cod
+                </th>
+                <th class="col-xs-5">
+                  Producto
+                </th>
+                <th class="col-xs-3 autorizado">
+                  Cantidad
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {{productos}}
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div class="col-xs-6">
-        <table class="table">
-          <tbody>
-            <tr>
-              <td class="heigt">
-                Firma:
-              </td>
-              <td>
+      <div class="row margin-top2">
+        <div class="col-xs-5 autorizado">
+          REALIZADO POR:
+        </div>
+        <div class="col-xs-7 border-dark descripcion">
+          {{usuario}}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-xs-12 margin-top">
 
-              </td>
-            </tr>
-            <tr>
-              <td class="heigt">
-                Firma:
-              </td>
-              <td>
-
-              </td>
-            </tr>
-            <tr>
-              <td>
-
-              </td>
-              <td>
-
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          <table class="table table-sm">
+            <tbody>
+              <tr>
+                <td class="col-xs-2'">
+                  <b>Observaciones:</b>
+                </td>
+                <td class="col-xs-10">
+                  {{observaciones}}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </body>
+
 </html>

@@ -86,9 +86,9 @@ class UsuariosService {
     return almacenes;
   }
 
-  async findAlmacenByUser(username, id_almacen) {
-    const almacenes = await db.almacenes_por_usuario.findOne({
-      where: { username, id_almacen }
+  async findUsersByAlmacen(id_almacen) {
+    const almacenes = await db.almacenes_por_usuario.findAll({
+      where: {id_almacen }
     });
     return almacenes;
   }

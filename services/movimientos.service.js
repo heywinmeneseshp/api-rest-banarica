@@ -68,7 +68,16 @@ class MovimientosService {
   }
 
   async findOne(consecutivo) {
-    const item = await db.movimientos.findOne({ where: { consecutivo: consecutivo } })
+    const item = await db.movimientos.findOne({
+      where: { consecutivo: consecutivo },
+    include: [{
+      model: db.historial_movimientos,
+      as: "historial_movimientos",
+      include: [{
+        model: db.productos,
+        as: "Producto"
+      }]
+    }] })
     if (!item) throw boom.notFound('El item no existe');
     return item;
   }

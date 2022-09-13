@@ -64,10 +64,10 @@ router.post("/almacen", validatorHandler(agregarAlmacenParaUsuario, "body"), asy
   }
 });
 
-router.get("/almacen/:username/:id_almacen", async (req, res, next) => {
-  const { username, id_almacen } = req.params;
+router.get("/almacen/cons/:id_almacen", async (req, res, next) => {
+  const { id_almacen } = req.params;
   try {
-    const items = await service.findAlmacenByUser(username, id_almacen);
+    const items = await service.findUsersByAlmacen(id_almacen);
     res.json(items);
   } catch (error) {
     next(error);

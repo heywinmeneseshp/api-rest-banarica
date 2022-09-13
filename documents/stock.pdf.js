@@ -177,7 +177,7 @@ module.exports = async (body) => {
             <div class="row">
               <div class="col-xs-12">
                 <div class="col-xs-8">
-                  ¿La bodega de encontraba limpia y organizada?
+                  ¿La bodega se encontraba limpia y organizada?
                 </div>
                 <div class="col-xs-2">
                   SI ____
@@ -188,7 +188,7 @@ module.exports = async (body) => {
               </div>
               <div class="col-xs-12">
                 <div class="col-xs-8">
-                  ¿El personal acargo se encontraba disponible?
+                  ¿El personal a cargo se encontraba disponible?
                 </div>
                 <div class="col-xs-2">
                   SI ____

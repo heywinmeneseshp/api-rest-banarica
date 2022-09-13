@@ -48,6 +48,11 @@ class NotificacionesService {
     }
   }
 
+  async generalFilter(data) {
+    const items = await db.notificaciones.findAll({ where: data })
+    return items
+  }
+
 
   async update(id, changes) {
     const item = await db.notificaciones.findByPk(id);
