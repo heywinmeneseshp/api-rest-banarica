@@ -27,6 +27,7 @@ module.exports = (sequelize, DataTypes) => {
   productos.init({
     consecutivo: DataTypes.STRING,
     name: DataTypes.STRING,
+    bulto: DataTypes.FLOAT,
     cons_categoria: DataTypes.STRING,
     cons_proveedor: DataTypes.STRING,
     salida_sin_stock: DataTypes.BOOLEAN,

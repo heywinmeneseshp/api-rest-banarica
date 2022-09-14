@@ -166,6 +166,9 @@ module.exports = async (cons_pedido) => {
                     <th class="col-xs-5">
                       Producto
                     </th>
+                    <th class="col-xs-5">
+                    Bultos
+                    </th>
                     <th class="col-xs-3 autorizado">
                       Cantidad
                     </th>
@@ -271,8 +274,11 @@ module.exports = async (cons_pedido) => {
       <td class="col-2">
         ${productos[i].dataValues.cons_producto}
       </td>
-      <td class="col-6">
+      <td class="col-4">
         ${productos[i].dataValues.producto.dataValues.name}
+      </td>
+      <td class="col-2">
+        ${productos[i].dataValues.cantidad / productos[i].dataValues.producto.dataValues.bulto}
       </td>
       <td class="col-2 autorizado">
         ${productos[i].dataValues.cantidad}

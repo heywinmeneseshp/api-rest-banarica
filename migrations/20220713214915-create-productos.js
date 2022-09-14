@@ -20,6 +20,9 @@ module.exports = {
       name: {
         type: Sequelize.STRING
       },
+      bulto: {
+        type: Sequelize.FLOAT
+      },
       cons_categoria: {
         type: Sequelize.STRING,
         references: {
