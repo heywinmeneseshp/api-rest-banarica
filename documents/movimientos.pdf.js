@@ -215,6 +215,7 @@ module.exports = async (consecutivo, tipo_movimiento) => {
                     {{observaciones}}
                   </td>
                 </tr>
+                {{respuesta}}
               </tbody>
             </table>
           </div>
@@ -225,13 +226,13 @@ module.exports = async (consecutivo, tipo_movimiento) => {
 
   </html>
     `
-
   const movimiento = await service.findOne(consecutivo)
 
   let fecha = movimiento.fecha;
   let semana = movimiento.cons_semana;
   let productos = movimiento.historial_movimientos;
   let observaciones = movimiento.observaciones;
+  let respuesta = movimiento?.respuesta;
 
   productos.sort((a, b) => {
     if (a.dataValues.cons_producto == b.dataValues.cons_producto) {
@@ -245,7 +246,6 @@ module.exports = async (consecutivo, tipo_movimiento) => {
 
   let tabla = ""
   for (var i = 0; i < productos.length; i++) {
-    console.log(productos[i])
 
     let cons_producto = productos[i].dataValues.cons_producto;
     let producto = productos[i].dataValues.Producto.dataValues.name;
@@ -275,6 +275,20 @@ module.exports = async (consecutivo, tipo_movimiento) => {
   contenidoHTML = contenidoHTML.replace("{{observaciones}}", observaciones)
   contenidoHTML = contenidoHTML.replace("{{comercializadora}}", "C.I Bana Rica S.A")
   contenidoHTML = contenidoHTML.replace("{{usuario}}", "N/A")
+
+  let respuesta2 = `<tr>
+                  <td class="col-xs-2'">
+                    <b>Respuesta:</b>
+                  </td>
+                  <td class="col-xs-10">
+                  ${respuesta}
+                  </td>
+                </tr> `
+  if (respuesta) {
+    contenidoHTML = contenidoHTML.replace("{{respuesta}}", respuesta2)
+  } else {
+    contenidoHTML = contenidoHTML.replace("{{respuesta}}", "")
+  }
 
   return contenidoHTML
 };
