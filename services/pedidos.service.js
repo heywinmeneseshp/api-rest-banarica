@@ -57,7 +57,6 @@ class pedidosService {
         as: "user"
       }]
     })
-    if (!item) throw boom.notFound('El item no existe')
     return item;
   }
 
