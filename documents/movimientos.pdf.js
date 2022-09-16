@@ -246,7 +246,6 @@ module.exports = async (consecutivo, tipo_movimiento) => {
 
   let tabla = ""
   for (var i = 0; i < productos.length; i++) {
-
     let cons_producto = productos[i].dataValues.cons_producto;
     let producto = productos[i].dataValues.Producto.dataValues.name;
     let cantidad = productos[i].dataValues.cantidad;
