@@ -27,20 +27,7 @@ class NotificacionesService {
   async filter(body) {
     let items = await db.notificaciones.findAll({ where: body })
     return items.reverse();
-
   }
-
-  async filterPost(data) {
-      const items = await db.notificaciones.findAll({ where: data })
-      return items
-
-  }
-
-  async generalFilter(data) {
-    const items = await db.notificaciones.findAll({ where: data })
-    return items
-  }
-
 
   async update(id, changes) {
     const item = await db.notificaciones.findByPk(id);

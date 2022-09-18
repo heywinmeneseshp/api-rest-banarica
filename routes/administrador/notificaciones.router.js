@@ -18,36 +18,12 @@ router.get("/", async (req, res, next) => {
 });
 
 
-//Crear
-// query localhost:3000/api/administrador/notificaciones/filter?titulo=titulo&descripcion=descripcion&tipo=tipo&estado=estado
-router.get("/filter",
-validatorHandler(actualizarNotificacion, "query"),
-async (req, res, next) => {
-  try {
-    const body = req.query;
-    const items = await service.filter(body);
-    res.json(items)
-  } catch (error) {
-    next(error);
-  }
-});
 
 router.post("/filter",
 async (req, res, next) => {
   try {
     const body = req.body;
-    const items = await service.filterPost(body);
-    res.json(items)
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post("/filter/usuarios",
-async (req, res, next) => {
-  try {
-    const body = req.body;
-    const items = await service.generalFilter(body);
+    const items = await service.filter(body);
     res.json(items)
   } catch (error) {
     next(error);

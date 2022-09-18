@@ -32,6 +32,7 @@ class HistorialMovimientosService {
   }
 
   async generalFilter(body) {
+    if (!body?.producto?.name) body = { ...body, producto: { name: "" } }
     if (body?.pagination) {
       let newlimit = parseInt(body.pagination.limit);
       let newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
@@ -40,7 +41,11 @@ class HistorialMovimientosService {
         let list = moveList.map(item => item.consecutivo)
         const items = await db.historial_movimientos.findAll({
           where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial, cons_movimiento: list },
-          include: ['Producto', 'movimiento'],
+          include: [{
+            model: db.productos,
+            as: "Producto",
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+          }, 'movimiento'],
           limit: newlimit,
           offset: newoffset
         })
@@ -50,19 +55,31 @@ class HistorialMovimientosService {
             ...body.historial,
             cons_movimiento: list
           },
-          include: ['Producto', 'movimiento']
+          include: [{
+            model: db.productos,
+            as: "Producto",
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+          }, 'movimiento']
         })
         return { data: items, total: total };
       } else {
         const items = await db.historial_movimientos.findAll({
           where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial },
-          include: ['Producto', 'movimiento'],
+          include: [{
+            model: db.productos,
+            as: "Producto",
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+          }, 'movimiento'],
           limit: newlimit,
           offset: newoffset
         })
         const total = await db.historial_movimientos.count({
           where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial },
-          include: ['Producto', 'movimiento']
+          include: [{
+            model: db.productos,
+            as: "Producto",
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+          }, 'movimiento']
         })
         return { data: items, total: total };
       }
@@ -72,13 +89,21 @@ class HistorialMovimientosService {
         let list = moveList.map(item => item.consecutivo)
         const items = await db.historial_movimientos.findAll({
           where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial, cons_movimiento: list },
-          include: ['Producto', 'movimiento']
+          include: [{
+            model: db.productos,
+            as: "Producto",
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+          }, 'movimiento']
         })
         return items;
       } else {
         const items = await db.historial_movimientos.findAll({
           where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial },
-          include: ['Producto', 'movimiento']
+          include: [{
+            model: db.productos,
+            as: "Producto",
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+          }, 'movimiento']
         })
         return items;
       }

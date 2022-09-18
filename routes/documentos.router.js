@@ -79,7 +79,7 @@ router.get('/stock', async (req, res, next) => {
   }
 });
 
-router.get('/movimiento/:consecutivo/:tipo_movimiento', async (req, res) => {
+router.get('/movimiento/:consecutivo/:tipo_movimiento', async (req, res, next) => {
   try {
     const { consecutivo, tipo_movimiento } = req.params
     let htmlTemplate = await movimientosTemplate(consecutivo, tipo_movimiento)
