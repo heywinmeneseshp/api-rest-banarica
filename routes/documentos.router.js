@@ -6,6 +6,7 @@ const service = new PDFService()
 let pedidoTemplate = require("../documents/pedido.pdf")
 let stockTemplate = require("../documents/stock.pdf")
 let movimientosTemplate = require("../documents/movimientos.pdf")
+let trasladoTemplate = require("../documents/traslado.pdf")
 
 const router = express.Router();
 
@@ -78,6 +79,23 @@ router.get('/stock', async (req, res, next) => {
     next(error)
   }
 });
+
+router.get('/traslado/:consecutivo/', async (req, res, next) => {
+  try {
+    const { consecutivo } = req.params
+    let htmlTemplate = await trasladoTemplate(consecutivo)
+    pdf.create(htmlTemplate).toStream((error, stream) => {
+      if (error) {
+        res.end("Error creando PDF: " + error)
+      } else {
+        res.setHeader("Content-Type", "application/pdf");
+        stream.pipe(res);
+      }
+    });
+  } catch (error) {
+    next(error)
+  }
+})
 
 router.get('/movimiento/:consecutivo/:tipo_movimiento', async (req, res, next) => {
   try {

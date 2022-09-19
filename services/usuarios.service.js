@@ -1,6 +1,7 @@
 
 const boom = require('@hapi/boom');
 const bcrypt = require('bcryptjs');
+const { Op } = require('sequelize');
 const db = require('../models');
 
 
@@ -20,7 +21,16 @@ class UsuariosService {
 
   async find() {
     const result = await db.usuarios.findAll();
-    return result;
+    const lista = result.map(item => {
+      delete item.dataValues.password
+      delete item.dataValues.isBlock
+      delete item.dataValues.createdAt
+      delete item.dataValues.updatedAt
+      delete item.dataValues.recovery_token
+      delete item.dataValues.id
+      return item.dataValues
+    })
+    return lista;
   }
 
   async findOne(username) {
@@ -88,7 +98,7 @@ class UsuariosService {
 
   async findUsersByAlmacen(id_almacen) {
     const almacenes = await db.almacenes_por_usuario.findAll({
-      where: {id_almacen }
+      where: { id_almacen }
     });
     return almacenes;
   }
@@ -101,14 +111,16 @@ class UsuariosService {
     return { message: "El item fue eliminado", index };
   }
 
-  async paginate(offset, limit) {
+  async paginate(offset, limit, username) {
+    if (!username) username = ""
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.usuarios.findAll({
+      where: { username: { [Op.like]: `%${username}%` } },
       limit: newlimit,
       offset: newoffset
     });
-    return result;
+    return { data: result, total: result.length };
   }
 
 }

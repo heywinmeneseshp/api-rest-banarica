@@ -7,7 +7,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Pedido</title>
+  <title>Traslado {{traslado}}</title>
   <style>
     .invoice-box {
       max-width: 800px;
@@ -45,7 +45,7 @@
 
     .descripcion {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
 
     .info,
@@ -68,6 +68,10 @@
 
     th {
       height: 12px;
+    }
+
+    .td {
+      width: 70px;
     }
 
     .logo {
@@ -98,7 +102,7 @@
               Tel: (604) 480 5034 - (604) 4805022
             </div>
             <div class="parrafo">
-              www.banarica.com
+              www.banarica.com - facturacion@banarica.com
             </div>
           </span>
 
@@ -107,54 +111,63 @@
           <table class="table table-sm">
             <tbody class="table">
               <tr>
-                <td class="col-5">
-                  <b>Movimiento:</b>
+                <td class="col-xs-5">
+                  <b>Traslado</b>
                 </td>
-                <td class="col-7">
-                  {{movimiento}}
-                </td>
-              </tr>
-            </tbody>
-            <tbody class="table">
-              <tr>
-                <td class="col-5">
-                  <b>Fecha</b>
-                </td>
-                <td class="col-7">
-                  {{fecha}}
+                <td class="col-xs-7">
+                  {{Traslado}}
                 </td>
               </tr>
-            </tbody>
-            <tbody class="table">
-              <tr>
-                <td class="col-6">
-                  <b>Comercializadora</b>
-                </td>
-                <td class="col-6">
-                  {{comercializadora}}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <table class="table">
 
-            <tbody class="table-active">
-              <tr class="table-second">
-                <td class="col-6">
+              <tr>
+                <td class="col-xs-5">
+                  <b>Orígen</b>
+                </td>
+                <td class="col-xs-7">
+                  {{origen}}
+                </td>
+              </tr>
+
+              <tr>
+                <td class="col-xs-5">
+                  <b>Destino</b>
+                </td>
+                <td class="col-xs-7">
+                  {{destino}}
+                  </br>
+                  </br>
+                  </br>
+                </td>
+
+              </tr>
+
+              <tr>
+                <td class="col-xs-5">
                   <b>Semana</b>
                 </td>
-                <td class="col-6">
+                <td class="col-xs-7">
                   {{semana}}
                 </td>
               </tr>
-              <tr class="table-second">
-                <td class="col-6">
-                  <b>Consecutivo:</b>
+
+              <tr>
+                <td class="col-xs-5">
+                  <b>Salida</b>
                 </td>
-                <td class="col-6">
-                  {{consecutivo}}
+                <td class="col-xs-7">
+                  {{salida}}
                 </td>
               </tr>
+
+              <tr>
+                <td class="col-xs-5">
+                  <b>Llegada</b>
+                </td>
+                <td class="col-xs-7">
+                  {{llegada}}
+                </td>
+              </tr>
+
             </tbody>
           </table>
         </div>
@@ -164,14 +177,14 @@
           <table class="table table-hover table-sm">
             <thead>
               <tr>
-                <th class="col-xs-3">
-                  Almacen
-                </th>
-                <th class="col-xs-1">
+                <th class="col-xs-2">
                   Cod
                 </th>
-                <th class="col-xs-5">
+                <th class="col-xs-4">
                   Producto
+                </th>
+                <th class="col-xs-3">
+                  Bultos
                 </th>
                 <th class="col-xs-3 autorizado">
                   Cantidad
@@ -186,31 +199,48 @@
           </table>
         </div>
       </div>
-      <div class="row margin-top2">
-        <div class="col-xs-5 autorizado">
-          REALIZADO POR:
-        </div>
-        <div class="col-xs-7 border-dark descripcion">
-          {{usuario}}
-        </div>
-      </div>
-      <div class="row">
-        <div class="col-xs-12 margin-top">
 
+
+      <div class="row">
+        <div class="col-xs-12">
           <table class="table table-sm">
             <tbody>
               <tr>
-                <td class="col-xs-2'">
-                  <b>Observaciones:</b>
-                </td>
-                <td class="col-xs-10">
-                  {{observaciones}}
+                <td class="col-xs-12">
+                  Observaciones: {{observaciones}}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
+
+
+      <div class="row margin-top2">
+        <div class="col-xs-12 margin-top">
+
+            <table class="table table-sm">
+              <tbody>
+                <tr>
+                  <td class="td">Transportador:</td>
+                  <td>{{tranportadora}}</td>
+                </tr>
+                <tr>
+                  <td>Conductor:</td>
+                  <td>{{conductor}}</td>
+                </tr>
+                <tr>
+                  <td>Vehículo:</td>
+                  <td>{{vehiculo}}</td>
+                </tr>
+              </tbody>
+            </table>
+
+
+        </div>
+      </div>
+
+
     </div>
   </div>
 </body>

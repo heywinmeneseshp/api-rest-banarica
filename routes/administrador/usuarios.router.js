@@ -27,8 +27,8 @@ router.get("/paginar",
   checkSuperAdminRole,
   async (req, res, next) => {
     try {
-      const { page, limit } = req.query;
-      const items = await service.paginate(page, limit);
+      const { page, limit, username } = req.query;
+      const items = await service.paginate(page, limit, username);
       res.json(items);
     } catch (error) {
       next(error);

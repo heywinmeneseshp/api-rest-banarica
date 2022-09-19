@@ -30,6 +30,17 @@ router.post("/paginar", async (req, res, next) => {
   }
 });
 
+router.post("/filter", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const items = await service.filter(body);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+
 //ACTUALIZACIONES PARCIALES
 router.patch("/modificar/:id",
   validatorHandler(modificarTraslado, "body"),

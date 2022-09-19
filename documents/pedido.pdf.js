@@ -107,8 +107,7 @@ module.exports = async (cons_pedido) => {
                       {{proveedor}}
                     </td>
                   </tr>
-                </tbody>
-                <tbody class="table">
+
                   <tr >
                     <td class="col-5">
                       <b>Fecha</b>
@@ -117,37 +116,44 @@ module.exports = async (cons_pedido) => {
                       {{fecha}}
                     </td>
                   </tr>
-                </tbody>
-                <tbody class="table">
+
                   <tr>
-                    <td class="col-6">
+                    <td class="col-5">
                       <b>Comercializadora</b>
                     </td>
-                    <td class="col-6">
+                    <td class="col-7">
                       {{comercializadora}}
+                      </br>
+                      </br>
+                      </br>
                     </td>
+
                   </tr>
+
+                </tr>
+
+                  <tr >
+                  <td class="col-5">
+                    <b>Semana</b>
+                  </td>
+                  <td class="col-7">
+                    {{semana}}
+                  </td>
+                </tr>
+                <tr >
+                  <td class="col-5">
+                    <b>Pedido</b>
+                  </td>
+                  <td class="col-7">
+                    {{pedido}}
+                  </td>
+                </tr>
                 </tbody>
               </table>
               <table class="table">
 
                 <tbody class="table-active">
-                  <tr class="table-second">
-                    <td class="col-6">
-                      <b>Semana</b>
-                    </td>
-                    <td class="col-6">
-                      {{semana}}
-                    </td>
-                  </tr>
-                  <tr class="table-second">
-                    <td class="col-6">
-                      <b>Pedido</b>
-                    </td>
-                    <td class="col-6">
-                      {{pedido}}
-                    </td>
-                  </tr>
+
                 </tbody>
               </table>
             </div>
