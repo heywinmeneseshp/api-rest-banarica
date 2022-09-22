@@ -115,12 +115,15 @@ class UsuariosService {
     if (!username) username = ""
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
+    const total = await db.usuarios.count({
+      where: { username: { [Op.like]: `%${username}%` } },
+    });
     const result = await db.usuarios.findAll({
       where: { username: { [Op.like]: `%${username}%` } },
       limit: newlimit,
       offset: newoffset
     });
-    return { data: result, total: result.length };
+    return { data: result, total: total };
   }
 
 }
