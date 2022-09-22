@@ -1,5 +1,6 @@
 
 const boom = require('@hapi/boom');
+const { Op } = require('sequelize');
 const db = require('../models');
 
 class AlmacenesService {
@@ -35,14 +36,18 @@ class AlmacenesService {
     return { message: "El almacen fue eliminado", consecutivo }
   }
 
-  async paginate(offset, limit) {
+  async paginate(offset, limit, almacen) {
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
-    const result = await db.almacenes.findAll({
-    limit: newlimit,
-    offset: newoffset
+    let newoffset = (parseInt(offset) - 1) * newlimit;
+    const total = await db.almacenes.count({
+      where: { nombre: { [Op.like]: `%${almacen}%` } }
     });
-    return result;
+    const result = await db.almacenes.findAll({
+      where: { nombre: { [Op.like]: `%${almacen}%` } },
+      limit: newlimit,
+      offset: newoffset
+    });
+    return { data: result, total: total };
   }
 
 }

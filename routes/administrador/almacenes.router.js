@@ -20,8 +20,8 @@ router.get("/", async (req, res, next) => {
 //Paginar
 router.get("/paginar", async (req, res, next) => {
   try {
-    const { page, limit } = req.query;
-    const items = await service.paginate(page, limit);
+    const { page, limit, almacen } = req.query;
+    const items = await service.paginate(page, limit, almacen);
     res.json(items);
   } catch (error) {
     next(error);
@@ -39,35 +39,35 @@ router.get("/:consecutivo", async (req, res, next) => {
 });
 
 router.post("/",
-validatorHandler(crearAlmacen, "body"),
-async (req, res, next) => {
-  try {
-    const body = req.body;
-    const almacenNuevo = await service.create(body);
-    res.json({
-      message: "Almacen creado",
-      data: almacenNuevo
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(crearAlmacen, "body"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const almacenNuevo = await service.create(body);
+      res.json({
+        message: "Almacen creado",
+        data: almacenNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 router.patch("/:consecutivo",
-validatorHandler(actualizarAlmacen, "body"),
-async (req, res, next) => {
-  try {
-    const { consecutivo } = req.params;
-    const body = req.body;
-    await service.update(consecutivo, body)
-    res.json({
-      message: "Almacen actualizado",
-      data: body
-    })
-  } catch (error) {
-    next(error)
-  }
-});
+  validatorHandler(actualizarAlmacen, "body"),
+  async (req, res, next) => {
+    try {
+      const { consecutivo } = req.params;
+      const body = req.body;
+      await service.update(consecutivo, body)
+      res.json({
+        message: "Almacen actualizado",
+        data: body
+      })
+    } catch (error) {
+      next(error)
+    }
+  });
 
 router.delete("/:consecutivo", async (req, res, next) => {
   const { consecutivo } = req.params;
