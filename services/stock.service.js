@@ -28,11 +28,12 @@ class StockServices {
       let newlimit = parseInt(body.pagination.limit);
       let newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
       const data = await db.stock.findAll({
-        where: body.stock, include: [{
+        where: { ...body.stock, cantidad: {[Op.ne]: [0]}},
+        include: [{
           model: db.productos,
           as: "producto",
-          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%`}, name: { [Op.like]: `%${body.producto.name}%`}}
-        },{
+          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` }, name: { [Op.like]: `%${body.producto.name}%` } }
+        }, {
           model: db.almacenes,
           as: "almacen",
           where: body.almacen
@@ -41,11 +42,12 @@ class StockServices {
         limit: newlimit
       });
       const total = await db.stock.count({
-        where: body.stock, include: [{
+        where: { ...body.stock, cantidad: {[Op.ne]: [0]}},
+        include: [{
           model: db.productos,
           as: "producto",
-          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%`}, name: { [Op.like]: `%${body.producto.name}%`}}
-        },{
+          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` }, name: { [Op.like]: `%${body.producto.name}%` } }
+        }, {
           model: db.almacenes,
           as: "almacen",
           where: body.almacen
@@ -57,12 +59,12 @@ class StockServices {
         where: body.stock, include: ['almacen', {
           model: db.productos,
           as: "producto",
-          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%`}, name: { [Op.like]: `%${body.producto.name}%`}}
-        },{
-          model: db.almacenes,
-          as: "almacen",
-          where: body.almacen
-        }]
+          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` }, name: { [Op.like]: `%${body.producto.name}%` } }
+        }, {
+            model: db.almacenes,
+            as: "almacen",
+            where: body.almacen
+          }]
       });
       return data;
     }
@@ -92,10 +94,10 @@ class StockServices {
       await db.stock.findOrCreate({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto, cantidad: body.cantidad, isBlock: false } });
       return item[0];
     } else {
-    const suma = parseFloat(item[0].cantidad) + parseFloat(body.cantidad);
-    await db.stock.update({ cantidad: suma }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    const data = { cons_producto: cons_producto, cantidad: suma }
-    return { message: "El item fue actualizado", data: data };
+      const suma = parseFloat(item[0].cantidad) + parseFloat(body.cantidad);
+      await db.stock.update({ cantidad: suma }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
+      const data = { cons_producto: cons_producto, cantidad: suma }
+      return { message: "El item fue actualizado", data: data };
     }
   }
 
