@@ -1,4 +1,5 @@
 const boom = require('@hapi/boom');
+const { Op } = require('sequelize');
 const { generarIDProAndCat } = require('../middlewares/generarId.handler');
 const db = require("../models");
 
@@ -62,14 +63,19 @@ class combosService {
     return { message: "El combo fue eliminado", consecutivo, }
   }
 
-  async paginate(offset, limit) {
+  async paginate(offset, limit, nombre) {
+    if(!nombre) nombre = ""
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
+    let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.combos.findAll({
-    limit: newlimit,
-    offset: newoffset
+      where: { nombre: { [Op.like]: `%${nombre}%` } },
+      limit: newlimit,
+      offset: newoffset
     });
-    return result;
+    const total = await db.combos.count({
+      where: { nombre: { [Op.like]: `%${nombre}%` } },
+    });
+    return { data: result, total: total };
   }
 
 }

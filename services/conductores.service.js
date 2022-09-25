@@ -1,5 +1,6 @@
 
 const boom = require('@hapi/boom');
+const { Op } = require('sequelize');
 const { generarID } = require("../middlewares/generarId.handler");
 const db = require("../models");
 
@@ -48,14 +49,19 @@ class ConductoresService {
     }
   }
 
-  async paginate(offset, limit) {
+  async paginate(offset, limit, nombre) {
+    if (!nombre) nombre = ""
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
+    let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.conductores.findAll({
-    limit: newlimit,
-    offset: newoffset
+      where: { conductor: { [Op.like]: `%${nombre}%` } },
+      limit: newlimit,
+      offset: newoffset
     });
-    return result;
+    const total = await db.conductores.count({
+      where: { conductor: { [Op.like]: `%${nombre}%` } }
+    });
+    return { data: result, total: total };
   }
 }
 

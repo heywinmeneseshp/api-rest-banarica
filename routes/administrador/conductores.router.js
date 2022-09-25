@@ -21,8 +21,8 @@ router.get("/", async (req, res) => {
 //Paginar
 router.get("/paginar", async (req, res, next) => {
   try {
-    const { page, limit } = req.query;
-    const items = await service.paginate(page, limit);
+    const { page, limit, nombre } = req.query;
+    const items = await service.paginate(page, limit, nombre);
     res.json(items);
   } catch (error) {
     next(error);
@@ -41,38 +41,38 @@ router.get("/:id", async (req, res, next) => {
 
 //Crear
 router.post("/",
-validatorHandler(crearConductor, "body"),
-async (req, res, next) => {
-  try {
-    const body = req.body;
-    const itemNuevo = await service.create(body);
-    res.json({
-      message: "item creado",
-      data: itemNuevo
-    })
-  } catch (error) {
-    next(error);
-  }
+  validatorHandler(crearConductor, "body"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const itemNuevo = await service.create(body);
+      res.json({
+        message: "item creado",
+        data: itemNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
 
-});
+  });
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/:id",
-validatorHandler(actualizarConductor, "body"),
-async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const body = req.body;
-    const item = await service.update(id, body)
-    res.json({
-      message: 'El item fue actualizado',
-      data: item,
-      id
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(actualizarConductor, "body"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params
+      const body = req.body;
+      const item = await service.update(id, body)
+      res.json({
+        message: 'El item fue actualizado',
+        data: item,
+        id
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 //ELIMINAR
 router.delete("/:id", async (req, res, next) => {

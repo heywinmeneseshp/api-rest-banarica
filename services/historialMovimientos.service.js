@@ -85,7 +85,10 @@ class HistorialMovimientosService {
       }
     } else {
       if (body?.movimiento) {
-        const moveList = await db.movimientos.findAll({ where: body.movimiento })
+        if (!body?.movimiento?.fecha) body.movimiento = { ...body.movimiento, fecha: "" }
+        const moveList = await db.movimientos.findAll({
+          where: {...body.movimiento, fecha: {[Op.like]: `%${body?.movimiento?.fecha}%`} }
+        })
         let list = moveList.map(item => item.consecutivo)
         const items = await db.historial_movimientos.findAll({
           where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial, cons_movimiento: list },

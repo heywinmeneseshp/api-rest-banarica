@@ -20,10 +20,10 @@ router.get("/", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
-router.get("/paginar", async (req, res, next) => {
+router.post("/paginar", async (req, res, next) => {
   try {
-    const { page, limit } = req.query;
-    const items = await service.paginate(page, limit);
+    const { page, limit, almacen, cons_categoria, producto, semana } = req.body;
+    const items = await service.paginate(page, limit, almacen, cons_categoria, producto, semana);
     res.json(items);
   } catch (error) {
     next(error);
@@ -52,37 +52,37 @@ router.get("/listar/:id", async (req, res, next) => {
 
 
 router.post("/listar",
-validatorHandler(ingresarConsPedido, "body"),
-async (req, res, next) => {
-  try {
-    const body = req.body;
-    const itemNuevo = await service.createCons(body);
-    res.json({
-      message: "item creado",
-      data: itemNuevo
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(ingresarConsPedido, "body"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const itemNuevo = await service.createCons(body);
+      res.json({
+        message: "item creado",
+        data: itemNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/listar/:id",
-validatorHandler(recibirPedido, "body"),
-async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const body = req.body;
-    const item = await service.receiveOrder(id, body)
-    res.json({
-      message: 'El item fue actualizado',
-      data: item,
-      id
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(recibirPedido, "body"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params
+      const body = req.body;
+      const item = await service.receiveOrder(id, body)
+      res.json({
+        message: 'El item fue actualizado',
+        data: item,
+        id
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 router.delete("/listar/:id", async (req, res, next) => {
   const { id } = req.params
@@ -106,39 +106,39 @@ router.get("/:id", async (req, res, next) => {
 
 //Crear
 router.post("/",
-validatorHandler(crearPedido, "body"),
-async (req, res, next) => {
-  try {
-    const body = req.body;
-    console.log(body)
-    const itemNuevo = await service.create(body);
-    res.json({
-      message: "item creado",
-      data: itemNuevo
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(crearPedido, "body"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      console.log(body)
+      const itemNuevo = await service.create(body);
+      res.json({
+        message: "item creado",
+        data: itemNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/:id",
-validatorHandler(editarPedido, "body"),
-async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const body = req.body;
-    const item = await service.update(id, body)
-    res.json({
-      message: 'El item fue actualizado',
-      data: item,
-      id
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(editarPedido, "body"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params
+      const body = req.body;
+      const item = await service.update(id, body)
+      res.json({
+        message: 'El item fue actualizado',
+        data: item,
+        id
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 //ELIMINAR
 router.delete("/:id", async (req, res, next) => {

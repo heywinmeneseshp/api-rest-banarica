@@ -1,5 +1,6 @@
 
 const boom = require('@hapi/boom');
+const { Op } = require('sequelize');
 const db = require('../models');
 
 class pedidosService {
@@ -44,7 +45,7 @@ class pedidosService {
   async findOneCons(consecutivo) {
     const item = await db.tabla_pedidos.findOne({
       where: { consecutivo: consecutivo },
-      include: [ {
+      include: [{
         model: db.pedidos,
         as: "pedido",
         include: ["producto", {
@@ -69,7 +70,7 @@ class pedidosService {
   }
 
   async receiveOrder(id, changes) {
-    const pedido = await db.tabla_pedidos.findOne({where: { consecutivo: id}})
+    const pedido = await db.tabla_pedidos.findOne({ where: { consecutivo: id } })
     if (!pedido) throw boom.notFound('El item no existe')
     await pedido.update(changes)
     return pedido
@@ -82,20 +83,59 @@ class pedidosService {
     return { message: "El item fue eliminado" };
   }
 
-  async paginate(offset, limit) {
-    let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
-    const total = await db.pedidos.count({
-      limit: newlimit,
-      offset: newoffset,
-      include: ["tabla", "producto", "almacen"]
+  async paginate(offset, limit, almacen, cons_categoria, producto, semana) {
+    if (!cons_categoria) cons_categoria = ""
+    if (!producto) producto = ""
+    if (!semana) semana = ""
+    if (!offset || !limit) {
+      return await db.pedidos.findAll({
+        where: { cons_almacen_destino: almacen },
+        include: [{
+          model: db.tabla_pedidos,
+          as: "tabla",
+          where: { cons_semana: { [Op.like]: `%${semana}%` } }
+
+        }, {
+          model: db.productos,
+          as: "producto",
+          where: { name: { [Op.like]: `%${producto}%` }, cons_categoria: { [Op.like]: `%${cons_categoria}%` } }
+        }, "almacen"]
       });
-    const result = await db.pedidos.findAll({
-    limit: newlimit,
-    offset: newoffset,
-    include: ["tabla", "producto", "almacen"]
-    });
-    return {data: result, total: total};
+    } else {
+      let newlimit = parseInt(limit);
+      let newoffset = (parseInt(offset) - 1) * newlimit;
+      const total = await db.pedidos.count({
+        where: { cons_almacen_destino: almacen },
+        limit: newlimit,
+        offset: newoffset,
+        include: [{
+          model: db.tabla_pedidos,
+          as: "tabla",
+          where: { cons_semana: { [Op.like]: `%${semana}%` } }
+
+        }, {
+          model: db.productos,
+          as: "producto",
+          where: { name: { [Op.like]: `%${producto}%` }, cons_categoria: { [Op.like]: `%${cons_categoria}%` } }
+        }, "almacen"]
+      });
+      const result = await db.pedidos.findAll({
+        where: { cons_almacen_destino: almacen },
+        limit: newlimit,
+        offset: newoffset,
+        include: [{
+          model: db.tabla_pedidos,
+          as: "tabla",
+          where: { cons_semana: { [Op.like]: `%${semana}%` } }
+
+        }, {
+          model: db.productos,
+          as: "producto",
+          where: { name: { [Op.like]: `%${producto}%` }, cons_categoria: { [Op.like]: `%${cons_categoria}%` } }
+        }, "almacen"]
+      });
+      return { data: result, total: total };
+    }
   }
 }
 

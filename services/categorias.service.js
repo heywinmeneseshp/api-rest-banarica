@@ -1,10 +1,11 @@
 const boom = require('@hapi/boom');
+const { Op } = require('sequelize');
 const { generarIDProAndCat } = require('../middlewares/generarId.handler');
 const db = require('../models');
 
 class CategoriasService {
 
-  constructor() {}
+  constructor() { }
 
 
   async create(data) {
@@ -49,15 +50,21 @@ class CategoriasService {
     return { message: "La categoria fue eliminado", consecutivo, }
   }
 
-  async paginate(offset, limit) {
+  async paginate(offset, limit, nombre) {
+    if (!nombre) nombre = ""
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
+    let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.categorias.findAll({
-    limit: newlimit,
-    offset: newoffset
+      where: { nombre: { [Op.like]: `%${nombre}%` } },
+      limit: newlimit,
+      offset: newoffset
     });
-    return result;
+    const total = await db.categorias.count({
+      where: { nombre: { [Op.like]: `%${nombre}%` } },
+    });
+    return { data: result, total: total };
   }
+
 
 }
 

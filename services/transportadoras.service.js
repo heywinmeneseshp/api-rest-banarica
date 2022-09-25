@@ -1,31 +1,17 @@
 
 const boom = require('@hapi/boom');
-const { generarID } = require("../middlewares/generarId.handler");
+const { Op } = require('sequelize');
 const db = require('../models');
 
 
 class TransportadorasService {
 
-  constructor() {
-    this.items = [];
-    this.generate();
-  }
-
-  generate() {
-    this.items.push({
-      id: "TP-0",
-      razon_social: "Ramiro Perez",
-      direccion: "Calle falsa 123",
-      tel: "3226737763",
-      email: "heywin1@gmail.com",
-      isBlock: false
-    });
-  }
+  constructor() { }
 
   async create(data) {
-    const {count} = await db.transportadoras.findAndCountAll();
+    const { count } = await db.transportadoras.findAndCountAll();
     const consecutivo = "TP-" + count;
-    const itemNuevo = { consecutivo, ...data   }
+    const itemNuevo = { consecutivo, ...data }
     await db.transportadoras.create(itemNuevo);
     return itemNuevo
   }
@@ -54,14 +40,19 @@ class TransportadorasService {
     return { message: "El item fue eliminado" };
   }
 
-  async paginate(offset, limit) {
+  async paginate(offset, limit, nombre) {
+    if(!nombre) nombre = ""
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
+    let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.transportadoras.findAll({
-    limit: newlimit,
-    offset: newoffset
+      where: {razon_social: {[Op.like]: `%${nombre}%`}},
+      limit: newlimit,
+      offset: newoffset
     });
-    return result;
+    const total = await db.transportadoras.count({
+      where: {razon_social: {[Op.like]: `%${nombre}%`}}
+    });
+    return { data: result, total: total };
   }
 }
 

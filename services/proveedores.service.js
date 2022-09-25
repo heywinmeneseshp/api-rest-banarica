@@ -1,5 +1,6 @@
 
 const boom = require('@hapi/boom');
+const { Op } = require('sequelize');
 const { generarID } = require("../middlewares/generarId.handler");
 const db = require('../models');
 
@@ -53,16 +54,21 @@ class ProveedoresService {
     return { message: "El item fue eliminado" };
   }
 
-  async paginate(offset, limit) {
+  async paginate(offset, limit, nombre) {
+    console.log(nombre, "este esdsdsdsdsd" )
+    if(!nombre) nombre = ""
     let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset)-1 )* newlimit;
+    let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.proveedores.findAll({
-    limit: newlimit,
-    offset: newoffset
+      where: { razon_social: { [Op.like]: `%${nombre}%` } },
+      limit: newlimit,
+      offset: newoffset
     });
-    return result;
+    const total = await db.proveedores.count({
+      where: { razon_social: { [Op.like]: `%${nombre}%` } },
+    });
+    return { data: result, total: total };
   }
-
 }
 
 module.exports = ProveedoresService
