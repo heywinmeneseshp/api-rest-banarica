@@ -37,7 +37,9 @@ module.exports = (sequelize, DataTypes) => {
     tipo_movimiento: DataTypes.STRING,
     razon_movimiento: DataTypes.STRING,
     cantidad: DataTypes.FLOAT,
-    cons_pedido: DataTypes.STRING
+    cons_pedido: DataTypes.STRING,
+    realizado_por: DataTypes.STRING,
+    aprobado_por: DataTypes.STRING
   }, {
     sequelize,
     modelName: 'historial_movimientos',

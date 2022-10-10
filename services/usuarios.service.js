@@ -116,10 +116,16 @@ class UsuariosService {
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const total = await db.usuarios.count({
-      where: { username: { [Op.like]: `%${username}%` } },
+      where: {
+        username: { [Op.like]: `%${username}%` },
+        id_rol: { [Op.notIn]: { [Op.or]: ["Super seguridad", "Seguridad"] } }
+      },
     });
     const result = await db.usuarios.findAll({
-      where: { username: { [Op.like]: `%${username}%` } },
+      where: {
+        username: { [Op.like]: `%${username}%` },
+        id_rol: { [Op.notIn]:  ["Super seguridad", "Seguridad"]  }
+      },
       limit: newlimit,
       offset: newoffset
     });

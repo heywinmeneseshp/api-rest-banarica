@@ -44,7 +44,13 @@ class ProductosService {
   }
 
   async findAllByCategory(category) {
-    const productos = await db.productos.findAll({ where: { cons_categoria: category } })
+    const productos = await db.productos.findAll({
+      include: [{
+        model: db.categorias,
+        as: 'categoria',
+        where: { consecutivo: category }
+      }]
+    })
     if (!productos) throw boom.notFound('No existen productos en esta categoria')
     return productos;
   }

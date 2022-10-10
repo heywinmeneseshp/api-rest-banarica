@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon index.js",
     "start": "node index.js",
+    "migrations:generate": "sequelize-cli migration:generate --name",
     "lint": "eslint"
   },
   "author": "Heywin Meneses",
@@ -45,3 +46,5 @@
     "node": "16.x"
   }
 }
+
+

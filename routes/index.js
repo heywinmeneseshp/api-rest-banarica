@@ -25,6 +25,8 @@ const stock = require("./stock.router.js");
 const semanasRouter = require("./administrador/semanas.router.js");
 const documentosRouter = require("./documentos.router")
 
+const seguridadRouter = require('./seguridad/seguridad.router')
+
 function routerApi(app) {
   const router = express.Router();
   app.use('/api/v1', router);
@@ -51,6 +53,8 @@ function routerApi(app) {
 
   router.use('/semanas', semanasRouter);
   router.use('/documentos', documentosRouter);
+
+  router.use('/seguridad', seguridadRouter);
 }
 
 module.exports = routerApi;

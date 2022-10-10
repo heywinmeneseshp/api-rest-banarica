@@ -1,8 +1,6 @@
 const express = require("express");
 const pdf = require('html-pdf');
 
-const PDFService = require("../services/pdf.service")
-const service = new PDFService()
 let pedidoTemplate = require("../documents/pedido.pdf")
 let stockTemplate = require("../documents/stock.pdf")
 let movimientosTemplate = require("../documents/movimientos.pdf")

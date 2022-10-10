@@ -5,18 +5,8 @@ const db = require('../models');
 
 class SemanasService {
 
-  constructor() {
-    this.items = [];
-    this.generate();
-  }
+  constructor() {}
 
-  generate() {
-    this.items.push({
-      id: "S1-22",
-      semana: "22",
-      anho: "2020"
-    });
-  }
 
   async create(data) {
     const consecutivo = generarIDSemana(data.semana, data.anho);
