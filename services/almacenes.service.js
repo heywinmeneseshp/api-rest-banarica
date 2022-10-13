@@ -13,7 +13,17 @@ class AlmacenesService {
   }
 
   async find() {
-    return await db.almacenes.findAll();
+    const res = await db.almacenes.findAll()
+    const almacenes = res.sort((a,b)=>{
+      if (a.dataValues.nombre == b.dataValues.nombre) {
+        return 0;
+      }
+      if (a.dataValues.nombre < b.dataValues.nombre) {
+        return -1;
+      }
+      return 1;
+    })
+    return almacenes;
   }
 
   async findOne(consecutivo) {

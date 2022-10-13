@@ -166,7 +166,7 @@ module.exports = async (body) => {
                     Teórico
                   </th>
                   <th>
-                    Físcio
+                    Físico
                   </th>
                 </tr>
               </thead>
@@ -272,9 +272,6 @@ module.exports = async (body) => {
 
   let productos = sotck
   let finca = sotck[0].dataValues.almacen.dataValues.nombre
-
-
-
 
   productos.sort((a, b) => {
     if (a.dataValues.cons_producto == b.dataValues.cons_producto) {
