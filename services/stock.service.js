@@ -28,11 +28,15 @@ class StockServices {
       let newlimit = parseInt(body.pagination.limit);
       let newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
       const data = await db.stock.findAll({
-        where: { ...body.stock, cantidad: {[Op.ne]: [0]}},
+        where: { ...body.stock, cantidad: { [Op.ne]: [0] } },
         include: [{
           model: db.productos,
           as: "producto",
-          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` }, name: { [Op.like]: `%${body.producto.name}%` } }
+          where: {
+            cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` },
+            name: { [Op.like]: body?.producto?.name ? `%${body?.producto?.name}%` : `%%`  },
+            consecutivo: { [Op.like]: body?.producto?.consecutivo ? `%${body?.producto?.consecutivo}%` : `%%` }
+          }
         }, {
           model: db.almacenes,
           as: "almacen",
@@ -42,11 +46,15 @@ class StockServices {
         limit: newlimit
       });
       const total = await db.stock.count({
-        where: { ...body.stock, cantidad: {[Op.ne]: [0]}},
+        where: { ...body.stock, cantidad: { [Op.ne]: [0] } },
         include: [{
           model: db.productos,
           as: "producto",
-          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` }, name: { [Op.like]: `%${body.producto.name}%` } }
+          where: {
+            cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` },
+            name: { [Op.like]: body?.producto?.name ? `%${body?.producto?.name}%` : `%%` },
+            consecutivo: { [Op.like]: body?.producto?.consecutivo ? `%${body?.producto?.consecutivo}%` : `%%` }
+          }
         }, {
           model: db.almacenes,
           as: "almacen",
@@ -59,7 +67,11 @@ class StockServices {
         where: body.stock, include: ['almacen', {
           model: db.productos,
           as: "producto",
-          where: { cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` }, name: { [Op.like]: `%${body.producto.name}%` } }
+          where: {
+            cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` },
+            name: { [Op.like]: body?.producto?.name ? `%${body?.producto?.name}%` : `%%` },
+            consecutivo: { [Op.like]: body?.producto?.consecutivo ? `%${body?.producto?.consecutivo}%` : `%%`}
+          }
         }, {
             model: db.almacenes,
             as: "almacen",
