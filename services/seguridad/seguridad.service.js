@@ -1,6 +1,7 @@
 const boom = require('@hapi/boom');
 const db = require('../../models');
 const { Op } = require('sequelize');
+const serial_de_articulos = require('../../models/serial_de_articulos');
 
 
 class SeguridadService {
@@ -15,11 +16,41 @@ class SeguridadService {
   }
 
   async actualizarSeriales(data) {
-    data.map(async item => {
-      const itemUpdated = item;
-      await db.serial_de_articulos.update(itemUpdated, { where: { serial: item.serial } });
+    const newData = data.map(async item => {
+      let previous = await db.serial_de_articulos.findOne({ where: { serial: item.serial } })
+      if (previous != null) {
+        const res = await db.serial_de_articulos.update(item, { where: { serial: item.serial } });
+        return { previous: previous, current: item, updated: res }
+      } else {
+        const res = await db.serial_de_articulos.create({
+          cons_producto: item.cons_producto,
+          serial: item.serial,
+          bag_pack: 'null',
+          s_pack: 'null',
+          m_pack: 'null',
+          l_pack: 'null',
+          cons_almacen: item.cons_almacen,
+          cons_movimiento: item?.cons_movimiento,
+          available: false
+        })
+        return { previous: item, current: res, res: 0 }
+      }
     })
-    return { message: "Datos cargados con exito" }
+    const result = await Promise.all(newData)
+    return { message: "Datos cargados con exito", data: result }
+  }
+
+  async encontrarUnserial(data) {
+    const producto = data?.producto
+    delete data.producto
+    return await db.serial_de_articulos.findOne({
+      where: data,
+      include: [{
+        model: db.productos,
+        as: "producto",
+        where: producto
+      }]
+    })
   }
 
   async listarSeriales(pagination, body) {
@@ -37,7 +68,7 @@ class SeguridadService {
           l_pack: { [Op.like]: `%${body.l_pack}%` },
           cons_almacen: { [Op.like]: `%${body.cons_almacen}%` },
           available: { [Op.or]: available }
-        },
+        }
       });
       const result = await db.serial_de_articulos.findAll({
         where: {
@@ -50,20 +81,36 @@ class SeguridadService {
           cons_almacen: { [Op.like]: `%${body.cons_almacen}%` },
           available: { [Op.or]: available }
         },
+        include: [{
+          model: db.movimientos,
+          as: 'movimiento'
+        }, {
+          model: db.productos,
+          as: 'producto'
+        }],
         limit: newlimit,
         offset: newoffset
       });
       return { data: result, total: total };
     } else {
       const result = await db.serial_de_articulos.findAll({
-        cons_producto: { [Op.like]: `%${body.cons_producto}%` },
-        serial: { [Op.like]: `%${body.serial}%` },
-        bag_pack: { [Op.like]: `%${body.bag_pack}%` },
-        s_pack: { [Op.like]: `%${body.s_pack}%` },
-        m_pack: { [Op.like]: `%${body.m_pack}%` },
-        l_pack: { [Op.like]: `%${body.l_pack}%` },
-        cons_almacen: { [Op.like]: `%${body.cons_almacen}%` },
-        available: { [Op.or]: available }
+        where: {
+          cons_producto: { [Op.like]: `%${body.cons_producto}%` },
+          serial: { [Op.like]: `%${body.serial}%` },
+          bag_pack: { [Op.like]: `%${body.bag_pack}%` },
+          s_pack: { [Op.like]: `%${body.s_pack}%` },
+          m_pack: { [Op.like]: `%${body.m_pack}%` },
+          l_pack: { [Op.like]: `%${body.l_pack}%` },
+          cons_almacen: { [Op.like]: `%${body.cons_almacen}%` },
+          available: { [Op.or]: available }
+        },
+        include: [{
+          model: db.movimientos,
+          as: 'movimiento'
+        }, {
+          model: db.productos,
+          as: 'producto'
+        }]
       });
       return result;
     }

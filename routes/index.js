@@ -25,7 +25,8 @@ const stock = require("./stock.router.js");
 const semanasRouter = require("./administrador/semanas.router.js");
 const documentosRouter = require("./documentos.router")
 
-const seguridadRouter = require('./seguridad/seguridad.router')
+const seguridadRouter = require('./seguridad/seguridad.router');
+const confiRouter = require('./configuracion.router');
 
 function routerApi(app) {
   const router = express.Router();
@@ -55,6 +56,7 @@ function routerApi(app) {
   router.use('/documentos', documentosRouter);
 
   router.use('/seguridad', seguridadRouter);
+  router.use('/confi', confiRouter);
 }
 
 module.exports = routerApi;

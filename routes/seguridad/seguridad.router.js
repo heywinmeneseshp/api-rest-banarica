@@ -4,6 +4,18 @@ const router = express.Router();
 const SeguridadService = require('../../services/seguridad/seguridad.service')
 const service = new SeguridadService()
 
+
+//LISTAR SERIALES
+router.post("/encontrar-serial", async (req, res, next) => {
+  try {
+    const body = req.body
+    const result = await service.encontrarUnserial(body)
+    res.json(result)
+  } catch (e) {
+    next(e)
+  }
+});
+
 //LISTAR SERIALES
 router.post("/seriales", async (req, res, next) => {
   try {

@@ -25,6 +25,8 @@ module.exports = (sequelize, DataTypes) => {
     observaciones: DataTypes.STRING,
     respuesta: DataTypes.STRING,
     cons_semana: DataTypes.STRING,
+    realizado_por: DataTypes.STRING,
+    aprobado_por: DataTypes.STRING,
     fecha: DataTypes.STRING
   }, {
     sequelize,

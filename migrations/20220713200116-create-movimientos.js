@@ -28,7 +28,12 @@ module.exports = {
       cons_semana: {
         type: Sequelize.STRING
       },
-      fecha: {
+      aprobado_por: {
+        type: Sequelize.STRING
+      }, fecha: {
+        type: Sequelize.STRING
+      },
+      realizado_por: {
         type: Sequelize.STRING
       },
       createdAt: {

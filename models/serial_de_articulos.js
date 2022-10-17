@@ -10,6 +10,16 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
+      this.hasOne(models.productos, {
+        as: "producto",
+        foreignKey: 'consecutivo',
+        sourceKey: 'cons_producto'
+      })
+      this.hasOne(models.movimientos, {
+        as: "movimiento",
+        foreignKey: 'consecutivo',
+        sourceKey: 'cons_movimiento'
+      })
       // define association here
     }
   }
@@ -21,6 +31,7 @@ module.exports = (sequelize, DataTypes) => {
     m_pack: DataTypes.STRING,
     l_pack: DataTypes.STRING,
     cons_almacen: DataTypes.STRING,
+    cons_movimiento: DataTypes.STRING,
     available: DataTypes.BOOLEAN
   }, {
     sequelize,

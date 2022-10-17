@@ -20,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "cons_producto",
         sourceKey: "consecutivo"
       })
+
       // define association here
 
     }

@@ -126,7 +126,12 @@ class StockServices {
     const almacen = body.cons_almacen;
     const comboList = body.comboList;
     const movimiento = {
-      prefijo: "EX", pendiente: false, cons_semana: body.cons_semana, fecha: body.fecha, observaciones: body.observaciones
+      prefijo: "EX", pendiente: false,
+      cons_semana: body.cons_semana,
+      fecha: body.fecha,
+      realizado_por: body.realizado_por,
+      aprobado_por: body.aprobado_por,
+      observaciones: body.observaciones
     }
     let movimientoR;
     await serviceMovimiento.create(movimiento).then(res => {

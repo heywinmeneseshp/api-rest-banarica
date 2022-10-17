@@ -9,7 +9,11 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       cons_producto: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        references: {
+          model: 'productos',
+          key: 'consecutivo'
+        }
       },
       serial: {
         type: Sequelize.STRING,
@@ -29,6 +33,9 @@ module.exports = {
         type: Sequelize.STRING
       },
       cons_almacen: {
+        type: Sequelize.STRING
+      },
+      cons_movimiento: {
         type: Sequelize.STRING
       },
       available: {
