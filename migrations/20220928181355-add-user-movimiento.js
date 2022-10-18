@@ -8,7 +8,7 @@ module.exports = {
       allowNull: true
     })
     await queryInterface.addColumn('movimientos', 'aprobado_por', {
-      field: 'realizado_por',
+      field: 'aprobado_por',
       type: Sequelize.STRING,
       allowNull: true
     })
