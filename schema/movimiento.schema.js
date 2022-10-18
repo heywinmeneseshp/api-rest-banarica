@@ -7,6 +7,8 @@ const semana = Joi.string().min(5);
 const fecha = Joi.string();
 const remision = Joi.string();
 const respuesta = Joi.string();
+const aprobado_por = Joi.string();
+const realizado_por = Joi.string();
 
 const crearMovimiento = Joi.object({
   prefijo: prefijo.required(),
@@ -16,6 +18,8 @@ const crearMovimiento = Joi.object({
   cons_semana: semana.required(),
   fecha: fecha.required(),
   respuesta: respuesta,
+  realizado_por: realizado_por,
+  aprobado_por: aprobado_por
 });
 
 const actualizarMovimiento = Joi.object({
@@ -26,6 +30,8 @@ const actualizarMovimiento = Joi.object({
   cons_semana: semana,
   fecha: fecha,
   respuesta: respuesta,
+  realizado_por: realizado_por,
+  aprobado_por: aprobado_por
 });
 
 module.exports = { crearMovimiento, actualizarMovimiento };
