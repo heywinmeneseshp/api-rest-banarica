@@ -9,6 +9,7 @@ const remision = Joi.string();
 const respuesta = Joi.string();
 const aprobado_por = Joi.string();
 const realizado_por = Joi.string();
+const vehiculo = Joi.string();
 
 const crearMovimiento = Joi.object({
   prefijo: prefijo.required(),
@@ -19,7 +20,8 @@ const crearMovimiento = Joi.object({
   fecha: fecha.required(),
   respuesta: respuesta,
   realizado_por: realizado_por,
-  aprobado_por: aprobado_por
+  aprobado_por: aprobado_por,
+  vehiculo: vehiculo
 });
 
 const actualizarMovimiento = Joi.object({
@@ -31,7 +33,8 @@ const actualizarMovimiento = Joi.object({
   fecha: fecha,
   respuesta: respuesta,
   realizado_por: realizado_por,
-  aprobado_por: aprobado_por
+  aprobado_por: aprobado_por,
+  vehiculo: vehiculo
 });
 
 module.exports = { crearMovimiento, actualizarMovimiento };

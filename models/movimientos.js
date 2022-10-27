@@ -27,6 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     cons_semana: DataTypes.STRING,
     realizado_por: DataTypes.STRING,
     aprobado_por: DataTypes.STRING,
+    vehiculo: DataTypes.STRING,
     fecha: DataTypes.STRING
   }, {
     sequelize,

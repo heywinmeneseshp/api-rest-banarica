@@ -36,6 +36,9 @@ module.exports = {
       realizado_por: {
         type: Sequelize.STRING
       },
+      vehiculo: {
+        type: Sequelize.STRING
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE
