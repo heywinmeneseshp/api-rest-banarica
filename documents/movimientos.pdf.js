@@ -235,8 +235,8 @@ module.exports = async (consecutivo, tipo_movimiento) => {
   let productos = movimiento.historial_movimientos;
   let observaciones = movimiento.observaciones;
   let respuesta = movimiento?.respuesta;
-  let realizado_por = `${movimiento?.realizado.dataValues.nombre} ${movimiento?.realizado.dataValues.apellido}`
-  let aprobado_por = `${movimiento?.aprobado.dataValues.nombre} ${movimiento?.aprobado.dataValues.apellido}`
+  let realizado_por = `${movimiento?.realizado?.dataValues?.nombre} ${movimiento?.realizado?.dataValues?.apellido}`
+  let aprobado_por = `${movimiento?.aprobado?.dataValues?.nombre} ${movimiento?.aprobado?.dataValues?.apellido}`
 
   productos.sort((a, b) => {
     if (a.dataValues.cons_producto == b.dataValues.cons_producto) {
