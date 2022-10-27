@@ -140,13 +140,12 @@ module.exports = async (consecutivo, tipo_movimiento) => {
                   </td>
                   <td class="col-6">
                     {{comercializadora}}
+                    </br>
+                      </br>
+                      </br>
                   </td>
                 </tr>
-              </tbody>
-            </table>
-            <table class="table">
 
-              <tbody class="table-active">
                 <tr class="table-second">
                   <td class="col-6">
                     <b>Semana</b>
@@ -202,6 +201,9 @@ module.exports = async (consecutivo, tipo_movimiento) => {
             {{usuario}}
           </div>
         </div>
+
+        {{aprobacion}}
+
         <div class="row">
           <div class="col-xs-12 margin-top">
 
@@ -233,6 +235,8 @@ module.exports = async (consecutivo, tipo_movimiento) => {
   let productos = movimiento.historial_movimientos;
   let observaciones = movimiento.observaciones;
   let respuesta = movimiento?.respuesta;
+  let realizado_por = `${movimiento?.realizado.dataValues.nombre} ${movimiento?.realizado.dataValues.apellido}`
+  let aprobado_por = `${movimiento?.aprobado.dataValues.nombre} ${movimiento?.aprobado.dataValues.apellido}`
 
   productos.sort((a, b) => {
     if (a.dataValues.cons_producto == b.dataValues.cons_producto) {
@@ -266,6 +270,15 @@ module.exports = async (consecutivo, tipo_movimiento) => {
     </tr>`
   }
 
+  let aprobacion = `<div class="row margin-top2">
+                      <div class="col-xs-5 autorizado">
+                        APROBADO POR:
+                      </div>
+                      <div class="col-xs-7 border-dark descripcion">
+                        ${aprobado_por}
+                      </div>
+                    </div>`
+
   contenidoHTML = contenidoHTML.replace("{{movimiento}}", tipo_movimiento)
   contenidoHTML = contenidoHTML.replace("{{fecha}}", fecha)
   contenidoHTML = contenidoHTML.replace("{{semana}}", semana)
@@ -273,7 +286,17 @@ module.exports = async (consecutivo, tipo_movimiento) => {
   contenidoHTML = contenidoHTML.replace("{{productos}}", tabla)
   contenidoHTML = contenidoHTML.replace("{{observaciones}}", observaciones)
   contenidoHTML = contenidoHTML.replace("{{comercializadora}}", "C.I Bana Rica S.A")
-  contenidoHTML = contenidoHTML.replace("{{usuario}}", "N/A")
+  contenidoHTML = contenidoHTML.replace("{{usuario}}", realizado_por)
+
+  if (consecutivo.substring(0,2) == "DV" ||  consecutivo.substring(0,2) == "DV" ){
+    contenidoHTML = contenidoHTML.replace("{{aprobacion}}", aprobacion)
+  } else {
+    contenidoHTML = contenidoHTML.replace("{{aprobacion}}", "")
+  }
+
+
+
+
 
   let respuesta2 = `<tr>
                   <td class="col-xs-2'">

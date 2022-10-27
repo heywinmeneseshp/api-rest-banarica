@@ -131,7 +131,8 @@ class StockServices {
       fecha: body.fecha,
       realizado_por: body.realizado_por,
       aprobado_por: body.aprobado_por,
-      observaciones: body.observaciones
+      observaciones: body.observaciones,
+      vehiculo: body?.vehiculo
     }
     let movimientoR;
     await serviceMovimiento.create(movimiento).then(res => {

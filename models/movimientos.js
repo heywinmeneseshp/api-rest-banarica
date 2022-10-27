@@ -15,6 +15,16 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'cons_movimiento',
         sourceKey: 'consecutivo'
       });
+      this.hasOne(models.usuarios, {
+        as: 'realizado',
+        foreignKey: 'username',
+        sourceKey: 'realizado_por'
+      });
+      this.hasOne(models.usuarios, {
+        as: 'aprobado',
+        foreignKey: 'username',
+        sourceKey: 'aprobado_por'
+      });
       // define association here
     }
   }
