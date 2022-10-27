@@ -270,6 +270,7 @@ module.exports = async (consecutivo, tipo_movimiento) => {
     </tr>`
   }
 
+
   let aprobacion = `<div class="row margin-top2">
                       <div class="col-xs-5 autorizado">
                         APROBADO POR:
@@ -278,6 +279,12 @@ module.exports = async (consecutivo, tipo_movimiento) => {
                         ${aprobado_por}
                       </div>
                     </div>`
+
+  if (movimiento.pendiente === false && movimiento.aprobado) {
+    aprobacion = aprobacion.replace("APROBADO POR:", "RECHAZADO POR:")
+  } else if (movimiento.pendiente === true) {
+    aprobacion = aprobacion.replace(aprobado_por, "Pendiente por aprobación")
+  }
 
   contenidoHTML = contenidoHTML.replace("{{movimiento}}", tipo_movimiento)
   contenidoHTML = contenidoHTML.replace("{{fecha}}", fecha)
@@ -288,7 +295,7 @@ module.exports = async (consecutivo, tipo_movimiento) => {
   contenidoHTML = contenidoHTML.replace("{{comercializadora}}", "C.I Bana Rica S.A")
   contenidoHTML = contenidoHTML.replace("{{usuario}}", realizado_por)
 
-  if (consecutivo.substring(0,2) == "DV" ||  consecutivo.substring(0,2) == "DV" ){
+  if (consecutivo.substring(0, 2) == "DV" || consecutivo.substring(0, 2) == "LQ") {
     contenidoHTML = contenidoHTML.replace("{{aprobacion}}", aprobacion)
   } else {
     contenidoHTML = contenidoHTML.replace("{{aprobacion}}", "")
