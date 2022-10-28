@@ -151,7 +151,11 @@ class SeguridadService {
   }
 
   async actualizarSerial(body) {
-    const result = await db.serial_de_articulos.update(body.serial, body)
+    const result = await db.serial_de_articulos.update(body, {
+      where: {
+        serial: body.serial
+      }
+    })
     return result
   }
 
