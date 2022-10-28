@@ -150,6 +150,11 @@ class SeguridadService {
     return { data: result, total: total };
   }
 
+  async actualizarSerial(body) {
+    const result = await db.serial_de_articulos.update(body.serial, body)
+    return result
+  }
+
 }
 
 module.exports = SeguridadService;

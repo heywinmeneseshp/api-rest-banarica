@@ -70,5 +70,17 @@ router.get("/listar-articulos",
     }
   });
 
+router.patch("/actualizar-serial",
+  async (req, res, next) => {
+    try {
+      const body = req.body
+      const result = await service.actualizarSerial(body)
+      res.json(result)
+    } catch (e) {
+      next(e)
+    }
+  }
+)
+
 
 module.exports = router;
