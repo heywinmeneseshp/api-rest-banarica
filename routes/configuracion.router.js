@@ -22,7 +22,7 @@ router.patch('/actualizar',
   async (req, res, next) => {
     try {
       const body = req.body;
-      const result = await service.udate(body)
+      const result = await service.update(body)
       res.json(result);
     } catch (err) {
       next(err);

@@ -15,6 +15,15 @@ module.exports = {
       habilitado: {
         type: Sequelize.BOOLEAN
       },
+      semana_actual: {
+        type: Sequelize.INTEGER
+      },
+      semana_siguiente: {
+        type: Sequelize.INTEGER
+      },
+      semana_previa: {
+        type: Sequelize.INTEGER
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

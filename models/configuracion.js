@@ -15,7 +15,10 @@ module.exports = (sequelize, DataTypes) => {
   }
   configuracion.init({
     modulo: DataTypes.STRING,
-    habilitado: DataTypes.BOOLEAN
+    habilitado: DataTypes.BOOLEAN,
+    semana_actual: DataTypes.INTEGER,
+    semana_siguiente: DataTypes.INTEGER,
+    semana_previa: DataTypes.INTEGER
   }, {
     sequelize,
     modelName: 'configuracion',
