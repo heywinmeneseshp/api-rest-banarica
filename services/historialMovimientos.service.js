@@ -32,7 +32,8 @@ class HistorialMovimientosService {
   }
 
   async generalFilter(body) {
-    if (!body?.producto?.name) body = { ...body, producto: { name: "" } }
+    if (!body?.producto?.name) body = { ...body, producto: { ...body?.producto, name: "" } }
+    if (!body?.producto?.cons_categoria) body = { ...body, producto: { ...body?.producto, cons_categoria: "" } }
     if (body?.pagination) {
       let newlimit = parseInt(body.pagination.limit);
       let newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
@@ -44,7 +45,7 @@ class HistorialMovimientosService {
           include: [{
             model: db.productos,
             as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
           }, 'movimiento'],
           limit: newlimit,
           offset: newoffset
@@ -58,7 +59,7 @@ class HistorialMovimientosService {
           include: [{
             model: db.productos,
             as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
           }, 'movimiento']
         })
         return { data: items, total: total };
@@ -68,7 +69,7 @@ class HistorialMovimientosService {
           include: [{
             model: db.productos,
             as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
           }, 'movimiento'],
           limit: newlimit,
           offset: newoffset
@@ -78,7 +79,7 @@ class HistorialMovimientosService {
           include: [{
             model: db.productos,
             as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
           }, 'movimiento']
         })
         return { data: items, total: total };
@@ -87,7 +88,7 @@ class HistorialMovimientosService {
       if (body?.movimiento) {
         if (!body?.movimiento?.fecha) body.movimiento = { ...body.movimiento, fecha: "" }
         const moveList = await db.movimientos.findAll({
-          where: {...body.movimiento, fecha: {[Op.like]: `%${body?.movimiento?.fecha}%`} }
+          where: { ...body.movimiento, fecha: { [Op.like]: `%${body?.movimiento?.fecha}%` } }
         })
         let list = moveList.map(item => item.consecutivo)
         const items = await db.historial_movimientos.findAll({
@@ -95,7 +96,7 @@ class HistorialMovimientosService {
           include: [{
             model: db.productos,
             as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
           }, 'movimiento']
         })
         return items;
@@ -105,10 +106,11 @@ class HistorialMovimientosService {
           include: [{
             model: db.productos,
             as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` } }
+            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
           }, 'movimiento']
         })
         return items;
+
       }
     }
   }
