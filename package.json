@@ -30,7 +30,7 @@
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
-    "phantomjs": "^2.1.7",
+    "phantomjs-prebuilt": "^2.1.16",
     "sequelize": "^6.21.2",
     "sequelize-cli": "^6.4.1",
     "sqlite3": "^5.0.8"
