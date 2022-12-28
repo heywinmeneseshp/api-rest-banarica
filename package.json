@@ -26,13 +26,14 @@
     "morgan": "^1.10.0",
     "mysql2": "^2.3.3",
     "mysql3": "^0.6.0",
+    "netlify-lambda": "^2.0.15",
     "nodemailer": "^6.7.8",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
-    "phantomjs-prebuilt": "^2.1.16",
     "sequelize": "^6.21.2",
     "sequelize-cli": "^6.4.1",
+    "serverless-http": "^3.1.0",
     "sqlite3": "^5.0.8"
   },
   "devDependencies": {

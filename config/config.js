@@ -3,10 +3,10 @@ const mysql2 = require('mysql2');
 
 const config = {
   "development": {
-    "username": process.env.DATABASE_DEV_USERNAME,
-    "password": process.env.DATABASE_DEV_PASSWORD,
-    "database": process.env.DATABASE_DEV_NAME,
-    "host": process.env.DATABASE_DEV_HOST,
+    "username": process.env.DATABASE_DEV_USERNAME || "",
+    "password": process.env.DATABASE_DEV_PASSWORD || "",
+    "database": process.env.DATABASE_DEV_NAME || "",
+    "host": process.env.DATABASE_DEV_HOST || "",
     "dialect": "mysql",
     "dialectModule": mysql2
   },

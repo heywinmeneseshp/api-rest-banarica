@@ -12,6 +12,9 @@ module.exports = {
         type: Sequelize.STRING,
         unique: true
       },
+      anho_actual: {
+        type: Sequelize.INTEGER
+      },
       habilitado: {
         type: Sequelize.BOOLEAN
       },

@@ -18,7 +18,8 @@ module.exports = (sequelize, DataTypes) => {
     habilitado: DataTypes.BOOLEAN,
     semana_actual: DataTypes.INTEGER,
     semana_siguiente: DataTypes.INTEGER,
-    semana_previa: DataTypes.INTEGER
+    semana_previa: DataTypes.INTEGER,
+    anho_actual: DataTypes.INTEGER
   }, {
     sequelize,
     modelName: 'configuracion',
