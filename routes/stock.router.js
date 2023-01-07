@@ -2,7 +2,7 @@ const express = require("express");
 
 const StockService = require('../services/stock.service');
 const validatorHandler = require('../middlewares/validator.handler');
-const { crearProductoEnAlmacen, addAndSubtract, habilitarDeshabilitar } = require('../schema/stock.schema');
+const { crearProductoEnAlmacen, addAndSubtract, habilitarDeshabilitar, noDispoble } = require('../schema/stock.schema');
 
 
 
@@ -100,9 +100,7 @@ router.get("/filter/:cons_almacen/:cons_producto", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}
-
-)
+})
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/habilitar/:cons_almacen/:cons_producto",
@@ -145,6 +143,22 @@ router.patch("/restar/:cons_almacen/:cons_producto",
       const { cons_almacen, cons_producto } = req.params
       const changes = req.body;
       const item = await service.subtractAmounts(cons_almacen, cons_producto, changes)
+      res.json({
+        message: 'El item fue actualizado',
+        data: item
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.patch("/disponible/:cons_almacen/:cons_producto",
+  validatorHandler(noDispoble, "body"),
+  async (req, res, next) => {
+    try {
+      const { cons_almacen, cons_producto } = req.params
+      const changes = req.body;
+      const item = await service.update(cons_almacen, cons_producto, changes)
       res.json({
         message: 'El item fue actualizado',
         data: item

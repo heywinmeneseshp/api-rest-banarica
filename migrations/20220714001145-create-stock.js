@@ -26,6 +26,9 @@ module.exports = {
       cantidad: {
         type: Sequelize.FLOAT
       },
+      no_disponible: {
+        type: Sequelize.FLOAT
+      },
       isBlock: {
         type: Sequelize.BOOLEAN
       },
