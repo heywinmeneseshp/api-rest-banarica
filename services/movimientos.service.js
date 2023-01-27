@@ -23,7 +23,7 @@ class MovimientosService {
 
     if (data.prefijo == "DV") {
       await serviceEmail.send('ydavila@banarica.com, practicantesantamarta@banarica.com', 
-      `Devolución ${consecutivo}`,
+      `Devolución ${consecutivo} ${new Date().getTime()}`,
        `<h3>Devolucion <b>${consecutivo}</b> pendente por revisión</h3>
       <p>
         <b>Observaciones:</b> ${item?.dataValues?.observaciones}
