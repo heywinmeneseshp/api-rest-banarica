@@ -4,7 +4,8 @@ const { generarID } = require("../middlewares/generarId.handler");
 const getDate = require('../middlewares/getDate.handler')
 const db = require('../models');
 
-
+const emailService = require('./email.service');
+const serviceEmail = new emailService()
 
 class MovimientosService {
 
@@ -19,8 +20,25 @@ class MovimientosService {
       ...data
     }
     const item = await db.movimientos.create(itemNuevo);
+
+    if (data.prefijo == "DV") {
+      await serviceEmail.send('ydavila@banarica.com, practicantesantamarta@banarica.com', 
+      `Devolución ${consecutivo}`,
+       `<h3>Devolucion <b>${consecutivo}</b> pendente por revisión</h3>
+      <p>
+        <b>Observaciones:</b> ${item?.dataValues?.observaciones}
+      </p>
+      <p>
+       Para ver el documento hacer 
+       <a href="https://app-banarica.vercel.app/Documento/Movimiento/${consecutivo}">
+          Clic Aquí
+        </a>
+     </p>`,)
+    }
+   
     return item
   }
+ 
 
   async find() {
     return await db.movimientos.findAll()

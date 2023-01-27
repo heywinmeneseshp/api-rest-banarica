@@ -28,6 +28,7 @@ module.exports = (sequelize, DataTypes) => {
     cons_producto: DataTypes.STRING,
     cantidad: DataTypes.FLOAT,
     no_disponible: DataTypes.FLOAT,
+    aviso: DataTypes.FLOAT,
     isBlock: DataTypes.BOOLEAN
   }, {
     sequelize,

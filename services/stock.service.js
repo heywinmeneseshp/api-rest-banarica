@@ -3,9 +3,11 @@ const boom = require('@hapi/boom');
 const db = require('../models');
 const { Op } = require('sequelize');
 const HistorialMovimientosService = require('./historialMovimientos.service');
-const MovimientosService = require('./movimientos.service')
+const MovimientosService = require('./movimientos.service');
+const emailService = require('./email.service');
 const serviceHistorial = new HistorialMovimientosService();
 const serviceMovimiento = new MovimientosService();
+const serviceEmail = new emailService();
 
 class StockServices {
 
@@ -34,7 +36,7 @@ class StockServices {
           as: "producto",
           where: {
             cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` },
-            name: { [Op.like]: body?.producto?.name ? `%${body?.producto?.name}%` : `%%`  },
+            name: { [Op.like]: body?.producto?.name ? `%${body?.producto?.name}%` : `%%` },
             consecutivo: { [Op.like]: body?.producto?.consecutivo ? `%${body?.producto?.consecutivo}%` : `%%` }
           }
         }, {
@@ -70,7 +72,7 @@ class StockServices {
           where: {
             cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` },
             name: { [Op.like]: body?.producto?.name ? `%${body?.producto?.name}%` : `%%` },
-            consecutivo: { [Op.like]: body?.producto?.consecutivo ? `%${body?.producto?.consecutivo}%` : `%%`}
+            consecutivo: { [Op.like]: body?.producto?.consecutivo ? `%${body?.producto?.consecutivo}%` : `%%` }
           }
         }, {
             model: db.almacenes,
@@ -109,6 +111,25 @@ class StockServices {
       const suma = parseFloat(item[0].cantidad) + parseFloat(body.cantidad);
       await db.stock.update({ cantidad: suma }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
       const data = { cons_producto: cons_producto, cantidad: suma }
+
+      if (cons_producto == "BAS3" && suma < 11) {
+        if (item[0]?.aviso == null || item[0]?.aviso == 1) {
+          await serviceEmail.send('hmeneses@banarica.com, jtaite@banarica.com',
+            `Alerta Precintos - ${cons_almacen}`,
+            `<h3>Almacén <b>${cons_almacen}</b></h3>
+          <p>
+           Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b>
+         </p>`)
+          await db.stock.update({ aviso: 0 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
+        }
+      } 
+  
+      if (cons_producto == "BAS3" && suma >= 11) {
+        if (item[0]?.aviso == null || item[0]?.aviso == 0) {
+          await db.stock.update({ aviso: 1 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
+        }
+      } 
+
       return { message: "El item fue actualizado", data: data };
     }
   }
@@ -119,6 +140,25 @@ class StockServices {
     const resta = parseFloat(item[0].cantidad) - parseFloat(body.cantidad);
     await db.stock.update({ cantidad: resta }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     const data = { cons_producto: cons_producto, cantidad: resta }
+
+    if (cons_producto == "BAS3" && resta < 11) {
+      if (item[0]?.aviso == null || item[0]?.aviso == 1) {
+        await serviceEmail.send('hmeneses@banarica.com, jtaite@banarica.com',
+          `Alerta Precintos - ${cons_almacen}`,
+          `<h3>Almacén <b>${cons_almacen}</b></h3>
+        <p>
+         Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b>
+       </p>`)
+        await db.stock.update({ aviso: 0 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
+      }
+    } 
+
+    if (cons_producto == "BAS3" && resta >= 11) {
+      if (item[0]?.aviso == null || item[0]?.aviso == 0) {
+        await db.stock.update({ aviso: 1 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
+      }
+    } 
+
     return { message: "El item fue actualizado", data: data };
   }
 
