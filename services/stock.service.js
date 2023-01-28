@@ -144,7 +144,7 @@ class StockServices {
     if (cons_producto == "BAS3" && resta < 11) {
       if (item[0]?.aviso == null || item[0]?.aviso == 1) {
         await serviceEmail.send('hmeneses@banarica.com, jtaite@banarica.com',
-          `Alerta Precintos - ${cons_almacen}`,
+          `Alerta Precintos - ${cons_almacen}  ${new Date().getTime()}`,
           `<h3>Almacén <b>${cons_almacen}</b></h3>
         <p>
          Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b>
