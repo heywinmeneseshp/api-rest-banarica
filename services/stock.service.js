@@ -124,7 +124,7 @@ class StockServices {
         }
       } 
   
-      if (cons_producto == "BAS3" && suma >= 11) {
+      if (cons_producto == "PRE33" && suma >= 11) {
         if (item[0]?.aviso == null || item[0]?.aviso == 0) {
           await db.stock.update({ aviso: 1 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
         }
@@ -153,7 +153,7 @@ class StockServices {
       }
     } 
 
-    if (cons_producto == "BAS3" && resta >= 11) {
+    if (cons_producto == "PRE33" && resta >= 11) {
       if (item[0]?.aviso == null || item[0]?.aviso == 0) {
         await db.stock.update({ aviso: 1 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
       }
