@@ -112,7 +112,7 @@ class StockServices {
       await db.stock.update({ cantidad: suma }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
       const data = { cons_producto: cons_producto, cantidad: suma }
 
-      if (cons_producto == "BAS3" && suma < 11) {
+      if (cons_producto == "PRE33" && suma < 11) {
         if (item[0]?.aviso == null || item[0]?.aviso == 1) {
           await serviceEmail.send('hmeneses@banarica.com, jtaite@banarica.com',
             `Alerta Precintos - ${cons_almacen} ${new Date().getTime()}`,
@@ -141,7 +141,7 @@ class StockServices {
     await db.stock.update({ cantidad: resta }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     const data = { cons_producto: cons_producto, cantidad: resta }
 
-    if (cons_producto == "BAS3" && resta < 11) {
+    if (cons_producto == "PRE33" && resta < 11) {
       if (item[0]?.aviso == null || item[0]?.aviso == 1) {
         await serviceEmail.send('hmeneses@banarica.com, jtaite@banarica.com',
           `Alerta Precintos - ${cons_almacen}  ${new Date().getTime()}`,
