@@ -3,11 +3,23 @@ const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../models');
 
+const emailService = require('./email.service');
+const serviceEmail = new emailService()
+
+
 class HistorialMovimientosService {
 
   constructor() { }
 
   async create(data) {
+    if ((data.cantidad > 20) && data.cons_lista_movimientos == 'AJ') {
+      await serviceEmail.send('hmeneses@banarica.com, ydavila@banarica.com, practicantesantamarta@banarica.com',
+        `Alerta de Ajuste - ${data.cons_movimiento} - ${new Date().getTime()}`,
+        `<h3>Ajuste <b>${data.cons_movimiento}</b></h3>
+        <p>
+        El almacén <b>${data.cons_almacen_gestor}</b> ha realizado un ajuste mayor a 20 unidades en el artículo con código <b>${data.cons_producto}</b> 
+        </p>`)
+    }
     await db.historial_movimientos.create(data)
     return data
   }
