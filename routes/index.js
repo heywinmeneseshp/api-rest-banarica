@@ -12,6 +12,7 @@ const transportadorasRouter = require("./administrador/transportadoras.router");
 const conductoresRouter = require("./administrador/conductores.router.js");
 const notificacionesRouter = require("./administrador/notificaciones.router");
 const avisosRouter = require("./administrador/avisos.router.js");
+const etiquetasRouter = require('./administrador/etiquetas.router');
 
 const recepcionRouter = require("./recepcion.router.js");
 const pedidosRouter = require("./pedidos.router.js");
@@ -42,6 +43,7 @@ function routerApi(app) {
   router.use('/conductores', conductoresRouter);
   router.use('/notificaciones', notificacionesRouter);
   router.use('/avisos', avisosRouter);
+  router.use('/etiquetas', etiquetasRouter);
 
   router.use('/recepcion', recepcionRouter);
   router.use('/pedidos', pedidosRouter);
