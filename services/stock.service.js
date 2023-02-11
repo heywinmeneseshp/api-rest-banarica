@@ -114,7 +114,7 @@ class StockServices {
 
       if (cons_producto == "PRE33" && suma < 11) {
         if (item[0]?.aviso == null || item[0]?.aviso == 1) {
-          await serviceEmail.send('hmeneses@banarica.com, jtaite@banarica.com',
+          serviceEmail.send('hmeneses@banarica.com, jtaite@banarica.com',
             `Alerta Precintos - ${cons_almacen} ${new Date().getTime()}`,
             `<h3>Almacén <b>${cons_almacen}</b></h3>
           <p>
@@ -122,13 +122,13 @@ class StockServices {
          </p>`)
           await db.stock.update({ aviso: 0 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
         }
-      } 
-  
+      }
+
       if (cons_producto == "PRE33" && suma >= 11) {
         if (item[0]?.aviso == null || item[0]?.aviso == 0) {
           await db.stock.update({ aviso: 1 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
         }
-      } 
+      }
 
       return { message: "El item fue actualizado", data: data };
     }
@@ -151,13 +151,13 @@ class StockServices {
        </p>`)
         await db.stock.update({ aviso: 0 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
       }
-    } 
+    }
 
     if (cons_producto == "PRE33" && resta >= 11) {
       if (item[0]?.aviso == null || item[0]?.aviso == 0) {
         await db.stock.update({ aviso: 1 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
       }
-    } 
+    }
 
     return { message: "El item fue actualizado", data: data };
   }

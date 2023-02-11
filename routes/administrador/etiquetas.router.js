@@ -16,10 +16,10 @@ router.get("/", async (req, res, next) => {
 });
 
 // Ejemplo http://localhost:3000/api/v1/etiquetas/:consecutivo
-router.get("/:consecutivo", async (req, res, next) => {
+router.get("/:id", async (req, res, next) => {
   try {
-    const { consecutivo } = req.params;
-    const items = await service.findOne(consecutivo)
+    const { id } = req.params;
+    const items = await service.findOne(id)
     res.json(items);
   } catch (error) {
     next(error);
@@ -44,12 +44,12 @@ router.post("/",
   });
 
 //ACTUALIZACIONES PARCIALES
-router.patch("/:consecutivo",
+router.patch("/:id",
   async (req, res, next) => {
     try {
-      const { consecutivo } = req.params
+      const { id } = req.params
       const changes = req.body;
-      const item = await service.update(consecutivo, changes)
+      const item = await service.updateTage(id, changes)
       res.json({
         message: 'El item fue actualizado',
         data: item

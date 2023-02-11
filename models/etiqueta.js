@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
     consecutivo: DataTypes.STRING,
     producto: DataTypes.STRING,
     gnl: DataTypes.STRING,
+    ean13: DataTypes.STRING,
     detalle_inferior: DataTypes.STRING,
     detalle_superior: DataTypes.STRING
   }, {

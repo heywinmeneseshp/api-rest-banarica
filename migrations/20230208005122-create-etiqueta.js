@@ -17,6 +17,9 @@ module.exports = {
       gnl: {
         type: Sequelize.STRING
       },
+      ean13: {
+        type: Sequelize.STRING
+      },
       detalle_inferior: {
         type: Sequelize.STRING
       },

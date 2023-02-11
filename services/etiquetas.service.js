@@ -13,12 +13,12 @@ class AuthService {
         return await db.etiqueta.findAll()
     }
 
-    async findOne(consecutivo) {
-        return await db.etiqueta.findOne({ where: { consecutivo } })
+    async findOne(id) {
+        return await db.etiqueta.findOne({ where: { id } })
     }
 
-    async updateTage(consecutivo, changes) {
-        await db.etiqueta.update(changes, { where: { consecutivo } })
+    async updateTage(id, changes) {
+        await db.etiqueta.update(changes, { where: { id } })
         return { mesagge: "La etiqueta ha sido actualizada" }
     }
 
