@@ -13,7 +13,7 @@ class HistorialMovimientosService {
 
   async create(data) {
     if ((data.cantidad > 20) && data.cons_lista_movimientos == 'AJ') {
-      await serviceEmail.send('hmeneses@banarica.com, ydavila@banarica.com, practicantesantamarta@banarica.com',
+      await serviceEmail.send('hmeneses@banarica.com, ydavila@banarica.com, practicantesantamarta@banarica.com, mhernandezp@banarica.com',
         `Alerta de Ajuste - ${data.cons_movimiento} - ${new Date().getTime()}`,
         `<h3>Ajuste <b>${data.cons_movimiento}</b></h3>
         <p>
