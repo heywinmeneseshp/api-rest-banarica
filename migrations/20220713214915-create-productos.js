@@ -12,10 +12,6 @@ module.exports = {
         allowNull: false,
         primaryKey: true,
         type: Sequelize.STRING,
-        references: {
-          model: "stock",
-          key: "cons_producto"
-        }
       },
       name: {
         type: Sequelize.STRING
