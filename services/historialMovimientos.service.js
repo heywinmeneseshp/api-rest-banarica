@@ -37,10 +37,13 @@ class HistorialMovimientosService {
     return items;
   }
 
-  async filter(body) {
-    const items = await db.historial_movimientos.findAll({ where: body, include: ['Producto', 'movimiento'] })
-    return items;
 
+  async filter(body) {
+    const items = await db.historial_movimientos.findAll({ 
+      where: body, 
+      include: [{ model: db.productos }, { model: db.movimientos }] 
+    });
+    return items;
   }
 
   async generalFilter(body) {
