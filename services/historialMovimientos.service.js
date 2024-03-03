@@ -47,113 +47,50 @@ class HistorialMovimientosService {
   }
 
   async generalFilter(body) {
-    body.producto = body.producto || {};
-    body.producto.name = body.producto.name || "";
-    body.producto.cons_categoria = body.producto.cons_categoria || "";
+  body.producto = body.producto || {};
+  body.producto.name = body.producto.name || "";
+  body.producto.cons_categoria = body.producto.cons_categoria || "";
 
-    if (body?.pagination) {
-      const newlimit = parseInt(body.pagination.limit);
-      const newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
-      if (body?.movimiento) {
-        const moveList = await db.movimientos.findAll({ where: body.movimiento });
-        const list = moveList.map(item => item.consecutivo);
+  const newlimit = parseInt(body.pagination.limit);
+  const newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
 
-        const { count, rows: items } = await db.historial_movimientos.findAndCountAll({
-          where: {
-            cons_lista_movimientos: { [Op.ne]: ["TR"] },
-            ...body.historial,
-            cons_movimiento: list,
-            '$Producto.name$': { [Op.like]: `%${body?.producto?.name}%` },
-            '$Producto.cons_categoria$': { [Op.like]: `%${body?.producto?.cons_categoria}%` }
-          },
-          include: [
-            {
-              model: db.productos,
-              as: 'Producto',
-              attributes: [],
-              where: {},
-            },
-            'movimiento'
-          ],
-          limit: newlimit,
-          offset: newoffset
-        });
+  let whereClause = {
+    cons_lista_movimientos: { [Op.ne]: ["TR"] },
+    ...body.historial,
+    '$Producto.name$': { [Op.like]: `%${body?.producto?.name}%` },
+    '$Producto.cons_categoria$': { [Op.like]: `%${body?.producto?.cons_categoria}%` }
+  };
 
-        return { data: items, total: count };
-      }
-      else {
-        const { count, rows: items } = await db.historial_movimientos.findAndCountAll({
-          where: {
-            cons_lista_movimientos: { [Op.ne]: ["TR"] },
-            ...body.historial,
-            '$Producto.name$': { [Op.like]: `%${body?.producto?.name}%` },
-            '$Producto.cons_categoria$': { [Op.like]: `%${body?.producto?.cons_categoria}%` }
-          },
-          include: [
-            {
-              model: db.productos,
-              as: 'Producto',
-              attributes: [],
-              where: {},
-            },
-            'movimiento'
-          ],
-          limit: newlimit,
-          offset: newoffset
-        });
-
-        return { data: items, total: count };
-      }
-    } else {
-      if (body?.movimiento) {
-        const { count, rows: items } = await db.historial_movimientos.findAndCountAll({
-          where: {
-            cons_lista_movimientos: { [Op.ne]: ["TR"] },
-            ...body.historial,
-            '$Producto.name$': { [Op.like]: `%${body?.producto?.name}%` },
-            '$Producto.cons_categoria$': { [Op.like]: `%${body?.producto?.cons_categoria}%` },
-            fecha: { [Op.like]: `%${body?.movimiento?.fecha}%` }
-          },
-          include: [
-            {
-              model: db.productos,
-              as: 'Producto',
-              attributes: [],
-              where: {},
-            },
-            'movimiento'
-          ],
-          limit: newlimit,
-          offset: newoffset
-        });
-
-        return items;
-
-      } else {
-        const { count, rows: items } = await db.historial_movimientos.findAndCountAll({
-          where: {
-            cons_lista_movimientos: { [Op.ne]: ["TR"] },
-            ...body.historial,
-            '$Producto.name$': { [Op.like]: `%${body?.producto?.name}%` },
-            '$Producto.cons_categoria$': { [Op.like]: `%${body?.producto?.cons_categoria}%` }
-          },
-          include: [
-            {
-              model: db.productos,
-              as: 'Producto',
-              attributes: [],
-              where: {},
-            },
-            'movimiento'
-          ],
-          limit: newlimit,
-          offset: newoffset
-        });
-
-        return items;
-      }
-    }
+  if (body?.movimiento) {
+    whereClause.fecha = { [Op.like]: `%${body?.movimiento?.fecha}%` };
   }
+
+  const queryOptions = {
+    where: whereClause,
+    include: [
+      {
+        model: db.productos,
+        as: 'Producto',
+        attributes: [],
+        where: {},
+      },
+      'movimiento'
+    ],
+    limit: newlimit,
+    offset: newoffset
+  };
+
+  if (body?.movimiento) {
+    const moveList = await db.movimientos.findAll({ where: body.movimiento });
+    const list = moveList.map(item => item.consecutivo);
+    queryOptions.where.cons_movimiento = list;
+  }
+
+  const { count, rows: items } = await db.historial_movimientos.findAndCountAll(queryOptions);
+
+  return { data: items, total: count };
+}
+
 
   async update(id, changes) {
     const item = await db.historial_movimientos.findByPk(id);
