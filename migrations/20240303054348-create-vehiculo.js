@@ -1,35 +1,33 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('conductores', {
+    await queryInterface.createTable('vehiculos', {
       id: {
-        unique: true,
         allowNull: false,
         autoIncrement: true,
+        primaryKey: true,
         type: Sequelize.INTEGER
       },
-      consecutivo: {
-        allowNull: false,
-        primaryKey: true,
+      vehiculo: {
         type: Sequelize.STRING
       },
-      conductor: {
+      modelo: {
         type: Sequelize.STRING
       },
-      cons_transportadora: {
+      placa: {
         type: Sequelize.STRING
       },
-      email: {
+      conductor_id: {
         type: Sequelize.STRING
       },
-      tel: {
+      categoria_id: {
         type: Sequelize.STRING
       },
-      licencia: {
-        type: Sequelize.STRING
+      combustible: {
+        type: Sequelize.FLOAT
       },
-      isBlock: {
-        type: Sequelize.STRING
+      activo: {
+        type: Sequelize.BOOLEAN
       },
       createdAt: {
         allowNull: false,
@@ -42,6 +40,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('conductores');
+    await queryInterface.dropTable('vehiculos');
   }
 };

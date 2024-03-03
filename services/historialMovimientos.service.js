@@ -44,85 +44,110 @@ class HistorialMovimientosService {
   }
 
   async generalFilter(body) {
-    if (!body?.producto?.name) body = { ...body, producto: { ...body?.producto, name: "" } }
-    if (!body?.producto?.cons_categoria) body = { ...body, producto: { ...body?.producto, cons_categoria: "" } }
+    body.producto = body.producto || {};
+    body.producto.name = body.producto.name || "";
+    body.producto.cons_categoria = body.producto.cons_categoria || "";
+
     if (body?.pagination) {
-      let newlimit = parseInt(body.pagination.limit);
-      let newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
+      const newlimit = parseInt(body.pagination.limit);
+      const newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
       if (body?.movimiento) {
-        const moveList = await db.movimientos.findAll({ where: body.movimiento })
-        let list = moveList.map(item => item.consecutivo)
-        const items = await db.historial_movimientos.findAll({
-          where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial, cons_movimiento: list },
-          include: [{
-            model: db.productos,
-            as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
-          }, 'movimiento'],
-          limit: newlimit,
-          offset: newoffset
-        })
-        const total = await db.historial_movimientos.count({
+        const moveList = await db.movimientos.findAll({ where: body.movimiento });
+        const list = moveList.map(item => item.consecutivo);
+
+        const { count, rows: items } = await db.historial_movimientos.findAndCountAll({
           where: {
             cons_lista_movimientos: { [Op.ne]: ["TR"] },
             ...body.historial,
-            cons_movimiento: list
+            cons_movimiento: list,
+            '$Producto.name$': { [Op.like]: `%${body?.producto?.name}%` },
+            '$Producto.cons_categoria$': { [Op.like]: `%${body?.producto?.cons_categoria}%` }
           },
-          include: [{
-            model: db.productos,
-            as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
-          }, 'movimiento']
-        })
-        return { data: items, total: total };
-      } else {
-        const items = await db.historial_movimientos.findAll({
-          where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial },
-          include: [{
-            model: db.productos,
-            as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
-          }, 'movimiento'],
+          include: [
+            {
+              model: db.productos,
+              as: 'Producto',
+              attributes: [],
+              where: {},
+            },
+            'movimiento'
+          ],
           limit: newlimit,
           offset: newoffset
-        })
-        const total = await db.historial_movimientos.count({
-          where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial },
-          include: [{
-            model: db.productos,
-            as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
-          }, 'movimiento']
-        })
-        return { data: items, total: total };
+        });
+
+        return { data: items, total: count };
+      }
+      else {
+        const { count, rows: items } = await db.historial_movimientos.findAndCountAll({
+          where: {
+            cons_lista_movimientos: { [Op.ne]: ["TR"] },
+            ...body.historial,
+            '$Producto.name$': { [Op.like]: `%${body?.producto?.name}%` },
+            '$Producto.cons_categoria$': { [Op.like]: `%${body?.producto?.cons_categoria}%` }
+          },
+          include: [
+            {
+              model: db.productos,
+              as: 'Producto',
+              attributes: [],
+              where: {},
+            },
+            'movimiento'
+          ],
+          limit: newlimit,
+          offset: newoffset
+        });
+
+        return { data: items, total: count };
       }
     } else {
       if (body?.movimiento) {
-        if (!body?.movimiento?.fecha) body.movimiento = { ...body.movimiento, fecha: "" }
-        const moveList = await db.movimientos.findAll({
-          where: { ...body.movimiento, fecha: { [Op.like]: `%${body?.movimiento?.fecha}%` } }
-        })
-        let list = moveList.map(item => item.consecutivo)
-        const items = await db.historial_movimientos.findAll({
-          where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial, cons_movimiento: list },
-          include: [{
-            model: db.productos,
-            as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
-          }, 'movimiento']
-        })
-        return items;
-      } else {
-        const items = await db.historial_movimientos.findAll({
-          where: { cons_lista_movimientos: { [Op.ne]: ["TR"] }, ...body.historial },
-          include: [{
-            model: db.productos,
-            as: "Producto",
-            where: { name: { [Op.like]: `%${body?.producto?.name}%` }, cons_categoria: { [Op.like]: `%${body?.producto?.cons_categoria}%` } }
-          }, 'movimiento']
-        })
+        const { count, rows: items } = await db.historial_movimientos.findAndCountAll({
+          where: {
+            cons_lista_movimientos: { [Op.ne]: ["TR"] },
+            ...body.historial,
+            '$Producto.name$': { [Op.like]: `%${body?.producto?.name}%` },
+            '$Producto.cons_categoria$': { [Op.like]: `%${body?.producto?.cons_categoria}%` },
+            fecha: { [Op.like]: `%${body?.movimiento?.fecha}%` }
+          },
+          include: [
+            {
+              model: db.productos,
+              as: 'Producto',
+              attributes: [],
+              where: {},
+            },
+            'movimiento'
+          ],
+          limit: newlimit,
+          offset: newoffset
+        });
+
         return items;
 
+      } else {
+        const { count, rows: items } = await db.historial_movimientos.findAndCountAll({
+          where: {
+            cons_lista_movimientos: { [Op.ne]: ["TR"] },
+            ...body.historial,
+            '$Producto.name$': { [Op.like]: `%${body?.producto?.name}%` },
+            '$Producto.cons_categoria$': { [Op.like]: `%${body?.producto?.cons_categoria}%` }
+          },
+          include: [
+            {
+              model: db.productos,
+              as: 'Producto',
+              attributes: [],
+              where: {},
+            },
+            'movimiento'
+          ],
+          limit: newlimit,
+          offset: newoffset
+        });
+
+        return items;
       }
     }
   }
@@ -142,26 +167,21 @@ class HistorialMovimientosService {
   }
 
   async paginate(offset, limit, almacenes) {
-    let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset) - 1) * newlimit;
-    const total = await db.historial_movimientos.count({
+    const newlimit = parseInt(limit);
+    const newoffset = (parseInt(offset) - 1) * newlimit;
+
+    const { count, rows: data } = await db.historial_movimientos.findAndCountAll({
       where: {
         cons_almacen_gestor: { [Op.in]: almacenes },
-        cons_lista_movimientos: { [Op.ne]: ["TR"] }
-      }
-    });
-    const result = await db.historial_movimientos.findAll({
-      where: {
-        cons_almacen_gestor: { [Op.or]: almacenes },
         cons_lista_movimientos: { [Op.ne]: ["TR"] }
       },
       include: ['Producto', 'movimiento'],
       limit: newlimit,
       offset: newoffset
     });
-    return { data: result, total: total };
-  }
 
+    return { data, total: count };
+  }
 }
 
 module.exports = HistorialMovimientosService

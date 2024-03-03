@@ -22,9 +22,9 @@ class MovimientosService {
     const item = await db.movimientos.create(itemNuevo);
 
     if (data.prefijo == "DV") {
-      await serviceEmail.send('ydavila@banarica.com, practicantesantamarta@banarica.com', 
-      `Devolución ${consecutivo}`,
-       `<h3>Devolucion <b>${consecutivo}</b> pendente por revisión</h3>
+      await serviceEmail.send('ydavila@banarica.com, practicantesantamarta@banarica.com',
+        `Devolución ${consecutivo}`,
+        `<h3>Devolucion <b>${consecutivo}</b> pendente por revisión</h3>
       <p>
         <b>Observaciones:</b> ${item?.dataValues?.observaciones}
       </p>
@@ -35,75 +35,67 @@ class MovimientosService {
         </a>
      </p>`,)
     }
-   
+
     return item
   }
- 
+
 
   async find() {
     return await db.movimientos.findAll()
   }
 
   async findDocument(body) {
-    const movimiento = await db.movimientos.findOne({ where: { consecutivo: body.consecutivo } })
-    const historial = await db.historial_movimientos.findAll({ where: { cons_movimiento: body.consecutivo } })
-    const productos = await db.productos.findAll()
-    const almacenes = await db.almacenes.findAll()
-    let array = []
-    historial.map(item => {
-      const cantidad = item.dataValues.cantidad
-      const consProducto = item.dataValues.cons_producto
-      productos.map(producto => {
-        if (producto.dataValues.consecutivo == consProducto) {
-          const data = {
-            cantidad: cantidad,
-            cons_producto: producto.dataValues.consecutivo,
-            nombre: producto.dataValues.name,
-          }
-          array.push(data)
-        }
-      })
-    })
-    const consAlamcen = historial[0].dataValues.cons_almacen_gestor;
-    let nombreAlmacen;
-    almacenes.map(almacen => {
-      if (almacen.dataValues.consecutivo == consAlamcen) {
-        nombreAlmacen = almacen.dataValues.nombre
+    const [movimiento, historial, productos, almacenes] = await Promise.all([
+      db.movimientos.findOne({ where: { consecutivo: body.consecutivo } }),
+      db.historial_movimientos.findAll({ where: { cons_movimiento: body.consecutivo } }),
+      db.productos.findAll(),
+      db.almacenes.findAll()
+    ]);
+
+    const array = historial.map(item => {
+      const cantidad = item.dataValues.cantidad;
+      const consProducto = item.dataValues.cons_producto;
+      const producto = productos.find(p => p.dataValues.consecutivo === consProducto);
+
+      if (producto) {
+        return {
+          cantidad,
+          cons_producto: producto.dataValues.consecutivo,
+          nombre: producto.dataValues.name
+        };
       }
-    }
-    )
+    });
+
+    const consAlmacen = historial[0]?.dataValues.cons_almacen_gestor;
+    const almacen = almacenes.find(a => a.dataValues.consecutivo === consAlmacen)?.dataValues.nombre;
 
     const result = {
-      cons_almacen: consAlamcen,
-      almacen: nombreAlmacen,
+      cons_almacen: consAlmacen,
+      almacen: almacen,
       movimiento: movimiento.dataValues,
-      tipo_movimiento: historial[0].dataValues.tipo_movimiento,
-      razon_movimiento: historial[0].dataValues.razon_movimiento,
-      lista: array
-    }
+      tipo_movimiento: historial[0]?.dataValues.tipo_movimiento,
+      razon_movimiento: historial[0]?.dataValues.razon_movimiento,
+      lista: array.filter(Boolean) // Remove any undefined items
+    };
 
-    return result
+    return result;
   }
+
 
   async findOne(consecutivo) {
     const item = await db.movimientos.findOne({
-      where: { consecutivo: consecutivo },
-      include: [{
-        model: db.historial_movimientos,
-        as: "historial_movimientos",
-        include: [{
-          model: db.productos,
-          as: "Producto"
-        }]
-      }, {
-        model: db.usuarios,
-        as: "realizado"
-      }, {
-        model: db.usuarios,
-        as: "aprobado"
-      }]
-    })
-    if (!item) throw boom.notFound('El item no existe');
+      where: { consecutivo },
+      include: [
+        { model: db.historial_movimientos, as: "historial_movimientos", include: [{ model: db.productos, as: "Producto" }] },
+        { model: db.usuarios, as: "realizado" },
+        { model: db.usuarios, as: "aprobado" }
+      ]
+    });
+  
+    if (!item) {
+      throw boom.notFound('El item no existe');
+    }
+  
     return item;
   }
 

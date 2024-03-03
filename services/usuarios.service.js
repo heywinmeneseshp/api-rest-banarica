@@ -103,33 +103,32 @@ class UsuariosService {
   }
 
   async deleteAlmacenFromUser(username, id_almacen) {
-    const index = await db.almacenes_por_usuario.destroy({
+    const deletedRows = await db.almacenes_por_usuario.destroy({
       where: { username, id_almacen }
     });
-    if (!index) throw boom.notFound('El item no existe');
-    return { message: "El item fue eliminado", index };
+  
+    if (deletedRows === 0) {
+      throw boom.notFound('El item no existe');
+    }
+    return { message: "El item fue eliminado", index: deletedRows };
   }
 
   async paginate(offset, limit, username) {
-    if (!username) username = ""
-    let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset) - 1) * newlimit;
-    const total = await db.usuarios.count({
+    const newlimit = parseInt(limit);
+    const newoffset = (parseInt(offset) - 1) * newlimit;
+
+    const { count, rows: data } = await db.usuarios.findAndCountAll({
       where: {
         username: { [Op.like]: `%${username}%` },
-        id_rol: { [Op.notIn]: { [Op.or]: ["Super seguridad", "Seguridad"] } }
-      },
-    });
-    const result = await db.usuarios.findAll({
-      where: {
-        username: { [Op.like]: `%${username}%` },
-        id_rol: { [Op.notIn]:  ["Super seguridad", "Seguridad"]  }
+        id_rol: { [Op.notIn]: ["Super seguridad", "Seguridad"] }
       },
       limit: newlimit,
       offset: newoffset
     });
-    return { data: result, total: total };
+
+    return { data, total: count };
   }
+
 
 }
 

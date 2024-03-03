@@ -21,50 +21,57 @@ class AuthService {
   }
 
   async getProfile(username) {
-    const user = await service.findOne(username)
-    delete user.dataValues.password
-    const lista = await db.almacenes_por_usuario.findAll({
-      where: { username: username, habilitado: true },
-      include: ['almacen']
+    const user = await service.findOne(username, {
+      attributes: { exclude: ['password'] }
     });
-    return {usuario: user, almacenes: lista.map(item => item.almacen)}
+    const almacenes = await db.almacenes_por_usuario.findAll({
+      where: { username, habilitado: true },
+      include: [{ model: db.almacen, as: 'almacen' }]
+    });
+    return { usuario: user, almacenes: almacenes.map(item => item.almacen) };
   }
 
-  singToken(user) {
-    const payload = {
-      username: user.username,
-      id_rol: user.id_rol,
-    };
-    return jwt.sign(payload, env.secret, { expiresIn: '24h' });
+  signToken(user) {
+    const { username, id_rol } = user;
+    return jwt.sign({ username, id_rol }, env.secret, { expiresIn: '24h' });
   }
 
   async recoveryPassword(username) {
-    const user = await service.findOne(username)
-    if (!user) throw boom.unauthorized("El usuario no existe")
-    const payload = { username: username }
+    const user = await service.findOne(username);
+    if (!user) {
+      throw boom.unauthorized("El usuario no existe");
+    }
+
+    const payload = { username };
     const token = jwt.sign(payload, env.secret, { expiresIn: '15min' });
-    await service.update(username, { recovery_token: token })
+    await service.update(username, { recovery_token: token });
+
     const link = `https://app-banarica.vercel.app/recovery?token=${token}`;
     const infoEmail = {
       from: env.email,
       to: user.email,
       subject: "Recuperar contraseña",
-      html: `<p>Hola ${user.nombre} ${user.apellido}, tienes 15 minutos para recuperar tu contraseña ingresando a este link: <a href="${link}">${link}</a></p>`
-    }
-    await this.sendMail(infoEmail)
-    return { message: "Se ha enviado un correo a tu email", token }
+      html: `<p>Hola ${user.nombre} ${user.apellido}, tienes 15 minutos para recuperar tu contraseña ingresando a este <a href="${link}">enlace</a>.</p>`
+    };
+
+    await this.sendMail(infoEmail);
+    return { message: "Se ha enviado un correo a tu email", token };
   }
 
-  async changePassword(token, changes) {
-    const payload = jwt.verify(token, env.secret)
-    const user = await service.findOne(payload.username)
-    if (user.dataValues.recovery_token === token ){ //return boom.unauthorized("El token no es valido")
-      await service.update(payload.username, { password: changes.password, recovery_token: null })
-      return { message: "Se ha cambiado la contraseña" }
-    } else {
-      return boom.unauthorized("El token no es valido")
-    }
 
+  async changePassword(token, changes) {
+    try {
+      const payload = jwt.verify(token, env.secret);
+      const user = await service.findOne(payload.username);
+      if (user.dataValues.recovery_token === token) {
+        await service.update(payload.username, { password: changes.password, recovery_token: null });
+        return { message: "Se ha cambiado la contraseña" };
+      } else {
+        throw boom.unauthorized("El token no es válido");
+      }
+    } catch (error) {
+      throw boom.unauthorized("El token no es válido");
+    }
   }
 
   async sendMail(infoEmail) {

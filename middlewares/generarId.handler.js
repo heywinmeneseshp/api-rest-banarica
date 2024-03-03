@@ -11,9 +11,8 @@ function generarIDProAndCat (nombre, ultimoID) {
   return prefijo + id
 }
 
-function generarIDSemana(semana, anho){ //S20-22
-  let id = "S" + semana + "-" + anho.substring(2, 4);
-  return id;
+function generarIDSemana(semana, anho) {
+  return `S${semana}-${anho.slice(-2)}`;
 }
 
 module.exports = { generarID, generarIDProAndCat, generarIDSemana };

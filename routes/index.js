@@ -28,6 +28,16 @@ const documentosRouter = require("./documentos.router")
 
 const seguridadRouter = require('./seguridad/seguridad.router');
 const confiRouter = require('./configuracion.router');
+//TRANSPORTE
+const categoriaVehiculosRouter = require('./transporte/categoriaVehiculos.router.js');
+const clientesRouter = require('./transporte/clientes.router.js');
+const galonesPorRutaRouter = require('./transporte/galonesPorRuta.router.js');
+const itinerariosRouter = require('./transporte/itinerarios.router.js');
+const programacionesRouter = require('./transporte/programaciones.router.js');
+const rutasRouter = require('./transporte/rutas.router.js');
+const ubicacionesRouter = require('./transporte/ubicaciones.router.js');
+const vehiculosRouter = require('./transporte/vehiculos.router.js');
+
 
 function routerApi(app) {
   const router = express.Router();
@@ -59,6 +69,16 @@ function routerApi(app) {
 
   router.use('/seguridad', seguridadRouter);
   router.use('/confi', confiRouter);
+  //TRANSPORTE
+  router.use('/categoriaVehiculos', categoriaVehiculosRouter);
+  router.use('/clientes', clientesRouter);
+  router.use('/galonesPorRuta', galonesPorRutaRouter);
+  router.use('/itinerarios', itinerariosRouter);
+  router.use('/programaciones', programacionesRouter);
+  router.use('/rutas', rutasRouter);
+  router.use('/ubicaciones', ubicacionesRouter);
+  router.use('/vehiculos', vehiculosRouter);
+
 }
 
 module.exports = routerApi;
