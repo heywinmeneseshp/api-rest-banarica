@@ -21,7 +21,8 @@ class AuthService {
   }
 
   async getProfile(username) {
-    const user = await db.usuarios.findOne(username, {
+    const user = await db.usuarios.findOne({
+      where: { username },
       attributes: { exclude: ['password'] }
     });
     
@@ -29,8 +30,10 @@ class AuthService {
       where: { username, habilitado: true },
       include: [{ model: db.almacen, as: 'almacen' }]
     });
+    
     return { usuario: user, almacenes: almacenes.map(item => item.almacen) };
   }
+  
 
   signToken(user) {
     const { username, id_rol } = user;
