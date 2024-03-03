@@ -21,7 +21,7 @@ class AuthService {
   }
 
   async getProfile(username) {
-    const user = await service.findOne(username, {
+    const user = await db.usuarios.findOne(username, {
       attributes: { exclude: ['password'] }
     });
     
