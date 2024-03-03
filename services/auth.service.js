@@ -13,9 +13,9 @@ class AuthService {
 
   async getUser(username, password) {
     const user = await service.findOne(username)
-    if (!user) done(boom.unauthorized(), false)
+    if (!user) return
     const isValid = await bcrypt.compare(password, user.password)
-    if (!isValid) done(boom.unauthorized("Contraseña incorrecta"), false)
+    if (!isValid) return
     delete user.dataValues.password
     return user
   }
