@@ -1,7 +1,7 @@
 
 const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
-const db = require('../models');
+const db = require('../../models');
 
 class galones_por_rutaService {
 
