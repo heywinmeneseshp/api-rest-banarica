@@ -7,6 +7,7 @@ class ubicacionesService {
   async create(data) {
     const existe = await db.ubicaciones.findOne({ where: { id: data.id } });
     if (existe) throw boom.conflict('El item ya existe')
+    delete data.id
     const newAlamacen = await db.ubicaciones.create(data);
     return newAlamacen
   }

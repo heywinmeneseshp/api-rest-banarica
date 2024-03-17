@@ -14,16 +14,7 @@ class categoria_vehiculosService {
 
   async find() {
     const res = await db.categoria_vehiculos.findAll()
-    const categoria_vehiculos = res.sort((a,b)=>{
-      if (a.dataValues.nombre == b.dataValues.nombre) {
-        return 0;
-      }
-      if (a.dataValues.nombre < b.dataValues.nombre) {
-        return -1;
-      }
-      return 1;
-    })
-    return categoria_vehiculos;
+    return res;
   }
 
   async findOne(id) {
@@ -50,10 +41,10 @@ class categoria_vehiculosService {
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const total = await db.categoria_vehiculos.count({
-      where: { nombre: { [Op.like]: `%${item}%` } }
+      where: { categoria: { [Op.like]: `%${item}%` } }
     });
     const result = await db.categoria_vehiculos.findAll({
-      where: { nombre: { [Op.like]: `%${item}%` } },
+      where: { categoria: { [Op.like]: `%${item}%` } },
       limit: newlimit,
       offset: newoffset
     });

@@ -1,8 +1,8 @@
 const express = require("express");
 
-const itemService = require("../../services/transporte/galonesPorRuta.service");
+const itemesService = require("../../services/transporte/productos_viaje.service");
 const router = express.Router();
-const service = new itemService();
+const service = new itemesService();
 
 router.get("/", async (req, res, next) => {
   try {
@@ -25,15 +25,6 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
-router.get("/consultar", async (req, res, next) => {
-  try {
-    const result = await service.consultarIndefinidos();
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
-
 router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -44,11 +35,26 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+
 router.post("/",
   async (req, res, next) => {
     try {
       const body = req.body;
       const itemNuevo = await service.create(body);
+      res.json({
+        message: "item creado",
+        data: itemNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/buscar",
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const itemNuevo = await service.findWhere(body);
       res.json({
         message: "item creado",
         data: itemNuevo

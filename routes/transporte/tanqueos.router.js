@@ -1,6 +1,6 @@
 const express = require("express");
 
-const itemService = require("../../services/transporte/itinerarios.service");
+const itemService = require("../../services/transporte/tanqueos.service");
 const router = express.Router();
 const service = new itemService();
 
@@ -40,6 +40,20 @@ router.post("/",
     try {
       const body = req.body;
       const itemNuevo = await service.create(body);
+      res.json({
+        message: "item creado",
+        data: itemNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
+
+router.post("/encontrar",
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const itemNuevo = await service.findAll(body);
       res.json({
         message: "item creado",
         data: itemNuevo

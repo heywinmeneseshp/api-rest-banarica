@@ -1,7 +1,7 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('itinerarios', {
+    await queryInterface.createTable('tanqueos', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -11,7 +11,16 @@ module.exports = {
       fecha: {
         type: Sequelize.DATE
       },
-      detalle: {
+      factura: {
+        type: Sequelize.STRING
+      },
+      tanqueo: {
+        type: Sequelize.FLOAT
+      },
+      costo: {
+        type: Sequelize.FLOAT
+      },
+      record_consumo_id: {
         type: Sequelize.STRING
       },
       activo: {
@@ -28,6 +37,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('itinerarios');
+    await queryInterface.dropTable('tanqueos');
   }
 };

@@ -8,18 +8,13 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      itininerario_id: {
+      fecha: {
         type: Sequelize.STRING
       },
       ruta_id: {
         type: Sequelize.STRING
       },
-      producto_id: {
-        type: Sequelize.STRING
-      },
-      cantidad: {
-        type: Sequelize.FLOAT
-      },
+
       detalles: {
         type: Sequelize.STRING
       },
@@ -29,11 +24,23 @@ module.exports = {
       id_pagador_flete: {
         type: Sequelize.STRING
       },
-      unidad_medida: {
-        type: Sequelize.STRING
-      },
       activo: {
         type: Sequelize.BOOLEAN
+      },
+      movimiento: {
+        type: Sequelize.STRING
+      },
+      conductor_id: {
+        type: Sequelize.STRING
+      },
+      vehiculo_id: {
+        type: Sequelize.STRING
+      },
+      contenedor: {
+        type: Sequelize.STRING
+      },
+      semana: {
+        type: Sequelize.STRING
       },
       createdAt: {
         allowNull: false,

@@ -1,25 +1,44 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('rutas', {
+    await queryInterface.createTable('record_consumos', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      ubicacion1: {
+      fecha: {
         type: Sequelize.STRING
       },
-      ubicacion2: {
+      detalle: {
         type: Sequelize.STRING
       },
-      km: {
+      semana: {
+        type: Sequelize.STRING
+      },
+      vehiculo_id: {
+        type: Sequelize.STRING
+      },
+      conductor_id: {
+        type: Sequelize.STRING
+      },
+      stock_inicial: {
         type: Sequelize.FLOAT
       },
-      detalles: {
-        type: Sequelize.STRING
+      stock_final: {
+        type: Sequelize.FLOAT
       },
+      stock_real: {
+        type: Sequelize.FLOAT
+      },
+      tanqueo: {
+        type: Sequelize.FLOAT
+      },
+      liquidado: {
+        type: Sequelize.BOOLEAN
+      },
+
       activo: {
         type: Sequelize.BOOLEAN
       },
@@ -31,9 +50,11 @@ module.exports = {
         allowNull: false,
         type: Sequelize.DATE
       }
+
+
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('rutas');
+    await queryInterface.dropTable('record_consumos');
   }
 };

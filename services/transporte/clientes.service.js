@@ -14,16 +14,7 @@ class clientesService {
 
   async find() {
     const res = await db.clientes.findAll()
-    const clientes = res.sort((a,b)=>{
-      if (a.dataValues.nombre == b.dataValues.nombre) {
-        return 0;
-      }
-      if (a.dataValues.nombre < b.dataValues.nombre) {
-        return -1;
-      }
-      return 1;
-    })
-    return clientes;
+    return res;
   }
 
   async findOne(id) {
@@ -50,10 +41,10 @@ class clientesService {
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const total = await db.clientes.count({
-      where: { nombre: { [Op.like]: `%${item}%` } }
+      where: { razon_social: { [Op.like]: `%${item}%` } }
     });
     const result = await db.clientes.findAll({
-      where: { nombre: { [Op.like]: `%${item}%` } },
+      where: { razon_social: { [Op.like]: `%${item}%` } },
       limit: newlimit,
       offset: newoffset
     });

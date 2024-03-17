@@ -10,14 +10,35 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+
+      rutas.hasMany(models.programacion, {
+        foreignKey: 'ruta_id'
+      });
+
+      this.hasOne(models.ubicaciones, {
+        as: 'ubicacion_1',
+        foreignKey: 'id',
+        sourceKey: 'ubicacion1',
+      });
+    
+      this.hasOne(models.ubicaciones, {
+        as: 'ubicacion_2',
+        foreignKey: 'id',
+        sourceKey: 'ubicacion2',
+      });
+
+      this.hasMany(models.galones_por_ruta, {
+        foreignKey: "ruta_id",
+        sourceKey: "id"
+      })
     }
   }
   rutas.init({
     ubicacion1: DataTypes.STRING,
-    ubicacion1: DataTypes.STRING,
+    ubicacion2: DataTypes.STRING,
     km: DataTypes.FLOAT,
-    detalles: DataTypes.STRING
+    detalles: DataTypes.STRING,
+    activo: DataTypes.BOOLEAN
   }, {
     sequelize,
     modelName: 'rutas',

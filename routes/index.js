@@ -32,11 +32,13 @@ const confiRouter = require('./configuracion.router');
 const categoriaVehiculosRouter = require('./transporte/categoriaVehiculos.router.js');
 const clientesRouter = require('./transporte/clientes.router.js');
 const galonesPorRutaRouter = require('./transporte/galonesPorRuta.router.js');
-const itinerariosRouter = require('./transporte/itinerarios.router.js');
+const recordConsumoRouter = require('./transporte/record_consumo.router.js');
 const programacionesRouter = require('./transporte/programaciones.router.js');
 const rutasRouter = require('./transporte/rutas.router.js');
 const ubicacionesRouter = require('./transporte/ubicaciones.router.js');
 const vehiculosRouter = require('./transporte/vehiculos.router.js');
+const productosViajesRouter = require('./transporte/productos-viaje.router.js');
+const tanqueoRouter = require('./transporte/tanqueos.router.js')
 
 
 function routerApi(app) {
@@ -73,11 +75,13 @@ function routerApi(app) {
   router.use('/categoriaVehiculos', categoriaVehiculosRouter);
   router.use('/clientes', clientesRouter);
   router.use('/galonesPorRuta', galonesPorRutaRouter);
-  router.use('/itinerarios', itinerariosRouter);
+  router.use('/record_consumo', recordConsumoRouter);
   router.use('/programaciones', programacionesRouter);
   router.use('/rutas', rutasRouter);
   router.use('/ubicaciones', ubicacionesRouter);
   router.use('/vehiculos', vehiculosRouter);
+  router.use('/productos-viaje', productosViajesRouter);
+  router.use('/tanqueo', tanqueoRouter);
 
 }
 

@@ -1,24 +1,24 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('rutas', {
+    await queryInterface.createTable('productos_viajes', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      ubicacion1: {
+      programacion_id: {
         type: Sequelize.STRING
       },
-      ubicacion2: {
+      producto_id: {
         type: Sequelize.STRING
       },
-      km: {
+      unidad_de_medida: {
+        type: Sequelize.STRING
+      },
+      cantidad: {
         type: Sequelize.FLOAT
-      },
-      detalles: {
-        type: Sequelize.STRING
       },
       activo: {
         type: Sequelize.BOOLEAN
@@ -34,6 +34,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('rutas');
+    await queryInterface.dropTable('productos_viajes');
   }
 };

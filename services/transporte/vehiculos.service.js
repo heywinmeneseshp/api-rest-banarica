@@ -5,6 +5,7 @@ const db = require('../../models');
 class vehiculoService {
 
   async create(data) {
+    console.log(data)
     const existe = await db.vehiculo.findOne({ where: { id: data.id } });
     if (existe) throw boom.conflict('El item ya existe')
     const newAlamacen = await db.vehiculo.create(data);
@@ -12,16 +13,7 @@ class vehiculoService {
   }
 
   async find() {
-    const res = await db.vehiculo.findAll()
-    const vehiculo = res.sort((a,b)=>{
-      if (a.dataValues.nombre == b.dataValues.nombre) {
-        return 0;
-      }
-      if (a.dataValues.nombre < b.dataValues.nombre) {
-        return -1;
-      }
-      return 1;
-    })
+    const vehiculo = await db.vehiculo.findAll()
     return vehiculo;
   }
 
@@ -49,10 +41,10 @@ class vehiculoService {
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const total = await db.vehiculo.count({
-      where: { nombre: { [Op.like]: `%${item}%` } }
+      where: { placa: { [Op.like]: `%${item}%` } }
     });
     const result = await db.vehiculo.findAll({
-      where: { nombre: { [Op.like]: `%${item}%` } },
+      where: { placa: { [Op.like]: `%${item}%` } },
       limit: newlimit,
       offset: newoffset
     });

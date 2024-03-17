@@ -11,6 +11,15 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      ubicaciones.hasMany(models.rutas, {
+        foreignKey: 'ubicacion1',
+        as: 'ubicacion_1',
+      });
+    
+      ubicaciones.hasMany(models.rutas, {
+        foreignKey: 'ubicacion2',
+        as: 'ubicacion_2',
+      });
     }
   }
   ubicaciones.init({

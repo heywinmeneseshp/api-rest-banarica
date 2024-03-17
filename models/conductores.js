@@ -11,7 +11,19 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      conductores.hasMany(models.programacion, {
+        foreignKey: 'conductor_id'
+      });
+
+      
+      this.hasMany(models.record_consumos, {
+        foreignKey: "conductor_id",
+        sourceKey: "id"
+      })
+
+      
     }
+
   }
   conductores.init({
     consecutivo: DataTypes.STRING,

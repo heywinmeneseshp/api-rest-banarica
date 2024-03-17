@@ -11,18 +11,48 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      programacion.hasMany(models.productos_viajes, {
+        foreignKey: 'programacion_id'
+      });
+
+      programacion.hasOne(models.conductores, {
+        foreignKey: "id",
+        sourceKey: "conductor_id",
+        as: "conductor"
+      })
+
+      programacion.hasOne(models.clientes, {
+        foreignKey: "id",
+        sourceKey: "id_pagador_flete",
+      })
+
+      programacion.hasOne(models.rutas, {
+        foreignKey: "id",
+        sourceKey: "ruta_id",
+      })
+
+      programacion.hasOne(models.vehiculo, {
+        foreignKey: "id",
+        sourceKey: "vehiculo_id",
+      })
+
+
+
+
     }
   }
   programacion.init({
-    itininerario_id: DataTypes.STRING,
     ruta_id: DataTypes.STRING,
-    producto_id: DataTypes.STRING,
-    cantidad: DataTypes.FLOAT,
-    detalles: DataTypes.STRING,
     cobrar: DataTypes.BOOLEAN,
     id_pagador_flete: DataTypes.STRING,
-    unidad_medida: DataTypes.STRING,
-    activo: DataTypes.BOOLEAN
+    activo: DataTypes.BOOLEAN,
+    movimiento: DataTypes.STRING,
+    conductor_id: DataTypes.STRING,
+    vehiculo_id: DataTypes.STRING,
+    contenedor: DataTypes.STRING,
+    semana: DataTypes.STRING,
+    fecha: DataTypes.STRING,
+    detalles: DataTypes.STRING,
   }, {
     sequelize,
     modelName: 'programacion',
