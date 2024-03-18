@@ -2,15 +2,10 @@ const boom = require('@hapi/boom');
 const { Op, Sequelize } = require('sequelize');
 const db = require('../../models');
 
-const { literal } = Sequelize;
 
 class ProgramacionService {
 
   async create(data) {
-    const existe = await db.programacion.findOne({ where: data });
-    if (existe) {
-      throw boom.conflict('El item ya existe');
-    }
     return await db.programacion.create(data);
   }
 
@@ -35,7 +30,6 @@ class ProgramacionService {
   }
 
   async update(id, changes) {
-    console.log(id, "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
     const item = await db.programacion.findOne({ where: { id } });
     if (!item) {
       throw boom.notFound('El item no existe');
@@ -59,7 +53,6 @@ class ProgramacionService {
     let newLimit = parseInt(limit);
     let newOffset = (parseInt(offset) - 1) * newLimit;
 
-    console.log(offset, limit)
     const whereClause = {
       where: {
         semana: { [Op.like]: `%${body?.semana || ''}%` },

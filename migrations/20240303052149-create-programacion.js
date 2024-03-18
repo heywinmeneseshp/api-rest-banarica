@@ -42,6 +42,18 @@ module.exports = {
       semana: {
         type: Sequelize.STRING
       },
+      llegada_oriegn: {
+        type: Sequelize.STRING
+      },
+      salida_origen: {
+        type: Sequelize.STRING
+      },
+      llegada_destino: {
+        type: Sequelize.STRING
+      },
+      salida_oriegn: {
+        type: Sequelize.STRING
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

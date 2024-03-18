@@ -53,6 +53,10 @@ module.exports = (sequelize, DataTypes) => {
     semana: DataTypes.STRING,
     fecha: DataTypes.STRING,
     detalles: DataTypes.STRING,
+    llegada_origen: DataTypes.STRING,
+    salida_origen: DataTypes.STRING,
+    llegada_destino: DataTypes.STRING,
+    salida_destino: DataTypes.STRING
   }, {
     sequelize,
     modelName: 'programacion',
