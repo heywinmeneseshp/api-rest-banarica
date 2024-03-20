@@ -59,7 +59,7 @@ class ProgramacionService {
         fecha: { [Op.like]: `%${body?.fecha || ''}%` },
         movimiento: { [Op.like]: `%${body?.movimiento || ''}%` },
       },
-      order: [['fecha', 'DESC']], // Ordenar por fecha de forma descendente
+      order: [['fecha', 'DESC'], ['vehiculo_id', 'DESC']], // Ordenar por fecha de forma descendente
       include: [
         {
           model: db.rutas,
