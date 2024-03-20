@@ -42,7 +42,7 @@ module.exports = {
       semana: {
         type: Sequelize.STRING
       },
-      llegada_oriegn: {
+      llegada_origen: {
         type: Sequelize.STRING
       },
       salida_origen: {
@@ -51,7 +51,7 @@ module.exports = {
       llegada_destino: {
         type: Sequelize.STRING
       },
-      salida_oriegn: {
+      salida_destino: {
         type: Sequelize.STRING
       },
       createdAt: {
