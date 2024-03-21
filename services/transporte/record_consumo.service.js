@@ -173,14 +173,14 @@ class record_consumosService {
     let consumo = 0;
     programaciones.map(async item => {
       consumo = consumo + (item.dataValues.ruta.dataValues.galones_por_ruta[0].dataValues.galones_por_ruta ? item.dataValues.ruta.dataValues.galones_por_ruta[0].dataValues.galones_por_ruta : 0)
-      await db.programacion.update({ activo: false }, { where: { id: item.dataValues.id } })
+      await db.programacion.update({ activo: true }, { where: { id: item.dataValues.id } })
     })
 
     await db.vehiculo.update({ combustible: stock_real }, { where: { id: item.dataValues.vehiculo.dataValues.id } })
 
     const res = await db.record_consumos.update(
       {
-        activo: false,
+        activo: true,
         liquidado: true,
         stock_inicial: programaciones[0].dataValues.vehiculo.dataValues.combustible,
         stock_real: stock_real,

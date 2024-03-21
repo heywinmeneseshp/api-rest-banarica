@@ -6,7 +6,8 @@ const db = require('../../models');
 class ProgramacionService {
 
   async create(data) {
-    return await db.programacion.create(data);
+    const body = { ...data, eliminado: false }
+    return await db.programacion.create(body);
   }
 
 
@@ -48,12 +49,8 @@ class ProgramacionService {
   }
 
   async paginate(offset, limit, body) {
-  
 
-    let newLimit = parseInt(limit);
-    let newOffset = (parseInt(offset) - 1) * newLimit;
-
-    const whereClause = {
+    let whereClause = {
       where: {
         semana: { [Op.like]: `%${body?.semana || ''}%` },
         fecha: { [Op.like]: `%${body?.fecha || ''}%` },
@@ -66,7 +63,7 @@ class ProgramacionService {
           include: [
             { model: db.ubicaciones, as: 'ubicacion_1' },
             { model: db.ubicaciones, as: 'ubicacion_2' },
-            { model: db.galones_por_ruta}
+            { model: db.galones_por_ruta }
           ],
           where: {
             ubicacion1: { [Op.like]: `%${body.ubicacion1 || ''}%` },
@@ -89,10 +86,19 @@ class ProgramacionService {
           }
         }
       ],
-      limit: newLimit,
-      offset: newOffset
     };
-  
+
+    if (offset || limit) {
+      let newLimit = parseInt(limit);
+      let newOffset = (parseInt(offset) - 1) * newLimit;
+      whereClause = {
+        ...whereClause, limit: newLimit,
+        offset: newOffset
+      }
+    }
+
+    if (body.eliminado) whereClause.where.eliminado = body.eliminado
+
     const { count, rows: result } = await db.programacion.findAndCountAll(whereClause);
 
     return { data: result, total: count };

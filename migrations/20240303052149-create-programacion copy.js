@@ -54,6 +54,9 @@ module.exports = {
       salida_destino: {
         type: Sequelize.STRING
       },
+      eliminado: {
+        type: Sequelize.BOOLEAN
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

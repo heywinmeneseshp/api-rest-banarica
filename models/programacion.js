@@ -56,7 +56,8 @@ module.exports = (sequelize, DataTypes) => {
     llegada_origen: DataTypes.STRING,
     salida_origen: DataTypes.STRING,
     llegada_destino: DataTypes.STRING,
-    salida_destino: DataTypes.STRING
+    salida_destino: DataTypes.STRING,
+    eliminado: DataTypes.BOOLEAN
   }, {
     sequelize,
     modelName: 'programacion',
