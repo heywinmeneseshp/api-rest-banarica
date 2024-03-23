@@ -29,6 +29,7 @@ module.exports = (sequelize, DataTypes) => {
     conductor_id: DataTypes.STRING,
     categoria_id: DataTypes.STRING,
     combustible: DataTypes.FLOAT,
+    gal_por_km: DataTypes.FLOAT,
     activo: DataTypes.BOOLEAN
   }, {
     sequelize,

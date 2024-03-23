@@ -39,6 +39,8 @@ module.exports = (sequelize, DataTypes) => {
     stock_final: DataTypes.FLOAT,
     stock_real: DataTypes.FLOAT,
     tanqueo: DataTypes.FLOAT,
+    km_recorridos: DataTypes.FLOAT,
+    gal_por_km:  DataTypes.FLOAT,
     detalle: DataTypes.STRING,
     activo: DataTypes.BOOLEAN,
     liquidado: DataTypes.BOOLEAN,

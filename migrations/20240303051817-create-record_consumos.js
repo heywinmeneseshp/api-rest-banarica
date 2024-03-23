@@ -38,7 +38,12 @@ module.exports = {
       liquidado: {
         type: Sequelize.BOOLEAN
       },
-
+      km_recorridos: {
+        type: Sequelize.FLOAT
+      },
+      gal_por_km: {
+        type: Sequelize.FLOAT
+      },
       activo: {
         type: Sequelize.BOOLEAN
       },

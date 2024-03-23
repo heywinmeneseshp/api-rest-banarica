@@ -1,4 +1,7 @@
 'use strict';
+
+const { sequelize } = require("../models");
+
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('vehiculos', {
@@ -25,6 +28,9 @@ module.exports = {
       },
       combustible: {
         type: Sequelize.FLOAT
+      },
+      gal_por_km: {
+        type: sequelize.FLOAT
       },
       activo: {
         type: Sequelize.BOOLEAN

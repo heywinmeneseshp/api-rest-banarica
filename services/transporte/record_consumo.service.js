@@ -138,8 +138,8 @@ class record_consumosService {
   }
 
   async liquidar(body) {
-    const { record_consumo_id, stock_real } = body;
-    console.log(body)
+    const { record_consumo_id, stock_real, km_recorridos } = body;
+    console.log(km_recorridos)
 
     const item = await db.record_consumos.findOne({
       where: { id: record_consumo_id },
@@ -147,15 +147,11 @@ class record_consumosService {
         { model: db.vehiculo },
       ]
     });
-    const categoria_id = item.dataValues.vehiculo.dataValues.categoria_id;
     const programaciones = await db.programacion.findAll({
       where: { fecha: item.dataValues.fecha, activo: true, vehiculo_id: item.dataValues.vehiculo_id },
       include: [
         {
           model: db.rutas,
-          include: [
-            { model: db.galones_por_ruta, where: { categoria_id: categoria_id } },
-          ]
         },
         { model: db.vehiculo }
       ]
@@ -169,11 +165,10 @@ class record_consumosService {
       await db.tanqueos.update({ activo: false }, { where: { id: item.dataValues.id } })
       tanqueo = tanqueo + item.dataValues.tanqueo
     })
+    let consumo = km_recorridos * item.dataValues.vehiculo.dataValues.gal_por_km;
 
-    let consumo = 0;
     programaciones.map(async item => {
-      consumo = consumo + (item.dataValues.ruta.dataValues.galones_por_ruta[0].dataValues.galones_por_ruta ? item.dataValues.ruta.dataValues.galones_por_ruta[0].dataValues.galones_por_ruta : 0)
-      await db.programacion.update({ activo: true }, { where: { id: item.dataValues.id } })
+      await db.programacion.update({ activo: false }, { where: { id: item.dataValues.id } })
     })
 
     await db.vehiculo.update({ combustible: stock_real }, { where: { id: item.dataValues.vehiculo.dataValues.id } })
@@ -184,6 +179,8 @@ class record_consumosService {
         liquidado: true,
         stock_inicial: programaciones[0].dataValues.vehiculo.dataValues.combustible,
         stock_real: stock_real,
+        km_recorridos: km_recorridos,
+        gal_por_km: item.dataValues.vehiculo.dataValues.gal_por_km,
         tanqueo: tanqueo,
         stock_final: programaciones[0].dataValues.vehiculo.dataValues.combustible + tanqueo - consumo
       },
