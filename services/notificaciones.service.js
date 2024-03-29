@@ -1,13 +1,12 @@
 
 const boom = require('@hapi/boom');
-const { Op } = require('sequelize');
 const db = require('../models')
 
 class NotificacionesService {
 
 
   async create(data) {
-    let consecutivo = "NT-" + (Date.now()-1662564279341);
+    let consecutivo = "NT-" + (Date.now() - 1662564279341);
     const itemNuevo = await { consecutivo, ...data }
     await db.notificaciones.create(itemNuevo)
     return itemNuevo
@@ -42,6 +41,28 @@ class NotificacionesService {
     await item.destroy({ where: { id } });
     return { message: "El item fue eliminado" };
   }
+
+  async paginate(offset, limit, body) {
+    const whereClause = { where: body };
+    if (offset && limit) {
+      const newLimit = parseInt(limit);
+      const newOffset = (parseInt(offset) - 1) * newLimit;
+      Object.assign(whereClause, { limit: newLimit, offset: newOffset });
+    }
+    const { count, rows: result } = await db.notificaciones.findAndCountAll({
+      ...whereClause,
+      include: [
+        {
+          model: db.record_consumos,
+          include: { model: db.vehiculo }
+        },
+
+      ],
+      order: [['id', 'DESC']]
+    });
+    return { data: result, total: count };
+  }
+
 
 }
 

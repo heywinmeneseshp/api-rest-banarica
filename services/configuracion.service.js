@@ -17,7 +17,7 @@ class ConfigService {
       let moduloSemana = res[0].dataValues
       let firstDate = new Date(new Date().getFullYear(), 0);
       let currentDate = new Date();
-      let currentWeek = Math.floor((currentDate - firstDate) / 604800000)
+      let currentWeek = Math.ceil((currentDate - firstDate) / 604800000)
       if (moduloSemana.semana_actual < currentWeek) {
         moduloSemana = { ...moduloSemana, semana_actual: currentWeek }
         res[0].dataValues.semana_actual = currentWeek

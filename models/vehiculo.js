@@ -20,6 +20,11 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: "id"
       });
 
+      this.hasMany(models.notificaciones, {
+        foreignKey: 'id_vehiculo',
+        sourceKey: "id"
+      });
+
     }
   }
   vehiculo.init({

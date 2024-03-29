@@ -11,6 +11,15 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      this.hasOne(models.vehiculo, {
+        sourceKey: 'id_vehiculo',
+        foreignKey: "id"
+      });
+
+      this.hasOne(models.record_consumos, {
+        sourceKey: 'cons_movimiento',
+        foreignKey: "id"
+      });
     }
   }
   notificaciones.init({
@@ -20,6 +29,8 @@ module.exports = (sequelize, DataTypes) => {
     cons_movimiento: DataTypes.STRING,
     tipo_movimiento: DataTypes.STRING,
     descripcion: DataTypes.STRING,
+    dif_porcentual_consumo: DataTypes.FLOAT,
+    id_vehiculo: DataTypes.STRING,
     aprobado: DataTypes.BOOLEAN,
     visto: DataTypes.BOOLEAN
   }, {

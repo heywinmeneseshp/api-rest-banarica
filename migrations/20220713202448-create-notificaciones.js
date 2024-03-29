@@ -28,6 +28,12 @@ module.exports = {
       descripcion: {
         type: Sequelize.STRING
       },
+      dif_porcentual_consumo: {
+        type: Sequelize.FLOAT
+      },
+      id_vehiculo: {
+        type: Sequelize.STRING
+      },
       aprobado: {
         type: Sequelize.BOOLEAN
       },

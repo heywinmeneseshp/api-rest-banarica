@@ -70,14 +70,14 @@ class record_consumosService {
         programaciones.forEach(element => {
           consumo += element.ruta.galones_por_ruta[0].galones_por_ruta;
         });
-  
+
         const tanqueos = await db.tanqueos.findAll({
           where: {
             record_consumo_id: record_consumo[0].dataValues.id
           }
         });
 
-      
+
         var tanqueo = 0
         tanqueos.map(item => {
           tanqueo = tanqueo + item.dataValues.tanqueo
@@ -138,8 +138,7 @@ class record_consumosService {
   }
 
   async liquidar(body) {
-    const { record_consumo_id, stock_real, km_recorridos } = body;
-    console.log(km_recorridos)
+    const { record_consumo_id, stock_real } = body;
 
     const item = await db.record_consumos.findOne({
       where: { id: record_consumo_id },
@@ -150,9 +149,6 @@ class record_consumosService {
     const programaciones = await db.programacion.findAll({
       where: { fecha: item.dataValues.fecha, activo: true, vehiculo_id: item.dataValues.vehiculo_id },
       include: [
-        {
-          model: db.rutas,
-        },
         { model: db.vehiculo }
       ]
     });
@@ -165,7 +161,7 @@ class record_consumosService {
       await db.tanqueos.update({ activo: false }, { where: { id: item.dataValues.id } })
       tanqueo = tanqueo + item.dataValues.tanqueo
     })
-    let consumo = km_recorridos * item.dataValues.vehiculo.dataValues.gal_por_km;
+    let consumo = item.dataValues.km_recorridos * item.dataValues.vehiculo.dataValues.gal_por_km;
 
     programaciones.map(async item => {
       await db.programacion.update({ activo: false }, { where: { id: item.dataValues.id } })
@@ -173,16 +169,32 @@ class record_consumosService {
 
     await db.vehiculo.update({ combustible: stock_real }, { where: { id: item.dataValues.vehiculo.dataValues.id } })
 
+    const stock_final = programaciones[0].dataValues.vehiculo.dataValues.combustible + tanqueo - consumo;
+    const variacionPorcentual = ((stock_real - stock_final) / stock_real) * 100;
+
+    if (variacionPorcentual >= 5 || variacionPorcentual <= -5) {
+      const restaCinco = variacionPorcentual > 0 ? variacionPorcentual-5 : variacionPorcentual+5;
+      const notiData = {
+        consecutivo: "NT-" + (Date.now() - 1662564279341),
+        cons_movimiento: record_consumo_id,
+        tipo_movimiento: "Combustible",
+        descripcion: `El vehículo ${item.dataValues.vehiculo.dataValues.placa} supera el límite de consumo con ${stock_real * restaCinco} galones.`,
+        dif_porcentual_consumo: variacionPorcentual,
+        aprobado: false,
+        visto: false
+      }
+      await db.notificaciones.create(notiData)
+    }
+
     const res = await db.record_consumos.update(
       {
         activo: true,
         liquidado: true,
         stock_inicial: programaciones[0].dataValues.vehiculo.dataValues.combustible,
         stock_real: stock_real,
-        km_recorridos: km_recorridos,
         gal_por_km: item.dataValues.vehiculo.dataValues.gal_por_km,
         tanqueo: tanqueo,
-        stock_final: programaciones[0].dataValues.vehiculo.dataValues.combustible + tanqueo - consumo
+        stock_final: stock_final
       },
       {
         where: { id: record_consumo_id }

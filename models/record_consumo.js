@@ -21,7 +21,6 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: "conductor_id"
       })
 
-      
       this.hasMany(models.programacion, {
         sourceKey: "vehiculo_id",
         foreignKey: "vehiculo_id"

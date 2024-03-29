@@ -86,5 +86,18 @@ router.delete("/:id", async (req, res, next) => {
   }
 });
 
+//PAGINAR
+// Ejemplo http://localhost:3000/api/v1/notificaciones/paginar?page=1&limit=4
+router.post("/paginar", async (req, res, next) => {
+  const body = req.body
+  const { page, limit } = req.query
+  try {
+    const result = await service.paginate(page, limit, body)
+    res.json(result)
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
 

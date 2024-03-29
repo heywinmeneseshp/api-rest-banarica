@@ -28,14 +28,13 @@ router.post("/filter", async (req, res, next) => {
 
 router.get('/categoria/:categoria', async (req, res, next) => {
   try {
-    const {categoria } = req.params
-    console.log(categoria)
+    const { categoria } = req.params
     const productos = await service.findAllByCategory(categoria);
     res.json(productos);
   } catch (error) {
     next(error);
   }
-  });
+});
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
@@ -61,38 +60,38 @@ router.get("/:id", async (req, res, next) => {
 
 //Crear
 router.post("/",
-validatorHandler(crearProducto, "body"),
-async (req, res, next) => {
-  try {
-    const body = req.body;
-    const productoNuevo = await service.create(body);
-    res.json({
-      message: "Producto creado",
-      data: productoNuevo
-    })
-  } catch (error) {
-    next(error);
-  }
+  validatorHandler(crearProducto, "body"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const productoNuevo = await service.create(body);
+      res.json({
+        message: "Producto creado",
+        data: productoNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
 
-});
+  });
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/:id",
-validatorHandler(actualizarProducto, "body"),
-async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const body = req.body;
-    const producto = await service.update(id, body)
-    res.json({
-      message: 'El producto fue actualizado',
-      data: producto,
-      id
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(actualizarProducto, "body"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params
+      const body = req.body;
+      const producto = await service.update(id, body)
+      res.json({
+        message: 'El producto fue actualizado',
+        data: producto,
+        id
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 //ELIMINAR
 router.delete("/:id", async (req, res, next) => {
