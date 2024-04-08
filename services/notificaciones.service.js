@@ -56,7 +56,6 @@ class NotificacionesService {
           model: db.record_consumos,
           include: { model: db.vehiculo }
         },
-
       ],
       order: [['id', 'DESC']]
     });

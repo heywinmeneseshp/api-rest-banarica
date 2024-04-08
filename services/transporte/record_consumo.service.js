@@ -19,7 +19,6 @@ class record_consumosService {
 
   async find() {
     const res = await db.record_consumos.findAll()
-
     return res;
   }
 
@@ -123,7 +122,6 @@ class record_consumosService {
       var suma = 0
       rutas_programadas.map(item => {
         const categoria_vehiculo = item.dataValues.vehiculo.dataValues.categoria_id
-        console.log(item.dataValues.vehiculo_id)
         const array = item.dataValues.ruta.dataValues.galones_por_ruta.find(element => {
           return element.dataValues.categoria_id == categoria_vehiculo
         })
@@ -138,7 +136,10 @@ class record_consumosService {
   }
 
   async liquidar(body) {
-    const { record_consumo_id, stock_real } = body;
+
+    const stock_real = body.stock_real * 1
+    const tanqueo = body.tanqueo * 1 
+    const record_consumo_id = body.record_consumo_id
 
     const item = await db.record_consumos.findOne({
       where: { id: record_consumo_id },
@@ -146,6 +147,8 @@ class record_consumosService {
         { model: db.vehiculo },
       ]
     });
+
+    
     const programaciones = await db.programacion.findAll({
       where: { fecha: item.dataValues.fecha, activo: true, vehiculo_id: item.dataValues.vehiculo_id },
       include: [
@@ -153,14 +156,6 @@ class record_consumosService {
       ]
     });
 
-    const arrayTanqueo = await db.tanqueos.findAll({ where: { record_consumo_id: record_consumo_id } });
-
-    let tanqueo = 0;
-
-    arrayTanqueo.map(async item => {
-      await db.tanqueos.update({ activo: false }, { where: { id: item.dataValues.id } })
-      tanqueo = tanqueo + item.dataValues.tanqueo
-    })
     let consumo = item.dataValues.km_recorridos * item.dataValues.vehiculo.dataValues.gal_por_km;
 
     programaciones.map(async item => {
@@ -168,7 +163,6 @@ class record_consumosService {
     })
 
     await db.vehiculo.update({ combustible: stock_real }, { where: { id: item.dataValues.vehiculo.dataValues.id } })
-
     const stock_final = programaciones[0].dataValues.vehiculo.dataValues.combustible + tanqueo - consumo;
     const variacionPorcentual = ((stock_real - stock_final) / stock_real) * 100;
 
@@ -178,8 +172,8 @@ class record_consumosService {
         consecutivo: "NT-" + (Date.now() - 1662564279341),
         cons_movimiento: record_consumo_id,
         tipo_movimiento: "Combustible",
-        descripcion: `El vehículo ${item.dataValues.vehiculo.dataValues.placa} supera el límite de consumo con ${stock_real * restaCinco} galones.`,
-        dif_porcentual_consumo: variacionPorcentual,
+        descripcion: `El vehículo ${item.dataValues.vehiculo.dataValues.placa} supera el límite de consumo con ${(stock_real * restaCinco).toFixed(2)} galones.`,
+        dif_porcentual_consumo: variacionPorcentual.toFixed(2),
         aprobado: false,
         visto: false
       }
