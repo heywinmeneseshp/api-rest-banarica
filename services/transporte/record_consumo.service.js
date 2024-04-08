@@ -138,7 +138,7 @@ class record_consumosService {
   async liquidar(body) {
 
     const stock_real = body.stock_real * 1
-    const tanqueo = body.tanqueo * 1 
+    const tanqueo = body.tanqueo * 1
     const record_consumo_id = body.record_consumo_id
 
     const item = await db.record_consumos.findOne({
@@ -148,7 +148,7 @@ class record_consumosService {
       ]
     });
 
-    
+
     const programaciones = await db.programacion.findAll({
       where: { fecha: item.dataValues.fecha, activo: true, vehiculo_id: item.dataValues.vehiculo_id },
       include: [
@@ -167,7 +167,7 @@ class record_consumosService {
     const variacionPorcentual = ((stock_real - stock_final) / stock_real) * 100;
 
     if (variacionPorcentual >= 5 || variacionPorcentual <= -5) {
-      const restaCinco = variacionPorcentual > 0 ? variacionPorcentual-5 : variacionPorcentual+5;
+      const restaCinco = variacionPorcentual > 0 ? variacionPorcentual - 5 : variacionPorcentual + 5;
       const notiData = {
         consecutivo: "NT-" + (Date.now() - 1662564279341),
         cons_movimiento: record_consumo_id,
@@ -236,7 +236,7 @@ class record_consumosService {
     let newLimit = parseInt(limit);
     let newOffset = (parseInt(offset) - 1) * newLimit;
 
-    const { count, rows } = await db.record_consumos.findAndCountAll({
+    let whereClause = {
       where: body,
       include: [
         {
@@ -249,9 +249,19 @@ class record_consumosService {
         }
       ],
       order: [['fecha', 'DESC']],
-      limit: newLimit,
-      offset: newOffset
-    });
+    }
+
+    const { count, rows } = await db.record_consumos.findAndCountAll(whereClause);
+
+
+    if (offset || limit) {
+      let newLimit = parseInt(limit);
+      let newOffset = (parseInt(offset) - 1) * newLimit;
+      whereClause = {
+        ...whereClause, limit: newLimit,
+        offset: newOffset
+      }
+    }
     return { data: rows, total: count };
   }
 
