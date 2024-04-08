@@ -248,6 +248,7 @@ class record_consumosService {
           where: { conductor: { [Op.like]: `%${conductor}%` } }
         }
       ],
+      order: [['fecha', 'DESC']],
       limit: newLimit,
       offset: newOffset
     });
