@@ -100,6 +100,7 @@ class ProgramacionService {
     if (body.eliminado) whereClause.where.eliminado = body.eliminado
 
     const { count, rows: result } = await db.programacion.findAndCountAll(whereClause);
+    
 
     return { data: result, total: count };
   }
