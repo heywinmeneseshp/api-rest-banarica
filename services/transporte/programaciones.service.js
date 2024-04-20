@@ -48,62 +48,64 @@ class ProgramacionService {
     return { message: "El item fue eliminado", id };
   }
 
-  async paginate(offset, limit, body) {
-
-    let whereClause = {
+  async  paginate(offset, limit, body) {
+    const whereClause = {
       where: {
         semana: { [Op.like]: `%${body?.semana || ''}%` },
         fecha: { [Op.like]: `%${body?.fecha || ''}%` },
         movimiento: { [Op.like]: `%${body?.movimiento || ''}%` },
       },
-      order: [['fecha', 'DESC'], ['vehiculo_id', 'DESC'], ['id', 'DESC']], // Ordenar por fecha de forma descendente
+      order: [['fecha', 'DESC'], ['vehiculo_id', 'DESC'], ['id', 'DESC']],
       include: [
         {
           model: db.rutas,
           include: [
             { model: db.ubicaciones, as: 'ubicacion_1' },
             { model: db.ubicaciones, as: 'ubicacion_2' },
-            { model: db.galones_por_ruta }
+            { model: db.galones_por_ruta },
           ],
           where: {
             ubicacion1: { [Op.like]: `%${body.ubicacion1 || ''}%` },
-            ubicacion2: { [Op.like]: `%${body.ubicacion2 || ''}%` }
-          }
+            ubicacion2: { [Op.like]: `%${body.ubicacion2 || ''}%` },
+          },
         },
         { model: db.productos_viajes },
         {
           model: db.conductores,
           as: 'conductor',
           where: {
-            conductor: { [Op.like]: `%${body.conductor || ''}%` }
-          }
+            conductor: { [Op.like]: `%${body.conductor || ''}%` },
+          },
         },
         { model: db.clientes },
         {
           model: db.vehiculo,
           where: {
-            placa: { [Op.like]: `%${body.vehiculo || ''}%` }
-          }
-        }
+            placa: { [Op.like]: `%${body.vehiculo || ''}%` },
+          },
+        },
       ],
     };
 
+  
+  
     if (offset || limit) {
-      let newLimit = parseInt(limit);
-      let newOffset = (parseInt(offset) - 1) * newLimit;
-      whereClause = {
-        ...whereClause, limit: newLimit,
-        offset: newOffset
-      }
+      const newLimit = parseInt(limit);
+      const newOffset = (parseInt(offset) - 1) * newLimit;
+      whereClause.limit = newLimit;
+      whereClause.offset = newOffset;
     }
-
-    if (body.eliminado) whereClause.where.eliminado = body.eliminado
-
+  
+    if (body.eliminado) {
+      whereClause.where.eliminado = body.eliminado;
+    }
+  
     const { count, rows: result } = await db.programacion.findAndCountAll(whereClause);
-    
 
-    return { data: result, total: count };
+  
+    return { data: result, total: count/4 };
   }
+  
 }
 
 module.exports = ProgramacionService;
