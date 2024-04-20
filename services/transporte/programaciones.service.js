@@ -48,12 +48,17 @@ class ProgramacionService {
     return { message: "El item fue eliminado", id };
   }
 
-  async  paginate(offset, limit, body) {
+  async paginate(offset, limit, body) {
+
+    let fecha = { [Op.like]: `%${body?.fecha || ''}%` };
+    if (body?.fechaFin != null) {
+      fecha = { [Op.between]: [body?.fecha, body?.fechaFin] }
+    }
     const whereClause = {
       where: {
         semana: { [Op.like]: `%${body?.semana || ''}%` },
-        fecha: { [Op.like]: `%${body?.fecha || ''}%` },
         movimiento: { [Op.like]: `%${body?.movimiento || ''}%` },
+        fecha: fecha
       },
       order: [['fecha', 'DESC'], ['vehiculo_id', 'DESC'], ['id', 'DESC']],
       include: [
@@ -87,25 +92,27 @@ class ProgramacionService {
       ],
     };
 
-  
-  
+
+
+
+
     if (offset || limit) {
       const newLimit = parseInt(limit);
       const newOffset = (parseInt(offset) - 1) * newLimit;
       whereClause.limit = newLimit;
       whereClause.offset = newOffset;
     }
-  
+
     if (body.eliminado) {
       whereClause.where.eliminado = body.eliminado;
     }
-  
+
     const { count, rows: result } = await db.programacion.findAndCountAll(whereClause);
 
-  
-    return { data: result, total: count/4 };
+
+    return { data: result, total: count / 4 };
   }
-  
+
 }
 
 module.exports = ProgramacionService;

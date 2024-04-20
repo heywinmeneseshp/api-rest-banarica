@@ -109,10 +109,10 @@ router.patch("/:id",
     try {
       const { id } = req.params;
       const body = req.body;
-      await service.update(id, body)
+      const item = await service.update(id, body)
       res.json({
         message: "item actualizado",
-        data: body
+        data: item
       })
     } catch (error) {
       next(error)

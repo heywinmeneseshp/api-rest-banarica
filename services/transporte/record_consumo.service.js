@@ -3,7 +3,6 @@ const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../../models');
 
-
 class record_consumosService {
 
   async create(data) {
@@ -209,8 +208,21 @@ class record_consumosService {
   async update(id, changes) {
     const item = await db.record_consumos.findOne({ where: { id } });
     if (!item) throw boom.notFound('El item no existe')
-    const result = await db.record_consumos.update(changes, { where: { id } });
-    return result;
+    await db.record_consumos.update(changes, { where: { id } });
+    const result = await db.record_consumos.findOne({ where: { id } });
+    var fechaOriginal = new Date(result.dataValues.fecha);
+    // Sumar un día
+    const fecha = new Date(fechaOriginal)
+    // Clonar la fecha original para no modificarla directamente
+    var fechaNueva = new Date(fecha);
+    // Sumar un día
+    fechaNueva.setDate(fechaNueva.getDate() + 1);
+    // Formatear la nueva fecha en el formato deseado (YYYY-MM-DD)
+    var fechaFormateada = fechaNueva.toISOString().slice(0, 10);
+
+    const nextResult = await db.record_consumos.findOne({ where: { fecha: fechaFormateada, vehiculo_id: result.dataValues.vehiculo_id } });
+    const res = { ...result.dataValues, nextItem: nextResult }
+    return res;
   }
 
   async delete(id) {
