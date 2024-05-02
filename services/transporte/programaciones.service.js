@@ -51,9 +51,12 @@ class ProgramacionService {
   async paginate(offset, limit, body) {
 
     let fecha = { [Op.like]: `%${body?.fecha || ''}%` };
-    if (body?.fechaFin != null) {
-      fecha = { [Op.between]: [body?.fecha, body?.fechaFin] }
+    if (body?.fechaFin) {
+      const inicio = new Date(body?.fecha);
+      const fin = new Date(body?.fechaFin);
+      fecha = { [Op.between]: [inicio, fin] }
     }
+    delete body.fechaFin;
     const whereClause = {
       where: {
         semana: { [Op.like]: `%${body?.semana || ''}%` },

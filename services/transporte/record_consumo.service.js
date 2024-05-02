@@ -236,6 +236,12 @@ class record_consumosService {
 
     let body = {}
     if (item.fecha) body.fecha = item.fecha
+    if (item?.fechaFin) {
+      const inicio = new Date(item?.fecha);
+      const fin = new Date(item?.fechaFin);
+      body.fecha = { [Op.between]: [inicio, fin] }
+    }
+    delete body.fechaFin;
     if (item.semana) body.semana = item.semana
     if (item.liquidado == null) {
       body.liquidado = [true, false]
@@ -244,9 +250,6 @@ class record_consumosService {
     }
     const vehiculo = item.vehiculo || ""
     const conductor = item.conductor || ""
-
-    let newLimit = parseInt(limit);
-    let newOffset = (parseInt(offset) - 1) * newLimit;
 
     let whereClause = {
       where: body,
@@ -263,17 +266,20 @@ class record_consumosService {
       order: [['fecha', 'DESC']],
     }
 
-    const { count, rows } = await db.record_consumos.findAndCountAll(whereClause);
+   
 
 
     if (offset || limit) {
       let newLimit = parseInt(limit);
       let newOffset = (parseInt(offset) - 1) * newLimit;
       whereClause = {
-        ...whereClause, limit: newLimit,
+        ...whereClause, 
+        limit: newLimit,
         offset: newOffset
       }
     }
+
+    const { count, rows } = await db.record_consumos.findAndCountAll(whereClause);
     return { data: rows, total: count };
   }
 
