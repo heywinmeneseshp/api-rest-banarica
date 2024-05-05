@@ -267,9 +267,9 @@ class record_consumosService {
     }
 
    
+console.log(offset, limit)
 
-
-    if (offset || limit) {
+    if (limit = null) {
       let newLimit = parseInt(limit);
       let newOffset = (parseInt(offset) - 1) * newLimit;
       whereClause = {
