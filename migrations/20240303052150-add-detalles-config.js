@@ -4,13 +4,13 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.addColumn('vehiculos', 'gal_por_km', {
+    await queryInterface.addColumn('configuracions', 'detalles', {
       type: Sequelize.FLOAT,
       allowNull: true // O false si el email es obligatorio
     });
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.removeColumn('vehiculos', 'gal_por_km');
+    await queryInterface.removeColumn('configuracions', 'detalles');
   }
 };

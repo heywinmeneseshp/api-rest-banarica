@@ -27,6 +27,9 @@ module.exports = {
       semana_previa: {
         type: Sequelize.INTEGER
       },
+      detalles: {
+        type: Sequelize.STRING
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

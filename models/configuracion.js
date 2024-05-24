@@ -19,7 +19,8 @@ module.exports = (sequelize, DataTypes) => {
     semana_actual: DataTypes.INTEGER,
     semana_siguiente: DataTypes.INTEGER,
     semana_previa: DataTypes.INTEGER,
-    anho_actual: DataTypes.INTEGER
+    anho_actual: DataTypes.INTEGER,
+    detalles: DataTypes.STRING
   }, {
     sequelize,
     modelName: 'configuracion',
