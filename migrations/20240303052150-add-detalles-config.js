@@ -5,7 +5,7 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.addColumn('configuracions', 'detalles', {
-      type: Sequelize.FLOAT,
+      type: Sequelize.STRING,
       allowNull: true // O false si el email es obligatorio
     });
   },
