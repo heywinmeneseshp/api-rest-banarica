@@ -30,78 +30,33 @@ class record_consumosService {
         attributes: ['fecha', 'vehiculo_id'],
         group: ['fecha', 'vehiculo_id']
       });
-
-      const resultados = await Promise.all(fechasUnicas.map(async item => {
-        // Busca la categoría del vehículo
-        const categoriaVehiculo = await db.vehiculo.findOne({ where: { id: item.vehiculo_id } });
-        const categoriaId = categoriaVehiculo.dataValues.categoria_id;
-
-        // Busca las programaciones asociadas a la fecha y al vehículo
-        const programaciones = await db.programacion.findAll({
-          where: { fecha: item.fecha, activo: true, vehiculo_id: item.vehiculo_id },
-          include: [
-            {
-              model: db.rutas,
-              include: [
-                { model: db.ubicaciones, as: 'ubicacion_1' },
-                { model: db.ubicaciones, as: 'ubicacion_2' },
-                { model: db.galones_por_ruta, where: { categoria_id: categoriaId } },
-              ]
-            },
-            { model: db.vehiculo }
-          ]
-        });
-
-        // Busca o crea el registro de consumo 
-        const record_consumo = await db.record_consumos.findOrCreate({
+  
+      // Recolectar todos los resultados en un solo array
+      const resultados = await Promise.all(fechasUnicas.map(async (item) => {
+        const [record_consumo] = await db.record_consumos.findOrCreate({
           where: { vehiculo_id: item.vehiculo_id, fecha: item.fecha },
           defaults: {
             liquidado: false,
             activo: true,
-            semana: programaciones[0].semana,
-            conductor_id: programaciones[0].conductor_id,
+            semana: item.semana,  // Asegúrate de que item tenga estos campos
+            conductor_id: item.conductor_id,
             tanqueo: 0,
-          }
+          },
+          include: [
+            { model: db.vehiculo },
+          ]
         });
-        // Calcula el consumo total de galones por ruta para todas las programaciones
-        let consumo = 0;
-        programaciones.forEach(element => {
-          consumo += element.ruta.galones_por_ruta[0].galones_por_ruta;
-        });
-
-        const tanqueos = await db.tanqueos.findAll({
-          where: {
-            record_consumo_id: record_consumo[0].dataValues.id
-          }
-        });
-
-
-        var tanqueo = 0
-        tanqueos.map(item => {
-          tanqueo = tanqueo + item.dataValues.tanqueo
-        })
-
-
-        // Retorna un objeto con las programaciones, consumo y otros detalles
-        return {
-          programacion: programaciones,
-          consumo: consumo,
-          fecha: item.fecha,
-          vehiculo_id: item.vehiculo_id,
-          placa: programaciones[0].vehiculo.placa,
-          stock_inicial: programaciones[0].vehiculo.combustible,
-          record_consumo: record_consumo,
-          tanqueo: tanqueo
-        };
+        return record_consumo;
       }));
-
+  
+      console.log(resultados);
       return resultados; // Devuelve los resultados obtenidos
     } catch (error) {
-      console.error('Error en sinLiquidar:', error);
-      throw error; // Lanza el error para que sea manejado en otro lugar si es necesario
+      console.error('Error in sinLiquidar:', error);
+      throw error; // Propaga el error para que pueda ser manejado por el llamador
     }
   }
-
+  
   async consultarConsumo(body) {
     try {
       const rutas_programadas = await db.programacion.findAll({
@@ -236,9 +191,9 @@ class record_consumosService {
 
     let body = {}
     if (item.fecha) body.fecha = item.fecha
-    if (item?.fechaFin) {
-      const inicio = new Date(item?.fecha);
-      const fin = new Date(item?.fechaFin);
+    if (item.fechaFin) {
+      const inicio = new Date(item.fecha);
+      const fin = new Date(item.fechaFin);
       body.fecha = { [Op.between]: [inicio, fin] }
     }
     delete body.fechaFin;
@@ -266,14 +221,14 @@ class record_consumosService {
       order: [['fecha', 'DESC']],
     }
 
-   
-console.log(offset, limit)
 
-    if (limit = null) {
+    console.log(offset, limit)
+
+    if (limit == null) {
       let newLimit = parseInt(limit);
       let newOffset = (parseInt(offset) - 1) * newLimit;
       whereClause = {
-        ...whereClause, 
+        ...whereClause,
         limit: newLimit,
         offset: newOffset
       }
