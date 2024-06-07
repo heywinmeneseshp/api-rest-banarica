@@ -27,19 +27,23 @@ class record_consumosService {
       // Busca todas las fechas únicas de programación para vehículos activos
       const fechasUnicas = await db.programacion.findAll({
         where: { activo: true },
-        attributes: ['fecha', 'vehiculo_id'],
+        attributes: ['fecha', 'vehiculo_id', "semana", "conductor_id"],
         group: ['fecha', 'vehiculo_id']
       });
-  
+
+
+
       // Recolectar todos los resultados en un solo array
       const resultados = await Promise.all(fechasUnicas.map(async (item) => {
+        const semana = item.semana;
+        const conductor_id = item.conductor_id
         const [record_consumo] = await db.record_consumos.findOrCreate({
           where: { vehiculo_id: item.vehiculo_id, fecha: item.fecha },
           defaults: {
             liquidado: false,
             activo: true,
-            semana: item.semana,  // Asegúrate de que item tenga estos campos
-            conductor_id: item.conductor_id,
+            semana: semana,  // Asegúrate de que item tenga estos campos
+            conductor_id: conductor_id,
             tanqueo: 0,
           },
           include: [
@@ -48,28 +52,19 @@ class record_consumosService {
         });
         return record_consumo;
       }));
-  
-      console.log(resultados);
+
       return resultados; // Devuelve los resultados obtenidos
     } catch (error) {
       console.error('Error in sinLiquidar:', error);
       throw error; // Propaga el error para que pueda ser manejado por el llamador
     }
   }
-  
+
   async consultarConsumo(body) {
     try {
       const rutas_programadas = await db.programacion.findAll({
         where: body,
         include: [
-          {
-            model: db.rutas,
-            include: [
-              { model: db.ubicaciones, as: 'ubicacion_1' },
-              { model: db.ubicaciones, as: 'ubicacion_2' },
-              { model: db.galones_por_ruta },
-            ]
-          },
           { model: db.vehiculo }
         ]
       });
@@ -201,10 +196,10 @@ class record_consumosService {
     if (item.liquidado == null) {
       body.liquidado = [true, false]
     } else {
-      body.liquidado = item.liquidado
+      body.liquidado = item?.liquidado
     }
-    const vehiculo = item.vehiculo || ""
-    const conductor = item.conductor || ""
+    const vehiculo = item?.vehiculo || ""
+    const conductor = item?.conductor || ""
 
     let whereClause = {
       where: body,
@@ -222,9 +217,7 @@ class record_consumosService {
     }
 
 
-    console.log(offset, limit)
-
-    if (limit == null) {
+    if (limit != null) {
       let newLimit = parseInt(limit);
       let newOffset = (parseInt(offset) - 1) * newLimit;
       whereClause = {
@@ -233,6 +226,8 @@ class record_consumosService {
         offset: newOffset
       }
     }
+
+
 
     const { count, rows } = await db.record_consumos.findAndCountAll(whereClause);
     return { data: rows, total: count };
