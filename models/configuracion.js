@@ -20,7 +20,10 @@ module.exports = (sequelize, DataTypes) => {
     semana_siguiente: DataTypes.INTEGER,
     semana_previa: DataTypes.INTEGER,
     anho_actual: DataTypes.INTEGER,
-    detalles: DataTypes.STRING
+    detalles: DataTypes.STRING,
+    mes_reporte: DataTypes.INTEGER,
+    sem_reporte: DataTypes.INTEGER,
+    email_reporte: DataTypes.STRING,
   }, {
     sequelize,
     modelName: 'configuracion',

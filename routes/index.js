@@ -40,6 +40,8 @@ const vehiculosRouter = require('./transporte/vehiculos.router.js');
 const productosViajesRouter = require('./transporte/productos-viaje.router.js');
 const tanqueoRouter = require('./transporte/tanqueos.router.js')
 
+const emailRouter = require('./email.router.js')
+
 
 function routerApi(app) {
   const router = express.Router();
@@ -82,6 +84,8 @@ function routerApi(app) {
   router.use('/vehiculos', vehiculosRouter);
   router.use('/productos-viaje', productosViajesRouter);
   router.use('/tanqueo', tanqueoRouter);
+
+  router.use('/email', emailRouter);
 
 }
 

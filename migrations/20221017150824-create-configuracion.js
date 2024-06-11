@@ -30,6 +30,15 @@ module.exports = {
       detalles: {
         type: Sequelize.STRING
       },
+      mes_reporte: {
+        type: Sequelize.INTEGER
+      },
+      sem_reporte: {
+        type: Sequelize.INTEGER
+      },
+      email_reporte: {
+        type: Sequelize.STRING
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

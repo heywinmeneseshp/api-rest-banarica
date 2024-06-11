@@ -6,19 +6,19 @@ class emailService {
   async send(destinatario, asunto, cuerpo) {
     
     const infoEmail = {
-      from: 'appbanarica@gmail.com',
+      from: 'meneses@craken.com.co',
       to: destinatario,
       subject: asunto,
       html: `<div>${cuerpo}</div>`
     }
 
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
+      host: 'mail.craken.com.co',
       port: 465,
       secure: true,
       auth: {
-        user: 'appbanarica@gmail.com',
-        pass: "tgedwrkiqqzlizqf",
+        user: 'meneses@craken.com.co',
+        pass: "UFkF@,{Ul(}P",
       }
     });
     await transporter.sendMail(infoEmail);

@@ -113,22 +113,7 @@ class record_consumosService {
 
     await db.vehiculo.update({ combustible: stock_real }, { where: { id: item.dataValues.vehiculo.dataValues.id } })
     const stock_final = programaciones[0].dataValues.vehiculo.dataValues.combustible + tanqueo - consumo;
-    const variacionPorcentual = ((stock_real - stock_final) / stock_real) * 100;
-
-    if (variacionPorcentual >= 5 || variacionPorcentual <= -5) {
-      const restaCinco = variacionPorcentual > 0 ? variacionPorcentual - 5 : variacionPorcentual + 5;
-      const notiData = {
-        consecutivo: "NT-" + (Date.now() - 1662564279341),
-        cons_movimiento: record_consumo_id,
-        tipo_movimiento: "Combustible",
-        descripcion: `El vehículo ${item.dataValues.vehiculo.dataValues.placa} supera el límite de consumo con ${(stock_real * restaCinco).toFixed(2)} galones.`,
-        dif_porcentual_consumo: variacionPorcentual.toFixed(2),
-        aprobado: false,
-        visto: false
-      }
-      await db.notificaciones.create(notiData)
-    }
-
+  
     const res = await db.record_consumos.update(
       {
         activo: true,
@@ -187,7 +172,10 @@ class record_consumosService {
     let body = {}
     if (item.fecha) body.fecha = item.fecha
     if (item.fechaFin) {
-      const inicio = new Date(item.fecha);
+      let fecha_inicial = new Date(item.fecha);
+      fecha_inicial.setDate(fecha_inicial.getDate());
+      fecha_inicial = `${fecha_inicial.getFullYear()}-${String(fecha_inicial.getMonth() + 1).padStart(2, '0')}-${String(fecha_inicial.getDate()).padStart(2, '0')}`
+      const inicio = new Date(fecha_inicial);
       const fin = new Date(item.fechaFin);
       body.fecha = { [Op.between]: [inicio, fin] }
     }
@@ -217,7 +205,7 @@ class record_consumosService {
     }
 
 
-    if (limit != null) {
+    if (limit) {
       let newLimit = parseInt(limit);
       let newOffset = (parseInt(offset) - 1) * newLimit;
       whereClause = {
