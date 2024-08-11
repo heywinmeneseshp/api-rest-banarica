@@ -1,7 +1,7 @@
 const Joi = require('joi');
 
 const consecutivo = Joi.string().min(3);
-const remision = Joi.string().min(2);
+const remision = Joi.string().min(3);
 const observaciones = Joi.string().max(150);
 const cons_semana = Joi.string().min(5);
 const fecha = Joi.string();

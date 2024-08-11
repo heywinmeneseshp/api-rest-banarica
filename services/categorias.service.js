@@ -4,68 +4,63 @@ const { generarIDProAndCat } = require('../middlewares/generarId.handler');
 const db = require('../models');
 
 class CategoriasService {
-
-  constructor() { }
-
-
   async create(data) {
     try {
-      const { count } = await db.categorias.findAndCountAll();
-      const consecutivo = generarIDProAndCat(data.nombre, "xxx" + (count));
+      const count = await db.categorias.count();
+      const consecutivo = generarIDProAndCat(data.nombre, `xxx${count}`);
       const categoria = { consecutivo, ...data };
       await db.categorias.create(categoria);
       return categoria;
     } catch (error) {
-      throw boom.badRequest(error)
+      throw boom.badRequest(error.message || 'Error al crear la categoría');
     }
   }
 
   async find() {
-    return await db.categorias.findAll();
+    return db.categorias.findAll();
   }
 
   async findOne(consecutivo) {
     const categoria = await db.categorias.findOne({ where: { consecutivo } });
     if (!categoria) {
-      throw boom.notFound('La categoria no existe')
+      throw boom.notFound('La categoría no existe');
     }
     return categoria;
   }
 
   async update(consecutivo, changes) {
-    const existe = await db.categorias.findOne({ where: { consecutivo } });
-    if (!existe) {
-      throw boom.notFound('La categoria no existe')
+    const categoria = await db.categorias.findOne({ where: { consecutivo } });
+    if (!categoria) {
+      throw boom.notFound('La categoría no existe');
     }
-    const result = await db.categorias.update(changes, { where: { consecutivo } });
-    return result;
+    await db.categorias.update(changes, { where: { consecutivo } });
+    return { message: 'La categoría fue actualizada', consecutivo, changes };
   }
 
   async delete(consecutivo) {
-    const existe = await db.categorias.findOne({ where: { consecutivo } });
-    if (!existe) {
-      throw boom.notFound('La categoria no existe')
+    const categoria = await db.categorias.findOne({ where: { consecutivo } });
+    if (!categoria) {
+      throw boom.notFound('La categoría no existe');
     }
     await db.categorias.destroy({ where: { consecutivo } });
-    return { message: "La categoria fue eliminado", consecutivo, }
+    return { message: 'La categoría fue eliminada', consecutivo };
   }
+  
+  async paginate(offset, limit, nombre = '') {
+    const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
+    const whereClause = nombre ? { nombre: { [Op.like]: `%${nombre}%` } } : {};
 
-  async paginate(offset, limit, nombre) {
-    if (!nombre) nombre = ""
-    let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset) - 1) * newlimit;
-    const result = await db.categorias.findAll({
-      where: { nombre: { [Op.like]: `%${nombre}%` } },
-      limit: newlimit,
-      offset: newoffset
-    });
-    const total = await db.categorias.count({
-      where: { nombre: { [Op.like]: `%${nombre}%` } },
-    });
-    return { data: result, total: total };
+    const [result, total] = await Promise.all([
+      db.categorias.findAll({
+        where: whereClause,
+        limit: parseInt(limit),
+        offset: parsedOffset,
+      }),
+      db.categorias.count({ where: whereClause }),
+    ]);
+
+    return { data: result, total };
   }
-
-
 }
 
-module.exports = CategoriasService
+module.exports = CategoriasService;

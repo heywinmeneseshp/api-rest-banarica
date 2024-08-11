@@ -38,9 +38,24 @@ const rutasRouter = require('./transporte/rutas.router.js');
 const ubicacionesRouter = require('./transporte/ubicaciones.router.js');
 const vehiculosRouter = require('./transporte/vehiculos.router.js');
 const productosViajesRouter = require('./transporte/productos-viaje.router.js');
-const tanqueoRouter = require('./transporte/tanqueos.router.js')
+const tanqueoRouter = require('./transporte/tanqueos.router.js');
+//LOGISTICA
+const buqueRouter = require('./logistica/buque.router.js');
+const caidaRouter = require('./logistica/caida.router.js');
+const contenedorRouter = require('./logistica/contenedor.router.js');
+const destinoRouter = require('./logistica/destino.router.js');
+const embarqueRouter = require('./logistica/embarque.router.js');
+const inspeccionRouter = require('./logistica/inspeccion.router.js');
+const listadoRouter = require('./logistica/listado.router.js');
+const motivoDeRechazoRouter = require('./logistica/motivoDeRechazo.router.js');
+const navieraRouter = require('./logistica/naviera.router.js');
+const rechazoRouter = require('./logistica/rechazo.router.js');
+const saeRouter = require('./logistica/sae.router.js');
+const transbordoRouter = require('./logistica/transbordo.router.js');
 
 const emailRouter = require('./email.router.js')
+//CONFIGURACION
+const empresaRouter = require('./configuracion/empresa.router.js');
 
 
 function routerApi(app) {
@@ -71,8 +86,7 @@ function routerApi(app) {
   router.use('/semanas', semanasRouter);
   router.use('/documentos', documentosRouter);
 
-  router.use('/seguridad', seguridadRouter);
-  router.use('/confi', confiRouter);
+  
   //TRANSPORTE
   router.use('/categoriaVehiculos', categoriaVehiculosRouter);
   router.use('/clientes', clientesRouter);
@@ -84,8 +98,25 @@ function routerApi(app) {
   router.use('/vehiculos', vehiculosRouter);
   router.use('/productos-viaje', productosViajesRouter);
   router.use('/tanqueo', tanqueoRouter);
+  //LOGISTICA
+  router.use('/buque', buqueRouter);
+  router.use('/caida', caidaRouter);
+  router.use('/contenedor', contenedorRouter);
+  router.use('/destino', destinoRouter);
+  router.use('/embarque', embarqueRouter);
+  router.use('/inspeccion', inspeccionRouter);
+  router.use('/listado', listadoRouter);
+  router.use('/motivoDeRechazo', motivoDeRechazoRouter);
+  router.use('/naviera', navieraRouter);
+  router.use('/rechazo', rechazoRouter);
+  router.use('/sae', saeRouter);
+  router.use('/transbordo', transbordoRouter);
 
   router.use('/email', emailRouter);
+  //CONFIGURACION
+  router.use('/empresa', empresaRouter);
+  router.use('/seguridad', seguridadRouter);
+  router.use('/confi', confiRouter);
 
 }
 

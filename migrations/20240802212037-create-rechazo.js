@@ -1,38 +1,39 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('clientes', {
+    await queryInterface.createTable('Rechazos', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      razon_social: {
-        type: Sequelize.STRING
-      },
-      nit: {
-        type: Sequelize.STRING
-      },
-      domicilio: {
-        type: Sequelize.STRING
-      },
-      telefono: {
+      id_producto: {
         type: Sequelize.INTEGER
       },
-      email: {
+      id_motivo_de_rechazo: {
+        type: Sequelize.INTEGER
+      },
+      cantidad: {
+        type: Sequelize.INTEGER
+      },
+      serial_palet: {
         type: Sequelize.STRING
       },
-      activo: {
+      cod_productor: {
+        type: Sequelize.STRING
+      },
+      id_contenedor: {
+        type: Sequelize.INTEGER
+      },
+      observaciones: {
+        type: Sequelize.TEXT
+      },
+      id_usuario: {
+        type: Sequelize.INTEGER
+      },
+      habilitado: {
         type: Sequelize.BOOLEAN
-      },
-      cod: {
-        type: Sequelize.STRING,
-        allowNull: false // Cambiar a false si la columna no puede ser nula
-      },
-      pais: {
-        type: Sequelize.STRING,
-        allowNull: true // Cambiar a false si la columna no puede ser nula
       },
       createdAt: {
         allowNull: false,
@@ -45,6 +46,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('clientes');
+    await queryInterface.dropTable('Rechazos');
   }
 };

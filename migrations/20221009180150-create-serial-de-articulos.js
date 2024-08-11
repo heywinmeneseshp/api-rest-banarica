@@ -36,10 +36,30 @@ module.exports = {
         type: Sequelize.STRING
       },
       cons_movimiento: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       available: {
         type: Sequelize.BOOLEAN
+      },
+      id_listado: {
+        type: Sequelize.INTEGER,
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      fecha_de_uso: {
+        type: Sequelize.DATE,
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      id_motivo_de_uso: {
+        type: Sequelize.INTEGER,
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      id_usuario: {
+        type: Sequelize.INTEGER,
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      ubicacion_en_contenedor: {
+       type: Sequelize.STRING,
+       allowNull: true
       },
       createdAt: {
         allowNull: false,

@@ -1,7 +1,6 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class combos extends Model {
     /**
@@ -17,13 +16,52 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
+
   combos.init({
-    consecutivo: DataTypes.STRING,
-    nombre: DataTypes.STRING,
-    isBlock: DataTypes.BOOLEAN
+    consecutivo: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    nombre: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    isBlock: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true
+    },
+    id_cliente: {
+      type: DataTypes.INTEGER,
+      allowNull: true  // Cambiar a false si la columna no puede ser nula
+    },
+    cajas_por_palet: {
+      type: DataTypes.INTEGER,
+      allowNull: true  // Cambiar a false si la columna no puede ser nula
+    },
+    cajas_por_mini_palet: {
+      type: DataTypes.INTEGER,
+      allowNull: true  // Cambiar a false si la columna no puede ser nula
+    },
+    palets_por_contenedor: {
+      type: DataTypes.INTEGER,
+      allowNull: true  // Cambiar a false si la columna no puede ser nula
+    },
+    peso_neto: {
+      type: DataTypes.FLOAT,  // O DECIMAL si necesitas precisión
+      allowNull: true  // Cambiar a false si la columna no puede ser nula
+    },
+    peso_bruto: {
+      type: DataTypes.FLOAT,  // O DECIMAL si necesitas precisión
+      allowNull: true  // Cambiar a false si la columna no puede ser nula
+    },
+    precio_de_venta: {
+      type: DataTypes.FLOAT,  // O DECIMAL si necesitas precisión
+      allowNull: true  // Cambiar a false si la columna no puede ser nula
+    }
   }, {
     sequelize,
     modelName: 'combos',
   });
+
   return combos;
 };

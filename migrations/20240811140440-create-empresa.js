@@ -1,39 +1,30 @@
 'use strict';
-
-const { sequelize } = require("../models");
-
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('vehiculos', {
+    await queryInterface.createTable('Empresas', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      vehiculo: {
+      razonSocial: {
         type: Sequelize.STRING
       },
-      modelo: {
+      nombreComercial: {
         type: Sequelize.STRING
       },
-      placa: {
+      nit: {
         type: Sequelize.STRING
       },
-      conductor_id: {
+      domicilio: {
         type: Sequelize.STRING
       },
-      categoria_id: {
+      correo: {
         type: Sequelize.STRING
       },
-      combustible: {
-        type: Sequelize.FLOAT
-      },
-      gal_por_km: {
-        type: sequelize.FLOAT
-      },
-      activo: {
-        type: Sequelize.BOOLEAN
+      telefono: {
+        type: Sequelize.STRING
       },
       createdAt: {
         allowNull: false,
@@ -46,6 +37,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('vehiculos');
+    await queryInterface.dropTable('Empresas');
   }
 };

@@ -1,7 +1,6 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class clientes extends Model {
     /**
@@ -14,20 +13,46 @@ module.exports = (sequelize, DataTypes) => {
       this.hasMany(models.programacion, {
         foreignKey: 'id_pagador_flete'
       });
-
-      
     }
   }
+
   clientes.init({
-    razon_social: DataTypes.STRING,
-    nit: DataTypes.STRING,
-    domicilio: DataTypes.STRING,
-    telefono: DataTypes.INTEGER,
-    email: DataTypes.STRING,
-    activo: DataTypes.BOOLEAN
+    razon_social: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    nit: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    domicilio: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    telefono: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    activo: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true
+    },
+    cod: {
+      type: DataTypes.STRING,
+      allowNull: true  // Cambiar a false si la columna no puede ser nula
+    },
+    pais: {
+      type: DataTypes.STRING,
+      allowNull: true  // Cambiar a false si la columna no puede ser nula
+    }
   }, {
     sequelize,
     modelName: 'clientes',
   });
+
   return clientes;
 };

@@ -7,38 +7,80 @@ const serial_de_articulos = require('../../models/serial_de_articulos');
 class SeguridadService {
 
   async cargarSeriales(data) {
+    const batchSize = 500; // Tamaño del lote
+    const t = await db.sequelize.transaction();
+
     try {
-      const res = await db.serial_de_articulos.bulkCreate(data);
-      return res;
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
+        await db.serial_de_articulos.bulkCreate(batch, { transaction: t });
+      }
+
+      await t.commit();
+      return { message: 'Datos cargados exitosamente' };
     } catch (e) {
-      throw boom.conflict("Error al cargar los datos")
+      await t.rollback();
+      throw boom.conflict("Error al cargar los datos: " + e.message);
     }
   }
 
+
   async actualizarSeriales(data) {
-    const newData = data.map(async item => {
-      let previous = await db.serial_de_articulos.findOne({ where: { serial: item.serial } })
-      if (previous != null) {
-        const res = await db.serial_de_articulos.update(item, { where: { serial: item.serial } });
-        return { previous: previous, current: item, updated: res }
-      } else {
-        const res = await db.serial_de_articulos.create({
-          cons_producto: item.cons_producto,
-          serial: item.serial,
-          bag_pack: 'null',
-          s_pack: 'null',
-          m_pack: 'null',
-          l_pack: 'null',
-          cons_almacen: item.cons_almacen,
-          cons_movimiento: item?.cons_movimiento,
-          available: false
-        })
-        return { previous: item, current: res, res: 0 }
+    const batchSize = 100; // Tamaño del lote, ajustable según tus necesidades
+    const t = await db.sequelize.transaction();
+  
+    try {
+      // Dividir los datos en lotes y procesar cada lote
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
+  
+        // Obtener todos los seriales en el lote actual
+        const seriales = batch.map(item => item.serial);
+        const existingRecords = await db.serial_de_articulos.findAll({
+          where: { serial: seriales },
+          transaction: t
+        });
+  
+        // Crear un mapa para búsquedas rápidas
+        const existingMap = new Map(existingRecords.map(record => [record.serial, record]));
+  
+        // Dividir los datos en actualizaciones e inserciones
+        const updates = [];
+        const creations = [];
+  
+        for (const item of batch) {
+          if (existingMap.has(item.serial)) {
+            updates.push(db.serial_de_articulos.update(item, {
+              where: { serial: item.serial },
+              transaction: t
+            }));
+          } else {
+            creations.push(db.serial_de_articulos.create({
+              cons_producto: item.cons_producto,
+              serial: item.serial,
+              bag_pack: 'null',
+              s_pack: 'null',
+              m_pack: 'null',
+              l_pack: 'null',
+              cons_almacen: item.cons_almacen,
+              cons_movimiento: item?.cons_movimiento,
+              available: false
+            }, { transaction: t }));
+          }
+        }
+  
+        // Ejecutar todas las actualizaciones e inserciones en paralelo
+        await Promise.all([...updates, ...creations]);
       }
-    })
-    const result = await Promise.all(newData)
-    return { message: "Datos cargados con exito", data: result }
+  
+      await t.commit();
+      return { message: "Datos cargados con éxito" };
+    } catch (error) {
+      await t.rollback();
+      throw new Error("Error al actualizar los datos: " + error.message);
+    }
   }
+  
 
   async encontrarUnserial(data) {
     const producto = data?.producto

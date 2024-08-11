@@ -19,6 +19,34 @@ module.exports = {
       isBlock: {
         type: Sequelize.BOOLEAN
       },
+      id_cliente: {
+        type: Sequelize.INTEGER,
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      cajas_por_palet: {
+        type: Sequelize.INTEGER,
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      cajas_por_mini_palet: {
+        type: Sequelize.INTEGER,
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      palets_por_contenedor: {
+        type: Sequelize.INTEGER,
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      peso_neto: {
+        type: Sequelize.FLOAT, // O DECIMAL si necesitas precisión
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      peso_bruto: {
+        type: Sequelize.FLOAT, // O DECIMAL si necesitas precisión
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
+      precio_de_venta: {
+        type: Sequelize.FLOAT, // O DECIMAL si necesitas precisión
+        allowNull: true // Cambiar a false si la columna no puede ser nula
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

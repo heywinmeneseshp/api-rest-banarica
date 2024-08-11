@@ -1,25 +1,24 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('ubicaciones', {
+    await queryInterface.createTable('Destinos', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      ubicacion: {
+      destino: {
         type: Sequelize.STRING
       },
-      detalle: {
+      pais: {
         type: Sequelize.STRING
-      },
-      activo: {
-        type: Sequelize.BOOLEAN
       },
       cod: {
-        type: Sequelize.STRING,
-        allowNull: false // Cambiar a false si la columna no puede ser nula
+        type: Sequelize.STRING
+      },
+      habilitado: {
+        type: Sequelize.BOOLEAN
       },
       createdAt: {
         allowNull: false,
@@ -32,6 +31,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('ubicaciones');
+    await queryInterface.dropTable('Destinos');
   }
 };
