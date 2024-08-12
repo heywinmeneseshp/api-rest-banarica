@@ -41,7 +41,7 @@ module.exports = {
       available: {
         type: Sequelize.BOOLEAN
       },
-      id_listado: {
+      id_contenedor: {
         type: Sequelize.INTEGER,
         allowNull: true // Cambiar a false si la columna no puede ser nula
       },

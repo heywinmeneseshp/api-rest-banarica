@@ -2,7 +2,7 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('serial_de_articulos', 'id_listado', {
+    await queryInterface.addColumn('serial_de_articulos', 'id_contenedor', {
       type: Sequelize.INTEGER,
       allowNull: true  // Cambiar a false si la columna no puede ser nula
     });

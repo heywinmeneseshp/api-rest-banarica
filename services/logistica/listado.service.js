@@ -1,12 +1,15 @@
 const boom = require('@hapi/boom');
-const { Op } = require('sequelize');
+
 const db = require('../../models');
 
 class ListadoService {
   async create(data) {
     try {
-      const listado = await db.Listado.create(data);
-      return listado;
+      console.log(data)
+      //const contenedor = await db.Contenedor.create()
+
+      //const listado = await db.Listado.create(data);
+      //return listado;
     } catch (error) {
       throw boom.badRequest(error.message || 'Error al crear el listado');
     }

@@ -84,79 +84,67 @@ class SeguridadService {
 
   async encontrarUnserial(data) {
     const producto = data?.producto
+    let include = []
+    if (producto) include = [{
+      model: db.productos,
+      as: "producto",
+      where: producto
+    }]
     delete data.producto
     return await db.serial_de_articulos.findOne({
       where: data,
-      include: [{
-        model: db.productos,
-        as: "producto",
-        where: producto
-      }]
+      include: include
     })
   }
 
   async listarSeriales(pagination, body) {
-    let available = body?.available
+    const available = body?.available || false;
+    const filters = {
+      cons_producto: { [Op.like]: `%${body?.cons_producto}%` },
+      serial: { [Op.like]: `%${body?.serial}%` },
+      bag_pack: { [Op.like]: `%${body?.bag_pack}%` },
+      s_pack: { [Op.like]: `%${body?.s_pack}%` },
+      m_pack: { [Op.like]: `%${body?.m_pack}%` },
+      l_pack: { [Op.like]: `%${body?.l_pack}%` },
+      cons_almacen: { [Op.like]: `%${body?.cons_almacen || ""}%` },
+      available: { [Op.or]: available },
+    };
+  
+    const includeModels = [
+      {
+        model: db.movimientos,
+        as: 'movimiento',
+      },
+      {
+        model: db.productos,
+        as: 'producto',
+      },
+    ];
+  
     if (pagination) {
-      let newlimit = parseInt(pagination.limit);
-      let newoffset = (parseInt(pagination.offset) - 1) * newlimit;
-      const total = await db.serial_de_articulos.count({
-        where: {
-          cons_producto: { [Op.like]: `%${body.cons_producto}%` },
-          serial: { [Op.like]: `%${body.serial}%` },
-          bag_pack: { [Op.like]: `%${body.bag_pack}%` },
-          s_pack: { [Op.like]: `%${body.s_pack}%` },
-          m_pack: { [Op.like]: `%${body.m_pack}%` },
-          l_pack: { [Op.like]: `%${body.l_pack}%` },
-          cons_almacen: { [Op.like]: `%${body.cons_almacen}%` },
-          available: { [Op.or]: available }
-        }
-      });
-      const result = await db.serial_de_articulos.findAll({
-        where: {
-          cons_producto: { [Op.like]: `%${body.cons_producto}%` },
-          serial: { [Op.like]: `%${body.serial}%` },
-          bag_pack: { [Op.like]: `%${body.bag_pack}%` },
-          s_pack: { [Op.like]: `%${body.s_pack}%` },
-          m_pack: { [Op.like]: `%${body.m_pack}%` },
-          l_pack: { [Op.like]: `%${body.l_pack}%` },
-          cons_almacen: { [Op.like]: `%${body.cons_almacen}%` },
-          available: { [Op.or]: available }
-        },
-        include: [{
-          model: db.movimientos,
-          as: 'movimiento'
-        }, {
-          model: db.productos,
-          as: 'producto'
-        }],
-        limit: newlimit,
-        offset: newoffset
-      });
-      return { data: result, total: total };
+      const limit = parseInt(pagination?.limit);
+      const offset = (parseInt(pagination?.offset) - 1) * limit;
+  
+      const [total, result] = await Promise.all([
+        db.serial_de_articulos.count({ where: filters }),
+        db.serial_de_articulos.findAll({
+          where: filters,
+          include: includeModels,
+          limit,
+          offset,
+        }),
+      ]);
+  
+      return { data: result, total };
     } else {
       const result = await db.serial_de_articulos.findAll({
-        where: {
-          cons_producto: { [Op.like]: `%${body.cons_producto}%` },
-          serial: { [Op.like]: `%${body.serial}%` },
-          bag_pack: { [Op.like]: `%${body.bag_pack}%` },
-          s_pack: { [Op.like]: `%${body.s_pack}%` },
-          m_pack: { [Op.like]: `%${body.m_pack}%` },
-          l_pack: { [Op.like]: `%${body.l_pack}%` },
-          cons_almacen: { [Op.like]: `%${body.cons_almacen}%` },
-          available: { [Op.or]: available }
-        },
-        include: [{
-          model: db.movimientos,
-          as: 'movimiento'
-        }, {
-          model: db.productos,
-          as: 'producto'
-        }]
+        where: filters,
+        include: includeModels,
       });
       return result;
     }
   }
+  
 
   async listarArticulosSeguridad() {
     const productos = await db.productos.findAll({

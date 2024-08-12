@@ -5,6 +5,7 @@ const db = require('../../models');
 class DestinoService {
   async create(data) {
     try {
+      
       const destino = await db.Destino.create(data);
       return destino;
     } catch (error) {

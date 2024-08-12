@@ -63,7 +63,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BOOLEAN,
       allowNull: true
     },
-    id_listado: {
+    id_contenedor: {
       type: DataTypes.INTEGER,
       allowNull: true  // Cambiar a false si la columna no puede ser nula
     },
