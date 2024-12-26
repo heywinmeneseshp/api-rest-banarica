@@ -36,9 +36,9 @@ class BuqueService {
     return { message: 'El buque fue eliminado', id };
   }
 
-  async paginate(offset, limit, nombre = '') {
+  async paginate(offset, limit, buque = '') {
     const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
-    const whereClause = nombre ? { buque: { [Op.like]: `%${nombre}%` } } : {};
+    const whereClause = buque ? { buque: { [Op.like]: `%${buque}%` } } : {};
 
     const [result, total] = await Promise.all([
       db.Buque.findAll({

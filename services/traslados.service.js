@@ -67,7 +67,8 @@ class RecepcionService {
           where: { semana: { [Op.like]: `%${semana}%` } }
         }],
         limit: newlimit,
-        offset: newoffset
+        offset: newoffset,
+        order: [ ['id', 'DESC']],
       });
       return { data: result, total: total };
     } else {
@@ -76,6 +77,7 @@ class RecepcionService {
           [Op.or]: [{ cons_almacen_gestor: { [Op.in]: body.almacenes } }, { cons_almacen_receptor: { [Op.in]: body.almacenes } }],
           cons_lista_movimientos: { [Op.in]: ["TR"] }
         },
+        order: [ ['id', 'DESC']],
         include: [{
           model: db.productos,
           as: "Producto",

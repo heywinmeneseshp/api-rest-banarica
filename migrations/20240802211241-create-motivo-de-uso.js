@@ -8,6 +8,10 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
+      consecutivo: {
+        type: Sequelize.STRING,
+        unique: true, // Especifica que este campo debe ser único
+      },
       motivo_de_uso: {
         type: Sequelize.STRING
       },

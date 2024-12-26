@@ -14,8 +14,12 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   MotivoDeUso.init({
+    consecutivo: {
+      type: DataTypes.STRING,
+      unique: true, // Especifica que este campo debe ser único
+    },
     motivo_de_uso: DataTypes.STRING,
-    habilitado: DataTypes.BOOLEAN
+    habilitado: DataTypes.BOOLEAN,
   }, {
     sequelize,
     modelName: 'MotivoDeUso',

@@ -2,6 +2,7 @@
 const boom = require('@hapi/boom');
 const { generarIDSemana } = require("../middlewares/generarId.handler");
 const db = require('../models');
+const { Op } = require('sequelize');
 
 class SemanasService {
 
@@ -24,6 +25,28 @@ class SemanasService {
     if (!semana) throw boom.notFound('El item no existe');
     return semana;
   }
+
+  async filtrar(body) {
+    try {
+      // Destructuramos `createdAt` de body para evitar acceder múltiples veces
+      const { createdAt, ...otherBody } = body;
+      // Si `createdAt` tiene un array de 2 fechas, aplicamos el filtro
+      const filtroFecha = createdAt?.length === 2 ? { createdAt: { [Op.between]: createdAt } } : {};
+      // Fusionamos otros filtros y el de la fecha si aplica
+      const filtros = { ...otherBody, ...filtroFecha };
+      // Realizamos la búsqueda con los filtros
+      const semana = await db.semanas.findAll({ where: filtros });
+      // Si no se encuentran resultados, lanzamos un error
+      if (!semana || semana.length === 0) {
+        throw boom.notFound('El item no existe');
+      }
+      return semana;
+    } catch (error) {
+      // Manejamos cualquier otro error que ocurra durante la operación
+      throw boom.badImplementation('Error al filtrar los datos', { error });
+    }
+  }
+  
 
   async update(id, changes) {
     const semana = await db.semanas.findByPk(id);

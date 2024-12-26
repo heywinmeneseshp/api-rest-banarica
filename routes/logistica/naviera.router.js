@@ -16,10 +16,11 @@ router.get('/', async (req, res, next) => {
 
 // Paginar navieras
 // Ejemplo: http://localhost:3000/api/v1/navieras/paginar?offset=1&limit=4&navieras=naviera1
-router.get('/paginar', async (req, res, next) => {
+router.post('/paginar', async (req, res, next) => {
   try {
-    const { offset, limit, navieras } = req.query;
-    const items = await service.paginate(offset, limit, navieras);
+    const { offset, limit } = req.query;
+    const body = req.body;
+    const items = await service.paginate(offset, limit, body);
     res.json(items);
   } catch (error) {
     next(error);

@@ -6,16 +6,30 @@ const db = require('../../models');
 class clientesService {
 
   async create(data) {
-    const existe = await db.clientes.findOne({ where: { id: data.id } });
+    const existe = await db.clientes.findOne({ where: { nit: data.nit } });
     if (existe) throw boom.conflict('El item ya existe')
     const newAlamacen = await db.clientes.create(data);
     return newAlamacen
   }
 
   async find() {
-    const res = await db.clientes.findAll()
-    return res;
+    try {
+      const res = await db.clientes.findAll();
+      if (!res.length) { // Si no hay resultados, crea un registro predeterminado
+        const res2 = await db.clientes.create({
+          razon_social: "Predeterminado",
+          Nit: "100001000-1",
+          cod: "PRE1"
+        });
+        return [res2]; // Retorna el nuevo registro en un array
+      }
+      return res; // Si ya existen clientes, retorna los resultados
+    } catch (error) {
+      console.error('Error al listar o crear cliente:', error);
+      throw boom.internal('Error al listar o crear cliente', error);
+    }
   }
+  
 
   async findOne(id) {
     const item = await db.clientes.findOne({ where: { id } });

@@ -10,6 +10,26 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
+      this.hasOne(models.Destino, {
+        foreignKey: 'id',
+        sourceKey: 'id_destino'
+      });
+      this.hasOne(models.Naviera, {
+        foreignKey: 'id',
+        sourceKey: 'id_naviera'
+      });
+      this.hasOne(models.clientes, {
+        foreignKey: 'id',
+        sourceKey: 'id_cliente'
+      });
+      this.hasOne(models.Buque, {
+        foreignKey: 'id',
+        sourceKey: 'id_buque'
+      });
+      this.hasOne(models.semanas, {
+        foreignKey: 'id',
+        sourceKey: 'id_semana'
+      });
       // define association here
     }
   }
@@ -19,6 +39,8 @@ module.exports = (sequelize, DataTypes) => {
     id_destino: DataTypes.INTEGER,
     id_naviera: DataTypes.INTEGER,
     viaje: DataTypes.STRING,
+    anuncio: DataTypes.STRING,
+    sae: DataTypes.STRING,
     id_buque: DataTypes.INTEGER,
     booking: DataTypes.STRING,
     bl: DataTypes.STRING,

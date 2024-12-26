@@ -15,4 +15,9 @@ function generarIDSemana(semana, anho) {
   return `S${semana}-${anho.slice(-2)}`;
 }
 
-module.exports = { generarID, generarIDProAndCat, generarIDSemana };
+function generarConsecutivoSemana(semana, anho) {
+  const semanaConCero = semana.toString().padStart(2, '0');
+  return `S${semanaConCero}-${anho}`;
+}
+
+module.exports = { generarID, generarIDProAndCat, generarIDSemana, generarConsecutivoSemana };

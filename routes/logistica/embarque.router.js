@@ -16,11 +16,11 @@ router.get('/', async (req, res, next) => {
 
 // Paginar embarques
 // Ejemplo: http://localhost:3000/api/v1/embarques/paginar?offset=1&limit=4&filters={"nombre":"embarque1"}
-router.get('/paginar', async (req, res, next) => {
+router.post('/paginar', async (req, res, next) => {
   try {
-    const { offset, limit, filters } = req.query;
-    const filterObject = filters ? JSON.parse(filters) : {};
-    const items = await service.paginate(offset, limit, filterObject);
+    const { offset, limit} = req.query;
+    const body = req.body || {};
+    const items = await service.paginate(offset, limit, body);
     res.json(items);
   } catch (error) {
     next(error);
@@ -43,6 +43,19 @@ router.post('/', async (req, res, next) => {
   try {
     const body = req.body;
     const embarqueNuevo = await service.create(body);
+    res.json({
+      message: 'Embarque creado',
+      data: embarqueNuevo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/cargue-masivo', async (req, res, next) => {
+  try {
+    const body = req.body;
+    const embarqueNuevo = await service.cargueMasivo(body);
     res.json({
       message: 'Embarque creado',
       data: embarqueNuevo

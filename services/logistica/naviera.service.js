@@ -41,11 +41,15 @@ class NavieraService {
     await db.Naviera.destroy({ where: { id } });
     return { message: 'La naviera fue eliminada', id };
   }
-  
-  async paginate(offset, limit, navieras = '') {
-    const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
-    const whereClause = navieras ? { navieras: { [Op.like]: `%${navieras}%` } } : {};
 
+  async paginate(offset, limit, body = {}) {
+
+    const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
+    const whereClause = {...body,
+      navieras: { [Op.like]: `%${body.navieras ? body.navieras : ""}%` },
+      cod: { [Op.like]: `%${body.cod ? body.cod : ""}%` },
+    }
+ 
     const [result, total] = await Promise.all([
       db.Naviera.findAll({
         where: whereClause,

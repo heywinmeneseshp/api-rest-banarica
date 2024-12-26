@@ -95,10 +95,6 @@ class ProgramacionService {
       ],
     };
 
-
-
-
-
     if (offset || limit) {
       const newLimit = parseInt(limit);
       const newOffset = (parseInt(offset) - 1) * newLimit;
@@ -111,7 +107,6 @@ class ProgramacionService {
     }
 
     const { count, rows: result } = await db.programacion.findAndCountAll(whereClause);
-
 
     return { data: result, total: count / 4 };
   }

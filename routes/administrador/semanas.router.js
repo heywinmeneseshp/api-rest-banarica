@@ -27,6 +27,16 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+router.post("/filter", async (req, res, next) => {
+  const body = req.body;
+  try {
+    const item = await service.filtrar(body);
+    res.json(item);
+  } catch (error) {
+    next(error)
+  }
+});
+
 //Crear
 router.post("/",
 validatorHandler(crearSemana, "body"),

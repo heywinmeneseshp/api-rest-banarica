@@ -18,8 +18,8 @@ router.get('/', async (req, res, next) => {
 // Ejemplo: http://localhost:3000/api/v1/buques/paginar?offset=1&limit=4&nombre=buque1
 router.get('/paginar', async (req, res, next) => {
   try {
-    const { offset, limit, nombre } = req.query;
-    const items = await service.paginate(offset, limit, nombre);
+    const { offset, limit, buque } = req.query;
+    const items = await service.paginate(offset, limit, buque);
     res.json(items);
   } catch (error) {
     next(error);

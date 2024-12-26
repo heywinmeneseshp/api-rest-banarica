@@ -15,12 +15,12 @@ router.get('/', async (req, res, next) => {
 });
 
 // Paginar listados
-// Ejemplo: http://localhost:3000/api/v1/listados/paginar?offset=1&limit=4&filters={"nombre":"listado1"}
-router.get('/paginar', async (req, res, next) => {
+// Ejemplo: http://localhost:3000/api/v1/listados/paginar?offset=1&limit=4
+router.post('/paginar', async (req, res, next) => {
   try {
-    const { offset, limit, filters } = req.query;
-    const filterObject = filters ? JSON.parse(filters) : {};
-    const items = await service.paginate(offset, limit, filterObject);
+    const { offset, limit } = req.query;
+    const body = req.body;
+    const items = await service.paginate(offset, limit, body);
     res.json(items);
   } catch (error) {
     next(error);
@@ -32,6 +32,17 @@ router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
     const listado = await service.findOne(id);
+    res.json(listado);
+  } catch (error) {
+    next(error);
+  }
+});
+
+//duplicar linea
+router.get('/duplicar/:id', async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const listado = await service.duplicarListado(id);
     res.json(listado);
   } catch (error) {
     next(error);
@@ -74,5 +85,7 @@ router.delete('/:id', async (req, res, next) => {
     next(error);
   }
 });
+
+
 
 module.exports = router;

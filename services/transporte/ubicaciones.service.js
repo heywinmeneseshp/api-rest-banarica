@@ -13,6 +13,14 @@ class ubicacionesService {
   }
 
   async find() {
+    await db.ubicaciones.findOrCreate({
+      where: { cod: "PRE" }, defaults: {
+        ubicacion: "Predeterminado",
+        detalle: "N/A",
+        activo: true,
+        cod: "PRE"
+      }
+    })
     const res = await db.ubicaciones.findAll()
     const ubicaciones = res.sort((a,b)=>{
       if (a.dataValues.nombre == b.dataValues.ubicacion) {
@@ -47,6 +55,14 @@ class ubicacionesService {
   }
 
   async paginate(offset, limit, item) {
+    await db.ubicaciones.findOrCreate({
+      where: { cod: "PRE" }, defaults: {
+        ubicacion: "Predeterminado",
+        detalle: "N/A",
+        activo: true,
+        cod: "PRE"
+      }
+    })
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const total = await db.ubicaciones.count({

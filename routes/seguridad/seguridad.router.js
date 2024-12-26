@@ -70,11 +70,35 @@ router.get("/listar-articulos",
     }
   });
 
+router.post("/encontrar-una-serial",
+  async (req, res, next) => {
+    try {
+      const body = req.body
+      const result = await service.buscarUnSerial(body);
+      res.json(result)
+    } catch (e) {
+      next(e)
+    }
+  });
+
 router.patch("/actualizar-serial",
   async (req, res, next) => {
     try {
       const body = req.body
       const result = await service.actualizarSerial(body)
+      res.json(result)
+    } catch (e) {
+      next(e)
+    }
+  })
+
+
+  //Insepeccion antinarcoticos
+router.post("/inspeccion-antinarcoticos",
+  async (req, res, next) => {
+    try {
+      const body = req.body
+      const result = await service.inspeccionAntinarcoticos(body)
       res.json(result)
     } catch (e) {
       next(e)

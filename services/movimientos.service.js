@@ -1,47 +1,66 @@
-
 const boom = require('@hapi/boom');
 const { generarID } = require("../middlewares/generarId.handler");
-const getDate = require('../middlewares/getDate.handler')
+const getDate = require('../middlewares/getDate.handler');
 const db = require('../models');
-
 const emailService = require('./email.service');
-const serviceEmail = new emailService()
+
+const serviceEmail = new emailService();
 
 class MovimientosService {
 
   constructor() { }
 
+  async create(data, transaction = null) {
+    let t;
+    try {
+      // Si no se proporciona una transacción, crea una nueva
+      if (!transaction) {
+        t = await db.sequelize.transaction();
+      } else {
+        t = transaction;
+      }
 
-  async create(data) {
-    const { count } = await db.movimientos.findAndCountAll()
-    let consecutivo = data.prefijo + "-" + count
-    const itemNuevo = {
-      consecutivo,
-      ...data
+      // Obtén el conteo actual de movimientos
+      const { count } = await db.movimientos.findAndCountAll({ transaction: t });
+
+      // Genera el consecutivo
+      const consecutivo = `${data.prefijo}-${count}`;
+      const itemNuevo = { consecutivo, ...data };
+console.log(itemNuevo)
+      // Crea un nuevo movimiento dentro de la transacción
+      const item = await db.movimientos.create(itemNuevo, { transaction: t });
+
+      // Enviar correo si el prefijo es "DV"
+      if (data.prefijo === "DV") {
+        await serviceEmail.send(
+          'ydavila@banarica.com, practicantesantamarta@banarica.com',
+          `Devolución ${consecutivo}`,
+          `<h3>Devolución <b>${consecutivo}</b> pendiente por revisión</h3>
+          <p><b>Observaciones:</b> ${item?.dataValues?.observaciones}</p>
+          <p>Para ver el documento, haz 
+          <a href="https://app-banarica.vercel.app/Documento/Movimiento/${consecutivo}">
+            Clic Aquí
+          </a></p>`
+        );
+      }
+
+      // Si la transacción fue creada dentro de esta función, confírmala
+      if (!transaction) {
+        await t.commit();
+      }
+
+      return item;
+    } catch (error) {
+      // Rollback de la transacción en caso de error
+      if (t) await t.rollback();
+      
+      // Maneja el error
+      throw boom.badRequest(error.message || 'Error al crear el movimiento');
     }
-    const item = await db.movimientos.create(itemNuevo);
-
-    if (data.prefijo == "DV") {
-      await serviceEmail.send('ydavila@banarica.com, practicantesantamarta@banarica.com',
-        `Devolución ${consecutivo}`,
-        `<h3>Devolucion <b>${consecutivo}</b> pendente por revisión</h3>
-      <p>
-        <b>Observaciones:</b> ${item?.dataValues?.observaciones}
-      </p>
-      <p>
-       Para ver el documento hacer 
-       <a href="https://app-banarica.vercel.app/Documento/Movimiento/${consecutivo}">
-          Clic Aquí
-        </a>
-     </p>`,)
-    }
-
-    return item
   }
 
-
   async find() {
-    return await db.movimientos.findAll()
+    return await db.movimientos.findAll();
   }
 
   async findDocument(body) {
@@ -53,9 +72,8 @@ class MovimientosService {
     ]);
 
     const array = historial.map(item => {
-      const cantidad = item.dataValues.cantidad;
-      const consProducto = item.dataValues.cons_producto;
-      const producto = productos.find(p => p.dataValues.consecutivo === consProducto);
+      const { cantidad, cons_producto } = item.dataValues;
+      const producto = productos.find(p => p.dataValues.consecutivo === cons_producto);
 
       if (producto) {
         return {
@@ -64,23 +82,20 @@ class MovimientosService {
           nombre: producto.dataValues.name
         };
       }
-    });
+    }).filter(Boolean); // Remove any undefined items
 
     const consAlmacen = historial[0]?.dataValues.cons_almacen_gestor;
     const almacen = almacenes.find(a => a.dataValues.consecutivo === consAlmacen)?.dataValues.nombre;
 
-    const result = {
+    return {
       cons_almacen: consAlmacen,
-      almacen: almacen,
-      movimiento: movimiento.dataValues,
+      almacen,
+      movimiento: movimiento?.dataValues,
       tipo_movimiento: historial[0]?.dataValues.tipo_movimiento,
       razon_movimiento: historial[0]?.dataValues.razon_movimiento,
-      lista: array.filter(Boolean) // Remove any undefined items
+      lista: array
     };
-
-    return result;
   }
-
 
   async findOne(consecutivo) {
     const item = await db.movimientos.findOne({
@@ -101,28 +116,27 @@ class MovimientosService {
 
   async update(id, changes) {
     const item = await db.movimientos.findByPk(id);
-    if (!item) throw boom.notFound('El item no existe')
-    await item.update(changes)
+    if (!item) throw boom.notFound('El item no existe');
+    await item.update(changes);
     return item;
   }
 
   async delete(id) {
     const item = await db.movimientos.findByPk(id);
     if (!item) throw boom.notFound('El item no existe');
-    await item.destroy({ where: { id } });
-    return { message: "El item fue eliminado" }
+    await item.destroy();
+    return { message: "El item fue eliminado" };
   }
 
   async paginate(offset, limit) {
-    let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset) - 1) * newlimit;
-    const result = await db.movimientos.findAll({
-      limit: newlimit,
-      offset: newoffset
-    });
-    return result;
-  }
+    const parsedLimit = parseInt(limit, 10);
+    const parsedOffset = (parseInt(offset, 10) - 1) * parsedLimit;
 
+    return await db.movimientos.findAll({
+      limit: parsedLimit,
+      offset: parsedOffset
+    });
+  }
 }
 
-module.exports = MovimientosService
+module.exports = MovimientosService;

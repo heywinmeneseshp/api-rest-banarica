@@ -102,35 +102,87 @@ class StockServices {
     return await db.stock.findAll({ where: { cons_producto: cons_producto }, include: ['almacen', 'producto'] });
   }
 
-  async addAmounts(cons_almacen, cons_producto, body) {
-    const item = await db.stock.findAll({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    if (!item[0]) {
-      await db.stock.findOrCreate({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto, cantidad: body.cantidad, isBlock: false } });
-      return item[0];
-    } else {
-      const suma = parseFloat(item[0].cantidad) + parseFloat(body.cantidad);
-      await db.stock.update({ cantidad: suma }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-      const data = { cons_producto: cons_producto, cantidad: suma }
-
-      if (cons_producto == "PRE33" && suma < 11) {
-        if (item[0]?.aviso == null || item[0]?.aviso == 1) {
-          serviceEmail.send('hmeneses@banarica.com, jtaite@banarica.com',
-            `Alerta Precintos - ${cons_almacen} ${new Date().getTime()}`,
-            `<h3>Almacén <b>${cons_almacen}</b></h3>
-          <p>
-           Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b>
-         </p>`)
-          await db.stock.update({ aviso: 0 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-        }
+  async addAmounts(cons_almacen, cons_producto, body, transaction = null) {
+    let t;
+    try {
+      // Usa la transacción proporcionada o crea una nueva si no se proporciona
+      if (!transaction) {
+        t = await db.sequelize.transaction();
+      } else {
+        t = transaction;
       }
 
-      if (cons_producto == "PRE33" && suma >= 11) {
-        if (item[0]?.aviso == null || item[0]?.aviso == 0) {
-          await db.stock.update({ aviso: 1 }, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
+      // Obtén el registro del stock
+      const items = await db.stock.findAll({
+        where: { cons_almacen, cons_producto },
+        transaction: t
+      });
+
+      if (!items[0]) {
+        // Si no hay registros, crea uno nuevo
+        await db.stock.findOrCreate({
+          where: { cons_almacen, cons_producto, cantidad: body.cantidad, isBlock: false },
+          transaction: t
+        });
+
+        // Si la transacción fue creada dentro de esta función, confírmala
+        if (!transaction) {
+          await t.commit();
         }
+
+        return items[0];
+      } else {
+        // Si hay registros, actualiza la cantidad
+        const suma = parseFloat(items[0].cantidad) + parseFloat(body.cantidad);
+        await db.stock.update(
+          { cantidad: suma },
+          { where: { cons_almacen, cons_producto }, transaction: t }
+        );
+
+        const data = { cons_producto, cantidad: suma };
+
+        // Verifica y envía alertas si es necesario
+        if (cons_producto === "PRE33") {
+          if (suma < 11) {
+            if (items[0]?.aviso == null || items[0]?.aviso == 1) {
+              await serviceEmail.send(
+                'hmeneses@banarica.com, jtaite@banarica.com',
+                `Alerta Precintos - ${cons_almacen} ${new Date().getTime()}`,
+                `<h3>Almacén <b>${cons_almacen}</b></h3>
+                <p>
+                 Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b>
+               </p>`
+              );
+              await db.stock.update(
+                { aviso: 0 },
+                { where: { cons_almacen, cons_producto }, transaction: t }
+              );
+            }
+          } else if (suma >= 11) {
+            if (items[0]?.aviso == null || items[0]?.aviso == 0) {
+              await db.stock.update(
+                { aviso: 1 },
+                { where: { cons_almacen, cons_producto }, transaction: t }
+              );
+            }
+          }
+        }
+
+        // Si la transacción fue creada dentro de esta función, confírmala
+        if (!transaction) {
+          await t.commit();
+        }
+
+        return { message: "El item fue actualizado", data };
       }
 
-      return { message: "El item fue actualizado", data: data };
+    } catch (error) {
+      // Realiza un rollback si se creó una transacción
+      if (t) {
+        await t.rollback();
+      }
+      // Maneja el error
+      throw boom.badRequest(error.message || 'Error al actualizar el stock');
     }
   }
 

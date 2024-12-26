@@ -32,6 +32,12 @@ module.exports = {
       bl: {
         type: Sequelize.STRING
       },
+      anuncio: {
+        type: Sequelize.STRING
+      },
+      sae: {
+        type: Sequelize.STRING
+      },
       fecha_zarpe: {
         type: Sequelize.DATE
       },

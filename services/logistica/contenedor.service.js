@@ -36,20 +36,24 @@ class ContenedorService {
     return { message: 'El contenedor fue eliminado', id };
   }
 
-  async paginate(offset, limit, contenedorName = '') {
-    const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
-    const whereClause = contenedorName ? { contenedor: { [Op.like]: `%${contenedorName}%` } } : {};
-
-    const [result, total] = await Promise.all([
+  async paginate(offset, limit, body = {}) {
+    const parsedOffset = (parseInt(offset, 10) - 1) * parseInt(limit, 10);
+  
+    const whereClause = {
+      ...body,
+      ...(body.contenedor && { contenedor: { [Op.like]: `%${body.contenedor}%` } }),
+    };
+  
+    const [data, total] = await Promise.all([
       db.Contenedor.findAll({
         where: whereClause,
-        limit: parseInt(limit),
+        limit: parseInt(limit, 10),
         offset: parsedOffset,
       }),
       db.Contenedor.count({ where: whereClause }),
     ]);
-
-    return { data: result, total };
+  
+    return { data, total };
   }
 }
 
