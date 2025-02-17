@@ -12,32 +12,72 @@ class AlmacenesService {
     return newAlamacen
   }
 
+  async bulkCreate(dataArray) {
+    const transaction = await db.sequelize.transaction(); // Inicia la transacción
+    try {
+        if (!Array.isArray(dataArray) || dataArray.length === 0) {
+            throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+        }
+        
+        console.log(dataArray);
+
+        // Intentar la inserción en la base de datos dentro de la transacción
+        const results = await db.almacenes.bulkCreate(dataArray, { 
+            validate: true, 
+            transaction // Asegurar que la transacción controla la operación
+        });
+
+        await transaction.commit(); // Confirmar la transacción si todo sale bien
+
+        return { message: 'Carga masiva exitosa', count: results.length };
+    } catch (error) {
+        await transaction.rollback(); // Deshacer todos los cambios si hay un error
+        console.error("Error en bulkCreate:", error);
+
+        if (error.name === "SequelizeUniqueConstraintError") {
+            const codExistente = error.errors?.[0]?.value || "desconocido";
+            throw boom.conflict(`El código '${codExistente}' ya existe. Debe ser único.`);
+        }
+
+        if (error.name === "SequelizeValidationError") {
+            const detalles = error.errors.map(err => err.message);
+            throw boom.badRequest("Error de validación en los datos.", { detalles });
+        }
+
+        throw boom.internal("Error interno del servidor al crear el item.");
+    }
+}
+
+
   async find() {
-    const res = await db.almacenes.findAll()
-    const almacenes = res.sort((a,b)=>{
-      if (a.dataValues.nombre == b.dataValues.nombre) {
-        return 0;
-      }
-      if (a.dataValues.nombre < b.dataValues.nombre) {
-        return -1;
-      }
-      return 1;
-    })
+    const almacenes = await db.almacenes.findAll({
+      order: [['id', 'DESC']], // Ordenar directamente en la consulta
+    });
+
     return almacenes;
   }
 
+
   async findOne(consecutivo) {
-    const almacen = await db.almacenes.findOne({ where: { consecutivo } });
-    if (!almacen) throw boom.notFound('El almacen no existe')
+    let almacen = await db.almacenes.findOne({ where: { id: consecutivo } });
+    if (!almacen) {
+      almacen = await db.almacenes.findOne({ where: { consecutivo } });
+    }
+    if (!almacen) throw boom.notFound('El almacén no existe');
     return almacen;
   }
 
+
   async update(consecutivo, changes) {
-    const almacen = await db.almacenes.findOne({ where: { consecutivo } });
-    if (!almacen) throw boom.notFound('El almacen no existe')
-    const result = await db.almacenes.update(changes, { where: { consecutivo } });
+    let almacen = await db.almacenes.findOne({ where: { id: consecutivo } });
+    if (!almacen) {
+      almacen = await db.almacenes.findOne({ where: { consecutivo } });
+    }
+    if (!almacen) throw boom.notFound('El almacén no existe');
+    const result = await db.almacenes.update(changes, { where: { id: almacen.id } });
     return result;
   }
+
 
   async delete(consecutivo) {
     const existe = await db.almacenes.findOne({ where: { consecutivo } });
@@ -46,18 +86,22 @@ class AlmacenesService {
     return { message: "El almacen fue eliminado", consecutivo }
   }
 
-  async paginate(offset, limit, almacen) {
-    let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset) - 1) * newlimit;
-    const total = await db.almacenes.count({
-      where: { nombre: { [Op.like]: `%${almacen}%` } }
-    });
-    const result = await db.almacenes.findAll({
-      where: { nombre: { [Op.like]: `%${almacen}%` } },
-      limit: newlimit,
-      offset: newoffset
-    });
-    return { data: result, total: total };
+
+  async paginate(offset, limit, almacen = '') {
+    const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
+    const whereClause = almacen ? { nombre: { [Op.like]: `%${almacen}%` } } : {};
+
+    const [result, total] = await Promise.all([
+      db.almacenes.findAll({
+        where: whereClause,
+        limit: parseInt(limit),
+        offset: parsedOffset,
+        order: [['id', 'DESC']],
+      }),
+      db.almacenes.count({ where: whereClause }),
+    ]);
+
+    return { data: result, total };
   }
 
 }

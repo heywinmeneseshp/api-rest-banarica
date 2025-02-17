@@ -37,40 +37,51 @@ router.post("/filter", async (req, res, next) => {
   }
 });
 
-//Crear
-router.post("/",
-validatorHandler(crearSemana, "body"),
-async (req, res, next) => {
+// Ejemplo: http://localhost:3000/api/v1/semanas/paginar?offset=1&limit=4
+router.post('/paginar', async (req, res, next) => {
   try {
-    const body = req.body;
-    const itemNuevo = await service.create(body);
-    res.json({
-      message: "item creado",
-      data: itemNuevo
-    })
+    const { offset, limit, consecutivo } = req.query;
+    const items = await service.paginar(offset, limit, consecutivo);
+    res.json(items);
   } catch (error) {
     next(error);
   }
-
 });
+
+//Crear
+router.post("/",
+  validatorHandler(crearSemana, "body"),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const itemNuevo = await service.create(body);
+      res.json({
+        message: "item creado",
+        data: itemNuevo
+      })
+    } catch (error) {
+      next(error);
+    }
+
+  });
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/:id",
-validatorHandler(actualizarSemana, "body"),
-async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const body = req.body;
-    const item = await service.update(id, body)
-    res.json({
-      message: 'El item fue actualizado',
-      data: item,
-      id
-    })
-  } catch (error) {
-    next(error);
-  }
-});
+  validatorHandler(actualizarSemana, "body"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params
+      const body = req.body;
+      const item = await service.update(id, body)
+      res.json({
+        message: 'El item fue actualizado',
+        data: item,
+        id
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
 
 //ELIMINAR
 router.delete("/:id", async (req, res, next) => {

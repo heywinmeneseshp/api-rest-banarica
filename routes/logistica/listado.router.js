@@ -63,6 +63,20 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+//Cargar Listado masivo
+router.post('/masivo', async (req, res, next) => {
+  try {
+    const body = req.body;
+    const listadoNuevo = await service.bulkCreate(body);
+    res.json({
+      message: 'Listado creado',
+      data: listadoNuevo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Actualizar un listado
 router.patch('/:id', async (req, res, next) => {
   try {

@@ -14,6 +14,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+
 // Paginar buques
 // Ejemplo: http://localhost:3000/api/v1/buques/paginar?offset=1&limit=4&nombre=buque1
 router.get('/paginar', async (req, res, next) => {
@@ -43,6 +44,21 @@ router.post('/',
     try {
       const body = req.body;
       const buqueNuevo = await service.create(body);
+      res.json({
+        message: 'Buque creado',
+        data: buqueNuevo
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post('/masivo', 
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const buqueNuevo = await service.bulkCreate(body);
       res.json({
         message: 'Buque creado',
         data: buqueNuevo

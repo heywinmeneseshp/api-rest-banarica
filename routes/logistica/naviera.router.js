@@ -52,6 +52,24 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+//Cargue Masivo
+router.post('/masivo', async (req, res, next) => {
+  try {
+    const dataList = req.body;
+    if (!Array.isArray(dataList) || dataList.length === 0) {
+      return res.status(400).json({ message: 'El formato de los datos es incorrecto o está vacío.' });
+    }
+    const navierasCreadas = await service.bulkCreate(dataList);
+    res.status(201).json({
+      message: 'Carga masiva exitosa',
+      total: navierasCreadas.count,
+      data: navierasCreadas
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Actualizar una naviera
 router.patch('/:id', async (req, res, next) => {
   try {

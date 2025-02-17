@@ -78,6 +78,22 @@ router.post("/",
     }
   });
 
+  //Cargue Masivo
+  router.post("/masivo",
+    async (req, res, next) => {
+      try {
+        const body = req.body;
+        const ItemsNuevos = await service.bulkCreate(body);
+        res.json({
+          message: "Items creados",
+          data: ItemsNuevos
+        })
+      } catch (error) {
+        next(error);
+      }
+    });
+  
+
 router.post("/listar",
   validatorHandler(armarCombo, "body"),
   async (req, res, next) => {

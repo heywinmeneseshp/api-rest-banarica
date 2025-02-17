@@ -9,7 +9,8 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       buque: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true
       },
       id_naviera: {
         type: Sequelize.INTEGER

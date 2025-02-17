@@ -52,18 +52,20 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.post('/cargue-masivo', async (req, res, next) => {
+// Crear embarques masivos
+router.post('/masivo', async (req, res, next) => {
   try {
     const body = req.body;
     const embarqueNuevo = await service.cargueMasivo(body);
     res.json({
-      message: 'Embarque creado',
+      message: 'Embarques creados',
       data: embarqueNuevo
     });
   } catch (error) {
     next(error);
   }
 });
+
 
 // Actualizar un embarque
 router.patch('/:id', async (req, res, next) => {

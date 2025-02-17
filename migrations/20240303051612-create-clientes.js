@@ -9,10 +9,12 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       razon_social: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true,
       },
       nit: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true,
       },
       domicilio: {
         type: Sequelize.STRING
@@ -28,7 +30,8 @@ module.exports = {
       },
       cod: {
         type: Sequelize.STRING,
-        allowNull: false // Cambiar a false si la columna no puede ser nula
+        allowNull: false, // Cambiar a false si la columna no puede ser nula
+        unique: true
       },
       pais: {
         type: Sequelize.STRING,

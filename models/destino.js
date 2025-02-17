@@ -14,9 +14,15 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Destino.init({
-    destino: DataTypes.STRING,
+    destino: {
+      type: DataTypes.STRING,
+      unique: true, // Restricción de unicidad
+    },
     pais: DataTypes.STRING,
-    cod: DataTypes.STRING,
+    cod: {
+      type: DataTypes.STRING,
+      unique: true, // Restricción de unicidad
+    },
     habilitado: DataTypes.BOOLEAN
   }, {
     sequelize,

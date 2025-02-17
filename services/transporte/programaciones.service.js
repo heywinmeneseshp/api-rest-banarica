@@ -106,9 +106,11 @@ class ProgramacionService {
       whereClause.where.eliminado = body.eliminado;
     }
 
-    const { count, rows: result } = await db.programacion.findAndCountAll(whereClause);
+    const result = await db.programacion.findAll(whereClause);
+    const count = await db.programacion.count(whereClause);
+ 
 
-    return { data: result, total: count / 4 };
+    return { data: result, total: count };
   }
 
 }

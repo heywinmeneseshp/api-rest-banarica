@@ -51,6 +51,20 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+// Crear un nuevo destino
+router.post('/masivo', async (req, res, next) => {
+  try {
+    const body = req.body;
+    const nuevosDestinos = await service.bulkCreate(body);
+    res.json({
+      message: 'Destino creado',
+      data: nuevosDestinos
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Actualizar un destino
 router.patch('/:id', async (req, res, next) => {
   try {

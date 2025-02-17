@@ -30,6 +30,7 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'id',
         sourceKey: 'id_semana'
       });
+      this.hasMany(models.Listado, { foreignKey: 'id_embarque', sourceKey: "id" });
       // define association here
     }
   }
@@ -43,7 +44,11 @@ module.exports = (sequelize, DataTypes) => {
     sae: DataTypes.STRING,
     id_buque: DataTypes.INTEGER,
     booking: DataTypes.STRING,
-    bl: DataTypes.STRING,
+    bl: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false
+    },
     fecha_zarpe: DataTypes.DATE,
     fecha_arribo: DataTypes.DATE,
     observaciones: DataTypes.TEXT,

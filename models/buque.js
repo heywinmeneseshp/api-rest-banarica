@@ -14,7 +14,10 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Buque.init({
-    buque: DataTypes.STRING,
+    buque: {
+      type: DataTypes.STRING,
+      unique: true, // Restricción de unicidad
+    },
     id_naviera: DataTypes.INTEGER,
     habilitado: DataTypes.BOOLEAN
   }, {

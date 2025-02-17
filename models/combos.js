@@ -20,11 +20,13 @@ module.exports = (sequelize, DataTypes) => {
   combos.init({
     consecutivo: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
+      unique: true,
     },
     nombre: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
+      unique: true,
     },
     isBlock: {
       type: DataTypes.BOOLEAN,

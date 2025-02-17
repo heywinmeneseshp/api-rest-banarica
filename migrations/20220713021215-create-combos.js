@@ -3,18 +3,19 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('combos', {
       id: {
-        unique: true,
+        primaryKey: true,
         allowNull: false,
         autoIncrement: true,
         type: Sequelize.INTEGER
       },
       consecutivo: {
         allowNull: false,
-        primaryKey: true,
+        unique: true,
         type: Sequelize.STRING
       },
       nombre: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true,
       },
       isBlock: {
         type: Sequelize.BOOLEAN

@@ -14,8 +14,14 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Naviera.init({
-    navieras: DataTypes.STRING,
-    cod: DataTypes.STRING,
+    navieras: {
+      type: DataTypes.STRING,
+      unique: true, // Restricción de unicidad
+    },
+    cod: {
+      type: DataTypes.STRING,
+      unique: true, // Restricción de unicidad
+    },
     habilitado: DataTypes.BOOLEAN
   }, {
     sequelize,

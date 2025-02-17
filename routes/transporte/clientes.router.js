@@ -49,6 +49,23 @@ router.post("/",
     }
   });
 
+
+  router.post("/masivo",
+    async (req, res, next) => {
+      try {
+        const body = req.body;
+        const itemNuevo = await service.bulkCreate(body);
+        res.json({
+          message: "item creado",
+          data: itemNuevo
+        })
+      } catch (error) {
+        next(error);
+      }
+    });
+  
+
+
 router.patch("/:id",
   async (req, res, next) => {
     try {

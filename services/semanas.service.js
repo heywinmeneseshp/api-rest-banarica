@@ -61,6 +61,17 @@ class SemanasService {
     await item.destroy({ where: { id } });
     return { message: "El item fue eliminado" };
   }
+
+  async paginar(offset, limit, consecutivo ) {
+    const newOffset = (offset - 1) * limit;
+    return await db.semanas.findAll({
+        limit: limit,
+        offset: newOffset,
+        where: { consecutivo: { [Op.like]: `%${consecutivo}%` } }
+    });
+}
+
+
 }
 
 module.exports = SemanasService

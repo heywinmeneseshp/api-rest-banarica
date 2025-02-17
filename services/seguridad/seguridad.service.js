@@ -13,6 +13,7 @@ const movimientoService = new MovimientoService();
 class SeguridadService {
 
   async cargarSeriales({ data, remision, pedido, semana, fecha, observaciones, username }) {
+    console.log(data)
 
     const batchSize = 500; // Tamaño del lote
     const t = await db.sequelize.transaction();
@@ -284,6 +285,7 @@ class SeguridadService {
 
 
   async inspeccionAntinarcoticos(body) {
+    console.log(body)
     const { formulario, rechazos } = body;
 
     // Validar datos requeridos
@@ -302,21 +304,30 @@ class SeguridadService {
             { transaction }
         );
 
+         // Asegurar motivo de uso
+         const [moviRechazo] = await db.MotivoDeRechazo.findOrCreate({
+          where: { motivo_rechazo: "Inspección antinarcóticos" },
+          defaults: {
+              habilitado: true,
+          },
+          transaction,
+      });
+
         // Crear rechazos en paralelo
         if (rechazos?.length) {
             await Promise.all(
                 rechazos.map((item) =>
                     db.Rechazo.create(
                         {
-                            id_motivo_de_rechazo: "",
+                            id_motivo_de_rechazo: moviRechazo.id,
                             id_producto: item.producto,
                             cantidad: item.totalCajas,
                             serial_palet: item.codigoPallet,
-                            cod_productor: item.IBM,
+                            cod_productor: item.cod_productor	,
                             id_contenedor: formulario.consecutivo,
-                            id_usuario: item?.id_usuario,
-                            habilitado: "Pendiente",
-                            observaciones: item.observaciones,
+                            id_usuario: formulario?.id_usuario,
+                            habilitado: false,
+                            observaciones: formulario.observaciones,
                         },
                         { transaction }
                     )
@@ -368,11 +379,11 @@ class SeguridadService {
                         fecha_de_uso: formulario.fecha,
                         id_contenedor: formulario.consecutivo,
                         ubicacion_en_contenedor: "Exterior",
-                        id_usuario: null,
+                        id_usuario: formulario?.id_usuario,
                         id_motivo_de_uso: moviUso.id,
                     },
                     {
-                        where: { id: article.id },
+                        where: { id: article.id,  available: true },
                         transaction,
                     }
                 );

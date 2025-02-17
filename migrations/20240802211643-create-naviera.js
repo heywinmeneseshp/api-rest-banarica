@@ -9,10 +9,12 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       navieras: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true
       },
       cod: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true, // Restricción de unicidad
       },
       habilitado: {
         type: Sequelize.BOOLEAN

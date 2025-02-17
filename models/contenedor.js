@@ -11,6 +11,10 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      this.hasMany(models.Listado, {
+        sourceKey: "id",
+        foreignKey: "id_contenedor"
+      })
     }
   }
   Contenedor.init({

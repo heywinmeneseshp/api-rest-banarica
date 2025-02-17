@@ -19,10 +19,12 @@ module.exports = (sequelize, DataTypes) => {
   clientes.init({
     razon_social: {
       type: DataTypes.STRING,
+      unique: true,
       allowNull: true
     },
     nit: {
       type: DataTypes.STRING,
+      unique: true,
       allowNull: true
     },
     domicilio: {
@@ -43,6 +45,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     cod: {
       type: DataTypes.STRING,
+      unique: true,
       allowNull: true  // Cambiar a false si la columna no puede ser nula
     },
     pais: {

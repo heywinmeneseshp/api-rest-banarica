@@ -12,6 +12,44 @@ class NavieraService {
     }
   }
 
+
+
+  async bulkCreate(dataArray) {
+    const transaction = await db.sequelize.transaction(); // Inicia la transacción
+    try {
+      if (!Array.isArray(dataArray) || dataArray.length === 0) {
+        throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+      }
+  
+      const navieras = await db.Naviera.bulkCreate(dataArray, { 
+        validate: true,
+        transaction // Pasa la transacción
+      });
+  
+      await transaction.commit(); // Confirma los cambios si todo salió bien
+  
+      return { message: 'Carga masiva exitosa', count: navieras.length };
+    } catch (error) {
+      await transaction.rollback(); // Revierte los cambios en caso de error
+      console.error("Error en bulkCreate:", error);
+  
+      if (error.name === "SequelizeUniqueConstraintError") {
+        const codExistente = error.errors?.[0]?.value || "desconocido";
+        throw boom.conflict(`El código '${codExistente}' ya existe. Debe ser único.`);
+      }
+  
+      if (error.name === "SequelizeValidationError") {
+        const detalles = error.errors.map(err => err.message);
+        throw boom.badRequest("Error de validación en los datos de la naviera.", { detalles });
+      }
+  
+      throw boom.internal("Error interno del servidor al crear la naviera.");
+    }
+  }
+  
+
+  
+
   async find() {
     return db.Naviera.findAll();
   }
@@ -55,6 +93,7 @@ class NavieraService {
         where: whereClause,
         limit: parseInt(limit),
         offset: parsedOffset,
+        order: [["id", "DESC"]], // Ordenar por ID de mayor a menor
       }),
       db.Naviera.count({ where: whereClause }),
     ]);

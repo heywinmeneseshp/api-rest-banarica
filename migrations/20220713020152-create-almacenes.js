@@ -28,7 +28,7 @@ module.exports = {
       email: {
         type: Sequelize.STRING
       },
-      isBlock: {
+      activo: {
         type: Sequelize.BOOLEAN
       },
       createdAt: {

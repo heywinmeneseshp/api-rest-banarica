@@ -11,6 +11,27 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      this.hasOne(models.Contenedor, {
+        foreignKey: "id",
+        sourceKey: "id_contenedor"
+      })
+      this.hasOne(models.MotivoDeRechazo, {
+        sourceKey: "id_motivo_de_rechazo",
+        foreignKey: "id"
+      })
+      this.hasOne(models.combos, {
+        sourceKey: "id_producto",
+        foreignKey: "id"
+      })
+      this.hasOne(models.usuarios, {
+        sourceKey: "id_usuario",
+        foreignKey: "id"
+      })
+      this.hasOne(models.almacenes, {
+        sourceKey: "cod_productor",
+        foreignKey: "consecutivo"
+      })
+
     }
   }
   Rechazo.init({

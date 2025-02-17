@@ -30,7 +30,9 @@ module.exports = {
         type: Sequelize.STRING
       },
       bl: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true,
+        allowNull: false
       },
       anuncio: {
         type: Sequelize.STRING

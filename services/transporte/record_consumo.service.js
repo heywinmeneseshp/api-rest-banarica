@@ -113,7 +113,7 @@ class record_consumosService {
 
     await db.vehiculo.update({ combustible: stock_real }, { where: { id: item.dataValues.vehiculo.dataValues.id } })
     const stock_final = programaciones[0].dataValues.vehiculo.dataValues.combustible + tanqueo - consumo;
-  
+
     const res = await db.record_consumos.update(
       {
         activo: true,
@@ -217,7 +217,9 @@ class record_consumosService {
 
 
 
-    const { count, rows } = await db.record_consumos.findAndCountAll(whereClause);
+    const rows = await db.record_consumos.findAll(whereClause);
+    const count = await db.record_consumos.count(whereClause);
+
     return { data: rows, total: count };
   }
 

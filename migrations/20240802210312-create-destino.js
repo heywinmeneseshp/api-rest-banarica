@@ -9,13 +9,15 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       destino: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true
       },
       pais: {
         type: Sequelize.STRING
       },
       cod: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true
       },
       habilitado: {
         type: Sequelize.BOOLEAN

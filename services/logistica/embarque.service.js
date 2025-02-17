@@ -5,23 +5,66 @@ const db = require('../../models');
 class EmbarqueService {
   async create(data) {
     try {
-      const embarque = await db.Embarque.create({...data, habilitado: true});
+      const embarque = await db.Embarque.create({ ...data, habilitado: true });
       return embarque;
     } catch (error) {
       throw boom.badRequest(error.message || 'Error al crear el embarque');
     }
   }
 
+  
   async cargueMasivo(data) {
     try {
       const t = await db.sequelize.transaction();
-      const embarque = await db.Embarque.bulkCreate(data, { transaction: t });
+  
+      // Obtener todas las semanas válidas en la base de datos
+      const semanasValidas = await db.semanas.findAll({ attributes: ["consecutivo", "id"] });
+  
+      // Crear un mapa con las semanas existentes
+      const semanasSet = new Map(semanasValidas.map(s => [s.consecutivo, s.id]));
+  
+      // Arrays para datos válidos e inválidos
+      const datosValidos = [];
+      const datosInvalidos = [];
+  
+      for (const item of data) {
+        // Buscar o crear la semana si no existe
+        if (!semanasSet.has(item.id_semana)) {
+          const [nuevaSemana] = await db.semanas.findOrCreate({
+            where: { consecutivo: item.id_semana },
+            defaults: { consecutivo: item.id_semana },
+            transaction: t
+          });
+  
+          semanasSet.set(item.id_semana, nuevaSemana.id); // Actualizar el mapa
+        }
+  
+        // Asignar el ID correcto
+        datosValidos.push({
+          ...item,
+          id_semana: semanasSet.get(item.id_semana)
+        });
+      }
+  
+      if (datosValidos.length === 0) {
+        throw new Error("Ningún registro tiene una semana válida.");
+      }
+  
+      // Insertar los datos transformados
+      const embarques = await db.Embarque.bulkCreate(datosValidos, { transaction: t });
+  
       await t.commit();
-      return embarque;
+  
+      return {
+        mensaje: `Se insertaron ${embarques.length} registros.`,
+        registrosInvalidos: datosInvalidos
+      };
     } catch (error) {
-      throw boom.badRequest(error.message || 'Error al crear el embarque');
+      throw boom.badRequest(error.message || "Error al crear el embarque");
     }
   }
+  
+
 
   async find() {
     return db.Embarque.findAll();
@@ -95,7 +138,7 @@ class EmbarqueService {
     });
     return { data: result, total };
   }
-  
+
 }
 
 module.exports = EmbarqueService;

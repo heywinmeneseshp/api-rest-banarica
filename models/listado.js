@@ -31,6 +31,7 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: 'id_contenedor',
         foreignKey: 'id_contenedor'
       })
+
     }
   }
   Listado.init({

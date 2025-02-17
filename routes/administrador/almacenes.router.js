@@ -28,6 +28,7 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
+
 router.get("/:consecutivo", async (req, res, next) => {
   try {
     const { consecutivo } = req.params;
@@ -52,6 +53,21 @@ router.post("/",
       next(error);
     }
   });
+
+
+  router.post("/masivo",
+    async (req, res, next) => {
+      try {
+        const body = req.body;
+        const almacenNuevo = await service.bulkCreate(body);
+        res.json({
+          message: "Almacen creado",
+          data: almacenNuevo
+        })
+      } catch (error) {
+        next(error);
+      }
+    });
 
 router.patch("/:consecutivo",
   validatorHandler(actualizarAlmacen, "body"),
