@@ -17,7 +17,6 @@ class ListadoService {
 
   async create(data) {
     const transaction = await db.sequelize.transaction(); // Inicia una nueva transacción
-  
     // Datos predeterminados para la creación de registros
     const defaults = {
       destino: { pais: "Predeterminado", cod: "PRE", habilitado: true },
@@ -41,7 +40,7 @@ class ListadoService {
       producto: { nombre: "Predeterminado", isBlock: false },
       almacen: { nombre: "Predeterminado", isBlock: false }
     };
-  
+
     try {
       // Crear registros predeterminados si no existen
       const [destino] = await db.Destino.findOrCreate({ where: { destino: "Predeterminado" }, defaults: defaults.destino });
@@ -50,17 +49,22 @@ class ListadoService {
       const [cliente] = await db.clientes.findOrCreate({ where: { cod: "PRE" }, defaults: defaults.cliente });
       const [semana] = await db.semanas.findOrCreate({ where: { consecutivo: "S00-2000" }, defaults: defaults.semana });
       const [combo] = await db.combos.findOrCreate({ where: { consecutivo: "PRE" }, defaults: defaults.producto });
+
+
       const [almacen] = await db.almacenes.findOrCreate({ where: { consecutivo: "PRE" }, defaults: defaults.almacen });
+
       const [embarque] = await db.Embarque.findOrCreate({
         where: { booking: "N/A" },
         defaults: { ...defaults.embarque, id_semana: semana.id, id_cliente: cliente.id, id_destino: destino.id, id_naviera: naviera.id, id_buque: buque.id }
       });
 
+      console.log(almacen, embarque);
 
-  
+
+
       // Crear contenedor
       const contenedor = await db.Contenedor.create({ contenedor: data.contenedor, habilitado: true }, { transaction });
-  
+
       // Preparar datos de movimiento
       const dataMovimiento = {
         prefijo: "EX",
@@ -71,17 +75,17 @@ class ListadoService {
         vehiculo: data.vehiculo,
         fecha: data.fecha
       };
-  
+
       // Asegurar existencia del motivo de uso
       const [moviUso] = await db.MotivoDeUso.findOrCreate({
         where: { consecutivo: "INSP01" },
         defaults: { consecutivo: "INSP01", motivo_de_uso: "Inspección vacío", habilitado: true },
         transaction
       });
-  
+
       // Crear movimiento
       const movimiento = await movimientoService.create(dataMovimiento, transaction);
-  
+
       // Actualizar seriales
       const serialesActualizados = await Promise.all(data.seriales.map(async (item) => {
         const itemSerial = {
@@ -94,17 +98,19 @@ class ListadoService {
           id_usuario: data.usuario.id,
           ubicacion_en_contenedor: item.ubicacion_en_contenedor
         };
+
         const { updatedItem } = await seguridadService.actualizarSerial(itemSerial, transaction);
         return updatedItem;
       }));
-  
+
+
       // Contar productos
       const conteoProductos = serialesActualizados.reduce((acc, item) => {
         const producto = item.cons_producto || 'Sin producto';
         acc[producto] = (acc[producto] || 0) + 1;
         return acc;
       }, {});
-  
+
       // Procesar conteo de productos y actualizar stock
       await Promise.all(Object.entries(conteoProductos).map(async ([producto, cantidad]) => {
         const cons_almacen = serialesActualizados[0].cons_almacen;
@@ -122,7 +128,7 @@ class ListadoService {
         };
         await historialMovimientoService.create(dataHistorial, transaction);
       }));
-  
+
       // Crear listado
       const listado = {
         fecha: data.fecha,
@@ -133,130 +139,138 @@ class ListadoService {
         id_producto: combo.id,
         id_lugar_de_llenado: almacen.id
       };
+
       const itemListado = await db.Listado.create(listado, { transaction });
-  
+
       // Confirmar la transacción
       await transaction.commit();
       return itemListado;
-  
+
     } catch (error) {
       // Revertir transacción en caso de error
       await transaction.rollback();
       throw boom.badRequest(error.message || "Error al crear el listado");
     }
   }
-  
+
 
   //Cargue Masivo
   async bulkCreate(dataArray) {
     const transaction = await db.sequelize.transaction();
     try {
-        if (!Array.isArray(dataArray) || dataArray.length === 0) {
-            throw boom.badRequest("El formato de los datos es incorrecto o está vacío.");
+      if (!Array.isArray(dataArray) || dataArray.length === 0) {
+        throw boom.badRequest("El formato de los datos es incorrecto o está vacío.");
+      }
+
+      // Validar que ningún campo en los objetos de dataArray sea null o undefined
+      for (const item of dataArray) {
+        if (Object.values(item).some(value => value === null || value === undefined)) {
+          throw boom.badRequest("Todos los campos deben contener valores válidos, no se permiten valores nulos.");
         }
+      }
 
-        // Validar que ningún campo en los objetos de dataArray sea null o undefined
-        for (const item of dataArray) {
-            if (Object.values(item).some(value => value === null || value === undefined)) {
-                throw boom.badRequest("Todos los campos deben contener valores válidos, no se permiten valores nulos.");
-            }
+      // Mapa para evitar duplicados en la misma carga
+      const uniqueData = new Map();
+      for (const item of dataArray) {
+        const key = `${item.contenedor}_${item.bl}`;
+        if (!uniqueData.has(key)) {
+          uniqueData.set(key, item);
         }
+      }
 
-        // Mapa para evitar duplicados en la misma carga
-        const uniqueData = new Map();
-        for (const item of dataArray) {
-            const key = `${item.contenedor}_${item.bl}`;
-            if (!uniqueData.has(key)) {
-                uniqueData.set(key, item);
-            }
+      // Obtener todos los embarques válidos
+      const blList = [...new Set(dataArray.map(item => String(item.bl)))]; // Convertir a string
+      const embarques = await db.Embarque.findAll({ where: { bl: blList } });
+      const embarqueMap = new Map(embarques.map(e => [String(e.bl), e.id])); // Convertir claves a string
+
+      // Validar existencia de embarques
+      for (const item of dataArray) {
+        if (!embarqueMap.has(String(item.bl))) {
+          throw boom.notFound(`No se encontró un embarque con BL: ${item.bl}`);
         }
+      }
 
-        // Obtener todos los embarques válidos
-        const blList = [...new Set(dataArray.map(item => String(item.bl)))]; // Convertir a string
-        const embarques = await db.Embarque.findAll({ where: { bl: blList } });
-        const embarqueMap = new Map(embarques.map(e => [String(e.bl), e.id])); // Convertir claves a string
+      // Obtener relaciones de contenedores con embarques
+      const contenedorIds = [...new Set(dataArray.map(item => item.contenedor))];
+      const listadoExistente = await db.Listado.findAll({
+        where: { id_embarque: Array.from(embarqueMap.values()) },
+        include: {
+          model: db.Contenedor,
+          where: { contenedor: contenedorIds },
+          attributes: ["id", "contenedor"]
+        },
+        attributes: ["id_contenedor", "id_embarque"]
+      });
 
-        // Validar existencia de embarques
-        for (const item of dataArray) {
-            if (!embarqueMap.has(String(item.bl))) {
-                throw boom.notFound(`No se encontró un embarque con BL: ${item.bl}`);
-            }
-        }
+      // Mapa { `contenedor_idEmbarque`: id_contenedor }
+      const listadoMap = new Map(
+        listadoExistente.map(l => [`${l.Contenedor.contenedor}_${l.id_embarque}`, l.id_contenedor])
+      );
 
-        // Obtener relaciones de contenedores con embarques
-        const contenedorIds = [...new Set(dataArray.map(item => item.contenedor))];
-        const listadoExistente = await db.Listado.findAll({
-            where: { id_embarque: Array.from(embarqueMap.values()) },
-            include: {
-                model: db.Contenedor,
-                where: { contenedor: contenedorIds },
-                attributes: ["id", "contenedor"]
-            },
-            attributes: ["id_contenedor", "id_embarque"]
-        });
+      // Procesar contenedores reutilizando los existentes
+      const contenedorMap = new Map();
+      const datosValidos = await Promise.all(
+        dataArray.map(async (item) => {
+          const id_embarque = embarqueMap.get(String(item.bl)); // Convertir bl a string antes de buscar
+          const key = `${item.contenedor}_${id_embarque}`;
 
-        // Mapa { `contenedor_idEmbarque`: id_contenedor }
-        const listadoMap = new Map(
-            listadoExistente.map(l => [`${l.Contenedor.contenedor}_${l.id_embarque}`, l.id_contenedor])
-        );
+          if (contenedorMap.has(key)) {
+            return { ...item, id_contenedor: contenedorMap.get(key), id_embarque };
+          }
 
-        // Procesar contenedores reutilizando los existentes
-        const contenedorMap = new Map();
-        const datosValidos = await Promise.all(
-            dataArray.map(async (item) => {
-                const id_embarque = embarqueMap.get(String(item.bl)); // Convertir bl a string antes de buscar
-                const key = `${item.contenedor}_${id_embarque}`;
+          if (listadoMap.has(key)) {
+            contenedorMap.set(key, listadoMap.get(key));
+            return { ...item, id_contenedor: listadoMap.get(key), id_embarque };
+          }
 
-                if (contenedorMap.has(key)) {
-                    return { ...item, id_contenedor: contenedorMap.get(key), id_embarque };
-                }
+          let contenedor = await db.Contenedor.findOne({ where: { contenedor: item.contenedor } });
+          if (!contenedor) {
+            contenedor = await db.Contenedor.create(
+              { contenedor: item.contenedor, habilitado: true },
+              { transaction }
+            );
+          }
 
-                if (listadoMap.has(key)) {
-                    contenedorMap.set(key, listadoMap.get(key));
-                    return { ...item, id_contenedor: listadoMap.get(key), id_embarque };
-                }
+          contenedorMap.set(key, contenedor.id);
+          return { ...item, id_contenedor: contenedor.id, id_embarque };
+        })
+      );
 
-                let contenedor = await db.Contenedor.findOne({ where: { contenedor: item.contenedor } });
-                if (!contenedor) {
-                    contenedor = await db.Contenedor.create(
-                        { contenedor: item.contenedor, habilitado: true },
-                        { transaction }
-                    );
-                }
+      // Limpiar datos antes de insertar
+      datosValidos.forEach(item => {
+        delete item.contenedor;
+        delete item.bl;
+      });
 
-                contenedorMap.set(key, contenedor.id);
-                return { ...item, id_contenedor: contenedor.id, id_embarque };
-            })
-        );
+      // Insertar datos en Listado
+      // Asegúrate de agregar habilitado: true en todos los objetos
+      const datosConHabilitado = datosValidos.map(item => ({
+        ...item,
+        habilitado: item.habilitado !== undefined ? item.habilitado : true
+      }));
 
-        // Limpiar datos antes de insertar
-        datosValidos.forEach(item => {
-            delete item.contenedor;
-            delete item.bl;
-        });
+      // Luego, realizar el bulkCreate
+      const results = await db.Listado.bulkCreate(datosConHabilitado, { validate: true, transaction });
+      await transaction.commit();
 
-        // Insertar datos en Listado
-        const results = await db.Listado.bulkCreate(datosValidos, { validate: true, transaction });
-        await transaction.commit();
-
-        return { message: "Carga masiva exitosa", count: results.length };
+      return { message: "Carga masiva exitosa", count: results.length };
     } catch (error) {
-        await transaction.rollback();
-        console.error("Error en bulkCreate:", error);
+      await transaction.rollback();
+      console.error("Error en bulkCreate:", error);
 
-        if (error.name === "SequelizeUniqueConstraintError") {
-            const codExistente = error.errors?.[0]?.value || "desconocido";
-            throw boom.conflict(`El código '${codExistente}' ya existe. Debe ser único.`);
-        }
+      if (error.name === "SequelizeUniqueConstraintError") {
+        const codExistente = error.errors?.[0]?.value || "desconocido";
+        throw boom.conflict(`El código '${codExistente}' ya existe. Debe ser único.`);
+      }
 
-        if (error.name === "SequelizeValidationError") {
-            const detalles = error.errors.map(err => err.message);
-            throw boom.badRequest("Error de validación en los datos.", { detalles });
-        }
+      if (error.name === "SequelizeValidationError") {
+        const detalles = error.errors.map(err => err.message);
+        throw boom.badRequest("Error de validación en los datos.", { detalles });
+      }
 
-        throw boom.internal("Error interno del servidor al crear el item.");
+      throw boom.internal("Error interno del servidor al crear el item.");
     }
-}
+  }
 
 
 
@@ -318,94 +332,88 @@ class ListadoService {
   }
 
   async paginate(offset, limit, body = {}) {
+    // Manejo de fechas
     let fechaInicial = body.fecha_inicial ? new Date(body.fecha_inicial) : null;
-    let fechaFInal = body.fecha_final ? body.fecha_final : null;
-    let fechaFilter = {}
+    let fechaFinal = body.fecha_final || null;
+    let bodyFilter = {};
+
     if (fechaInicial) {
-      fechaInicial.setDate(fechaInicial.getDate())
-      fechaFilter = fechaFInal ? { fecha: { [Op.between]: [fechaInicial, fechaFInal] } } : { fecha: { [Op.between]: [fechaInicial, fechaInicial.getFullYear() + "-12-31"] } };
+      fechaInicial.setDate(fechaInicial.getDate());
+      bodyFilter = fechaFinal
+        ? { fecha: { [Op.between]: [fechaInicial, fechaFinal] } }
+        : { fecha: { [Op.between]: [fechaInicial, `${fechaInicial.getFullYear()}-12-31`] } };
     }
 
-    const newBody = {
-      contenedor: body.contenedor || '',
-      booking: body.booking || '',
-      bl: body.bl || '',
-      destino: body.destino || '',
-      naviera: body.naviera || '',
-      cliente: body.cliente || '',
-      semana: body.semana || "",  // Semana recibida en el body
-      buque: body.buque || '',
-      llenado: body.llenado || '',
-      producto: body.producto || '',
-      serial: body.serial || '',
+    if (body?.habilitado !== undefined) {
+      bodyFilter = { ...bodyFilter, habilitado: body?.habilitado }
+    }
+
+    // Creación dinámica de filtros
+    const filters = {
+      semana: { consecutivo: body.semana },
+      contenedor: { contenedor: body.contenedor },
+      booking: { booking: body.booking },
+      bl: { bl: body.bl },
+      destino: { destino: body.destino },
+      naviera: { navieras: body.naviera },
+      cliente: { cod: body.cliente },
+      buque: { buque: body.buque },
+      llenado: { nombre: body.llenado },
+      producto: { nombre: body.producto },
     };
 
-    const semanaFilter = newBody.semana ? { consecutivo: { [Op.like]: `%${newBody.semana}%` } } : {};
-    const contenedorFilter = newBody.contenedor ? { contenedor: { [Op.like]: `%${newBody.contenedor}%` } } : {};
-    const bookingFilter = newBody.booking ? { booking: { [Op.like]: `%${newBody.booking}%` } } : {};
-    const blFilter = newBody.bl ? { bl: { [Op.like]: `%${newBody.bl}%` } } : {};
-    const destinoFilter = newBody.destino ? { destino: { [Op.like]: `%${newBody.destino}%` } } : {};
-    const navieraFilter = newBody.naviera ? { navieras: { [Op.like]: `%${newBody.naviera}%` } } : {};
-    const clienteFilter = newBody.cliente ? { cod: { [Op.like]: `%${newBody.cliente}%` } } : {};
-    const buqueFilter = newBody.buque ? { buque: { [Op.like]: `%${newBody.buque}%` } } : {};
-    const llenadoFilter = newBody.llenado ? { nombre: { [Op.like]: `%${newBody.llenado}%` } } : {};
-    const productoFilter = newBody.producto ? { nombre: { [Op.like]: `%${newBody.producto}%` } } : {};
-    // Validación de `offset` y `limit`
-    const parsedOffset = isNaN(parseInt(offset)) ? 0 : (parseInt(offset) - 1) * parseInt(limit);
-    const parsedLimit = isNaN(parseInt(limit)) ? 10 : parseInt(limit);
+    const createFilter = (key) =>
+      body[key] ? { [Object.keys(filters[key])[0]]: { [Op.like]: `%${body[key]}%` } } : {};
 
-    const { rows: result, count: total } = await db.Listado.findAndCountAll({
-      limit: parsedLimit,
-      offset: parsedOffset,
-      where: fechaFilter,
-      order: [["id_contenedor", "DESC"], ['fecha', 'DESC']],
-      include: [
-        {
-          model: db.Contenedor,
-          where: contenedorFilter
-        },
-        {
-          model: db.Embarque,
-          where: { ...bookingFilter, ...blFilter },
-          include: [
-            {
-              model: db.Destino,
-              where: destinoFilter
-            },
-            {
-              model: db.Naviera,
-              where: navieraFilter
-            },
-            {
-              model: db.clientes,
-              where: clienteFilter
-            },
-            {
-              model: db.Buque,
-              where: buqueFilter
-            },
-            {
-              model: db.semanas,
-              where: semanaFilter,  // Aplicamos el filtro de semana
-            },
-          ],
-        },
-        {
-          model: db.almacenes, as: 'almacen',
-          where: llenadoFilter
-        },
-        {
-          model: db.combos,
-          where: productoFilter
-        },
-        {
-          model: db.serial_de_articulos,
-        },
-      ],
-    });
+    const contenedorFilter = createFilter("contenedor");
+    const bookingFilter = createFilter("booking");
+    const blFilter = createFilter("bl");
+    const destinoFilter = createFilter("destino");
+    const navieraFilter = createFilter("naviera");
+    const clienteFilter = createFilter("cliente");
+    const buqueFilter = createFilter("buque");
+    const llenadoFilter = createFilter("llenado");
+    const productoFilter = createFilter("producto");
+    const semanaFilter = createFilter("semana");
+
+    // Validación de `offset` y `limit`
+    const parsedLimit = isNaN(parseInt(limit)) ? 10 : parseInt(limit);
+    const parsedOffset = isNaN(parseInt(offset)) ? 0 : (parseInt(offset) - 1) * parsedLimit;
+
+    // Configuración de relaciones y filtros
+    const includeOptions = [
+      { model: db.Contenedor, where: contenedorFilter },
+      {
+        model: db.Embarque,
+        where: { ...bookingFilter, ...blFilter },
+        include: [
+          { model: db.Destino, where: destinoFilter },
+          { model: db.Naviera, where: navieraFilter },
+          { model: db.clientes, where: clienteFilter },
+          { model: db.Buque, where: buqueFilter },
+          { model: db.semanas, where: semanaFilter },
+        ],
+      },
+      { model: db.almacenes, as: "almacen", where: llenadoFilter },
+      { model: db.combos, where: productoFilter },
+      { model: db.serial_de_articulos },
+    ];
+
+    // Realizamos las consultas optimizadas
+    const [result, total] = await Promise.all([
+      db.Listado.findAll({
+        where: bodyFilter,
+        limit: parsedLimit,
+        offset: parsedOffset,
+        order: [["id_contenedor", "DESC"], ["fecha", "DESC"]],
+        include: includeOptions,
+      }),
+      db.Listado.count({ where: bodyFilter, include: includeOptions }),
+    ]);
 
     return { data: result, total };
   }
+
 
 
 
