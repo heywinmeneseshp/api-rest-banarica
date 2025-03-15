@@ -106,5 +106,17 @@ router.post("/inspeccion-antinarcoticos",
   }
 )
 
+router.post("/usar-seriales",
+  async (req, res, next) => {
+    try {
+      const body = req.body
+      const result = await service.usarSeriales(body)
+      res.json(result)
+    } catch (e) {
+      next(e)
+    }
+  }
+)
+
 
 module.exports = router;

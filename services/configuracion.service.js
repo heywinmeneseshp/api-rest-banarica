@@ -19,7 +19,7 @@ class ConfigService {
       let moduloData = res[0].dataValues;
   
       if (moduloData.modulo === "Semana") {
-        try {
+    
           const semanaPre = await db.semanas.findOne({ where: { consecutivo: "S00-2000" } });
   
           if (!semanaPre) {
@@ -68,6 +68,8 @@ class ConfigService {
               db.combos.findOrCreate({ where: { consecutivo: "PRE" }, defaults: defaults.producto }),
               db.almacenes.findOrCreate({ where: { consecutivo: "PRE" }, defaults: defaults.almacen })
             ]);
+
+
   
             await db.Embarque.findOrCreate({
               where: { booking: "N/A" },
@@ -81,10 +83,7 @@ class ConfigService {
               }
             });
           }
-        } catch (error) {
-          console.error("Error al inicializar los datos predeterminados:", error);
-        }
-  
+    
         // Cálculo de semanas
         let firstDate = new Date(new Date().getFullYear(), 0);
         let currentDate = new Date();

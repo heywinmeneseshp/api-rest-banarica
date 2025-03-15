@@ -91,7 +91,6 @@ class SeguridadService {
         const creations = [];
 
         for (const item of batch) {
-          console.log(item)
           if (existingMap.has(item.serial)) {
             updates.push(db.serial_de_articulos.update(item, {
               where: { serial: item.serial },
@@ -141,55 +140,51 @@ class SeguridadService {
   }
 
 
+  async listarSeriales(pagination, body = {}) {
+    console.log(body?.available);
 
-  async listarSeriales(pagination, body) {
-    console.log(body?.available)
-    const available = body?.available || false;
+    const { cons_producto = "", serial = "", bag_pack = "", s_pack = "", m_pack = "", l_pack = "", cons_almacen, available = false } = body;
+
+    // Determinar si cons_almacen es un array o una cadena de búsqueda
+    const almacenes = Array.isArray(cons_almacen) ? cons_almacen : { [Op.like]: `%${cons_almacen}%` };
+
     const filters = {
-      cons_producto: { [Op.like]: `%${body?.cons_producto || ""}%` },
-      serial: { [Op.like]: `%${body?.serial || ""}%` },
-      bag_pack: { [Op.like]: `%${body?.bag_pack || ""}%` },
-      s_pack: { [Op.like]: `%${body?.s_pack || ""}%` },
-      m_pack: { [Op.like]: `%${body?.m_pack || ""}%` },
-      l_pack: { [Op.like]: `%${body?.l_pack || ""}%` },
-      cons_almacen: { [Op.like]: `%${body?.cons_almacen || ""}%` },
-      available: { [Op.or]: available },
+        cons_producto: { [Op.like]: `%${cons_producto}%` },
+        serial: { [Op.like]: `%${serial}%` },
+        bag_pack: { [Op.like]: `%${bag_pack}%` },
+        s_pack: { [Op.like]: `%${s_pack}%` },
+        m_pack: { [Op.like]: `%${m_pack}%` },
+        l_pack: { [Op.like]: `%${l_pack}%` },
+        cons_almacen: almacenes,
+        available: { [Op.or]: available },
     };
 
     const includeModels = [
-      {
-        model: db.movimientos,
-        as: 'movimiento',
-      },
-      {
-        model: db.productos,
-        as: 'producto',
-      },
+        { model: db.movimientos, as: 'movimiento' },
+        { model: db.productos, as: 'producto' },
     ];
 
     if (pagination) {
-      const limit = parseInt(pagination?.limit);
-      const offset = (parseInt(pagination?.offset) - 1) * limit;
+        const { limit, offset } = pagination;
+        const parsedLimit = parseInt(limit);
+        const parsedOffset = (parseInt(offset) - 1) * parsedLimit;
 
-      const [total, result] = await Promise.all([
-        db.serial_de_articulos.count({ where: filters }),
-        db.serial_de_articulos.findAll({
-          where: filters,
-          include: includeModels,
-          limit,
-          offset,
-        }),
-      ]);
+        const [total, result] = await Promise.all([
+            db.serial_de_articulos.count({ where: filters }),
+            db.serial_de_articulos.findAll({
+                where: filters,
+                include: includeModels,
+                limit: parsedLimit,
+                offset: parsedOffset,
+            }),
+        ]);
 
-      return { data: result, total };
-    } else {
-      const result = await db.serial_de_articulos.findAll({
-        where: filters,
-        include: includeModels,
-      });
-      return result;
-    }
-  }
+        return { data: result, total };
+    } 
+
+    return await db.serial_de_articulos.findAll({ where: filters, include: includeModels });
+}
+
 
 
   async listarArticulosSeguridad() {
@@ -285,138 +280,269 @@ class SeguridadService {
 
 
   async inspeccionAntinarcoticos(body) {
-    console.log(body)
     const { formulario, rechazos } = body;
 
     // Validar datos requeridos
     if (!formulario || !formulario.consecutivo || !formulario.fecha) {
-        throw new Error("Datos insuficientes para realizar la inspección.");
+      throw new Error("Datos insuficientes para realizar la inspección.");
     }
 
     const transaction = await db.sequelize.transaction(); // Iniciar una transacción
     try {
-        // Crear inspección
-        await db.Inspeccion.create(
-            {
-                id_contenedor: formulario.consecutivo,
-                fecha_inspeccion: formulario.fecha,
-            },
-            { transaction }
-        );
+      // Crear inspección
+      await db.Inspeccion.create(
+        {
+          id_contenedor: formulario.consecutivo,
+          fecha_inspeccion: formulario.fecha,
+        },
+        { transaction }
+      );
 
-         // Asegurar motivo de uso
-         const [moviRechazo] = await db.MotivoDeRechazo.findOrCreate({
-          where: { motivo_rechazo: "Inspección antinarcóticos" },
-          defaults: {
-              habilitado: true,
-          },
-          transaction,
+      // Asegurar motivo de uso
+      const [moviRechazo] = await db.MotivoDeRechazo.findOrCreate({
+        where: { motivo_rechazo: "Inspección antinarcóticos" },
+        defaults: {
+          habilitado: true,
+        },
+        transaction,
       });
 
-        // Crear rechazos en paralelo
-        if (rechazos?.length) {
-            await Promise.all(
-                rechazos.map((item) =>
-                    db.Rechazo.create(
-                        {
-                            id_motivo_de_rechazo: moviRechazo.id,
-                            id_producto: item.producto,
-                            cantidad: item.totalCajas,
-                            serial_palet: item.codigoPallet,
-                            cod_productor: item.cod_productor	,
-                            id_contenedor: formulario.consecutivo,
-                            id_usuario: formulario?.id_usuario,
-                            habilitado: false,
-                            observaciones: formulario.observaciones,
-                        },
-                        { transaction }
-                    )
-                )
-            );
-        }
+      // Crear rechazos en paralelo
+      if (rechazos?.length) {
+        await Promise.all(
+          rechazos.map((item) =>
+            db.Rechazo.create(
+              {
+                id_motivo_de_rechazo: moviRechazo.id,
+                id_producto: item.producto,
+                cantidad: item.totalCajas,
+                serial_palet: item.codigoPallet,
+                cod_productor: item.cod_productor,
+                id_contenedor: formulario.consecutivo,
+                id_usuario: formulario?.id_usuario,
+                habilitado: false,
+                observaciones: formulario.observaciones,
+              },
+              { transaction }
+            )
+          )
+        );
+      }
 
-        // Buscar kit de inventario
-        const kitsInventario = await db.serial_de_articulos.findAll({
-            where: { bag_pack: formulario.bolsa },
-            transaction,
-        });
+      // Buscar kit de inventario
+      const kitsInventario = await db.serial_de_articulos.findAll({
+        where: { bag_pack: formulario.bolsa, available: true },
+        transaction,
+      });
 
-        if (kitsInventario.length === 0) {
-            throw new Error("No se encontraron artículos asociados al kit de inventario.");
-        }
+      if (kitsInventario.length === 0) {
+        throw new Error("No se encontraron artículos asociados al kit de inventario.");
+      }
 
-        // Asegurar motivo de uso
-        const [moviUso] = await db.MotivoDeUso.findOrCreate({
-            where: { consecutivo: "INSP02" },
-            defaults: {
-                consecutivo: "INSP02",
-                motivo_de_uso: "Inspección antinarcóticos",
-                habilitado: true,
-            },
-            transaction,
-        });
+      // Asegurar motivo de uso
+      const [moviUso] = await db.MotivoDeUso.findOrCreate({
+        where: { consecutivo: "INSP02" },
+        defaults: {
+          consecutivo: "INSP02",
+          motivo_de_uso: "Inspección antinarcóticos",
+          habilitado: true,
+        },
+        transaction,
+      });
 
-        // Crear movimiento
-        const movimiento = await movimientoService.create(
+      // Crear movimiento
+      const movimiento = await movimientoService.create(
+        {
+          prefijo: "EX",
+          pendiente: false,
+          fecha: formulario.fecha,
+          cons_semana: formulario.semana,
+        },
+        transaction
+      );
+
+      // Procesar artículos del inventario
+      await Promise.all(
+        kitsInventario.map(async (item) => {
+          const article = item.dataValues;
+
+          // Desactivar artículo y actualizar su estado
+          await db.serial_de_articulos.update(
             {
-                prefijo: "EX",
-                pendiente: false,
-                fecha: formulario.fecha,
-                cons_semana: formulario.semana,
+              available: false,
+              fecha_de_uso: formulario.fecha,
+              id_contenedor: formulario.consecutivo,
+              ubicacion_en_contenedor: "Exterior",
+              id_usuario: formulario?.id_usuario,
+              id_motivo_de_uso: moviUso.id,
+            },
+            {
+              where: { id: article.id, available: true },
+              transaction,
+            }
+          );
+
+          // Restar del stock
+          await stockService.subtractAmounts(article.cons_almacen, article.cons_producto, { cantidad: 1 });
+
+          // Registrar movimiento en historial
+          await historialMovimientoService.create(
+            {
+              cons_movimiento: movimiento.consecutivo,
+              cons_producto: article.cons_producto,
+              cons_almacen_gestor: article.cons_almacen,
+              cons_almacen_receptor: article.cons_almacen,
+              cons_lista_movimientos: "EX",
+              tipo_movimiento: "Salida",
+              razon_movimiento: "Inspección antinarcóticos",
+              cantidad: "1",
             },
             transaction
-        );
+          );
+        })
+      );
 
-        // Procesar artículos del inventario
-        await Promise.all(
-            kitsInventario.map(async (item) => {
-                const article = item.dataValues;
-
-                // Desactivar artículo y actualizar su estado
-                await db.serial_de_articulos.update(
-                    {
-                        available: false,
-                        fecha_de_uso: formulario.fecha,
-                        id_contenedor: formulario.consecutivo,
-                        ubicacion_en_contenedor: "Exterior",
-                        id_usuario: formulario?.id_usuario,
-                        id_motivo_de_uso: moviUso.id,
-                    },
-                    {
-                        where: { id: article.id,  available: true },
-                        transaction,
-                    }
-                );
-
-                // Restar del stock
-                await stockService.subtractAmounts(article.cons_almacen, article.cons_producto, { cantidad: 1 });
-
-                // Registrar movimiento en historial
-                await historialMovimientoService.create(
-                    {
-                        cons_movimiento: movimiento.consecutivo,
-                        cons_producto: article.cons_producto,
-                        cons_almacen_gestor: article.cons_almacen,
-                        cons_almacen_receptor: article.cons_almacen,
-                        cons_lista_movimientos: "EX",
-                        tipo_movimiento: "Salida",
-                        razon_movimiento: "Inspección antinarcóticos",
-                        cantidad: "1",
-                    },
-                    transaction
-                );
-            })
-        );
-
-        // Confirmar transacción
-        await transaction.commit();
+      // Confirmar transacción
+      await transaction.commit();
     } catch (error) {
-        // Revertir transacción en caso de error
-        if (transaction) await transaction.rollback();
-        console.error("Error en inspección antinarcóticos:", error);
-        throw error;
+      // Revertir transacción en caso de error
+      if (transaction) await transaction.rollback();
+      console.error("Error en inspección antinarcóticos:", error);
+      throw error;
     }
+  }
+
+  async usarSeriales(body) {
+    /*
+    body = {
+  "formulario": {
+    "bolsa": [KIT12345],
+    "fecha": "2025-03-09",
+    "semana": 10,
+    "consecutivo": "CONT12345",
+    "id_usuario": 1001
+  },
+  "motivo_de_uso": {
+    "consecutivo": "INSPE01",
+    "id": 2001
+  }
 }
+  */
+    const { formulario, motivo_de_uso } = body;
+    console.log(body);
+
+    // Iniciar una transacción
+    const transaction = await db.sequelize.transaction();
+
+    try {
+      // 🔹 Buscar kit de inventario asociado a la bolsa
+      const kitsInventario = await db.serial_de_articulos.findAll({
+        where: { bag_pack: formulario.bolsa, available: true },
+        transaction,
+      });
+
+      if (kitsInventario.length === 0) {
+        throw new Error("❌ No se encontraron artículos asociados al kit de inventario.");
+      }
+
+      // 🔹 Contar cuántas veces aparece cada cons_producto
+      const productosCantidad = kitsInventario.reduce((acc, { dataValues: article }) => {
+        acc[article.cons_producto] = (acc[article.cons_producto] || 0) + 1;
+        return acc;
+      }, {});
+
+      // 🔹 Asegurar motivo de uso
+      let cons_motivo_de_uso = motivo_de_uso?.consecutivo || "PRED01";
+
+      if (cons_motivo_de_uso === "PRED01") {
+        const [moviUso] = await db.MotivoDeUso.findOrCreate({
+          where: { consecutivo: "PRED01" },
+          defaults: {
+            motivo_de_uso: "Predeterminado",
+            habilitado: true,
+          },
+          transaction,
+        });
+        cons_motivo_de_uso = moviUso.id; // Guardar solo el ID
+      } else {
+        cons_motivo_de_uso = motivo_de_uso.id;
+      }
+
+      // 🔹 Crear movimiento de salida
+      const movimiento = await movimientoService.create(
+        {
+          prefijo: "EX",
+          pendiente: false,
+          fecha: formulario.fecha,
+          cons_semana: formulario.semana,
+        },
+        transaction
+      );
+
+      // 🔹 Procesar artículos del inventario
+      await Promise.all(
+        kitsInventario.map(async ({ dataValues: article }) => {
+          // Desactivar artículo y actualizar su estado
+          const updateResult = await db.serial_de_articulos.update(
+            {
+              available: false,
+              fecha_de_uso: formulario.fecha,
+              id_contenedor: formulario.contenedorId,
+              ubicacion_en_contenedor: "Exterior",
+              id_usuario: formulario.id_usuario,
+              id_motivo_de_uso: cons_motivo_de_uso,
+            },
+            {
+              where: { id: article.id, available: true },
+              transaction,
+            }
+          );
+
+          if (updateResult[0] === 0) {
+            throw new Error(`❌ No se pudo actualizar el artículo con ID: ${article.id}`);
+          }
+
+          // Restar del stock con la cantidad correcta
+          await stockService.subtractAmounts(
+            article.cons_almacen,
+            article.cons_producto,
+            { cantidad: productosCantidad[article.cons_producto] }
+          );
+        })
+      );
+
+      // 🔹 Registrar movimientos en historial (solo una vez por `cons_producto`)
+      await Promise.all(
+        Object.entries(productosCantidad).map(async ([cons_producto, cantidad]) => {
+          await historialMovimientoService.create(
+            {
+              cons_movimiento: movimiento.consecutivo,
+              cons_producto,
+              cons_almacen_gestor: kitsInventario[0].dataValues.cons_almacen, // Tomamos el almacén del primer producto
+              cons_almacen_receptor: kitsInventario[0].dataValues.cons_almacen, // Misma lógica
+              cons_lista_movimientos: "EX",
+              tipo_movimiento: "Salida",
+              razon_movimiento: "Inspección antinarcóticos",
+              cantidad: cantidad.toString(), // Convertimos a string si la DB lo requiere
+            },
+            transaction
+          );
+        })
+      );
+
+      // 🔹 Confirmar transacción
+      await transaction.commit();
+      console.log("✅ Inspección antinarcóticos completada con éxito.");
+      return true
+    } catch (error) {
+      // 🔹 Revertir transacción en caso de error
+      if (transaction) await transaction.rollback();
+      console.error("🚨 Error en inspección antinarcóticos:", error.message);
+      throw error;
+    }
+  }
+
+
 
 
 }

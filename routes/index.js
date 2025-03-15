@@ -52,6 +52,7 @@ const navieraRouter = require('./logistica/naviera.router.js');
 const rechazoRouter = require('./logistica/rechazo.router.js');
 const saeRouter = require('./logistica/sae.router.js');
 const transbordoRouter = require('./logistica/transbordo.router.js');
+const MotivoDeUsoRouter = require(`./logistica/motivoDeUso.router.js`);
 
 const emailRouter = require('./email.router.js')
 //CONFIGURACION
@@ -111,6 +112,7 @@ function routerApi(app) {
   router.use('/rechazo', rechazoRouter);
   router.use('/sae', saeRouter);
   router.use('/transbordo', transbordoRouter);
+  router.use('/motivoDeUso',MotivoDeUsoRouter);  
 
   router.use('/email', emailRouter);
   //CONFIGURACION
