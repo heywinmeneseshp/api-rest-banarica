@@ -58,9 +58,6 @@ class ListadoService {
         defaults: { ...defaults.embarque, id_semana: semana.id, id_cliente: cliente.id, id_destino: destino.id, id_naviera: naviera.id, id_buque: buque.id }
       });
 
-      console.log(almacen, embarque);
-
-
 
       // Crear contenedor
       const contenedor = await db.Contenedor.create({ contenedor: data.contenedor, habilitado: true }, { transaction });

@@ -281,7 +281,7 @@ class SeguridadService {
 
   async inspeccionAntinarcoticos(body) {
     const { formulario, rechazos } = body;
-
+    console.log(rechazos);
     // Validar datos requeridos
     if (!formulario || !formulario.consecutivo || !formulario.fecha) {
       throw new Error("Datos insuficientes para realizar la inspección.");
@@ -413,21 +413,7 @@ class SeguridadService {
   }
 
   async usarSeriales(body) {
-    /*
-    body = {
-  "formulario": {
-    "bolsa": [KIT12345],
-    "fecha": "2025-03-09",
-    "semana": 10,
-    "consecutivo": "CONT12345",
-    "id_usuario": 1001
-  },
-  "motivo_de_uso": {
-    "consecutivo": "INSPE01",
-    "id": 2001
-  }
-}
-  */
+
     const { formulario, motivo_de_uso } = body;
     console.log(body);
 

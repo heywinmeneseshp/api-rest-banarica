@@ -46,69 +46,71 @@ class RechazoService {
   async paginate(offset, limit, body) {
     try {
       console.log("Cuerpo recibido:", body);
-
-      // Validación de seguridad para offset y limit
-      const parsedOffset = isNaN(parseInt(offset)) ? 0 : (parseInt(offset) - 1) * parseInt(limit);
-      const parsedLimit = isNaN(parseInt(limit)) ? 10 : parseInt(limit);
-
-      // Extraer datos de body con valores por defecto
+  
+      // Validar y calcular offset y limit
+      const parsedLimit = Number.isNaN(parseInt(limit)) ? 10 : Math.max(1, parseInt(limit));
+      const parsedOffset = Number.isNaN(parseInt(offset)) ? 0 : Math.max(0, (parseInt(offset) - 1) * parsedLimit);
+  
+      // Extraer filtros con valores predeterminados
       const { semana = "", productor = "", contenedor = "", producto = "" } = body;
-
-      // Construcción condicional de filtros
-      const filters = {
-        contenedor: contenedor ? { contenedor: { [Op.like]: `%${contenedor}%` } } : {},
-        productor: productor ? { nombre: { [Op.like]: `%${productor}%` } } : {},
-        producto: producto ? { nombre: { [Op.like]: `%${producto}%` } } : {},
-        semana: semana ? { consecutivo: { [Op.like]: `%${semana}%` } } : {} // Corrección aquí
-      };
-
-      // Definir la estructura de asociaciones para evitar código repetido
+  
+      // Construcción de filtros dinámicos
+      const filters = {};
+      if (contenedor) filters.contenedor = { contenedor: { [Op.like]: `%${contenedor}%` } };
+      if (productor) filters.productor = { nombre: { [Op.like]: `%${productor}%` } };
+      if (producto) filters.producto = { nombre: { [Op.like]: `%${producto}%` } };
+      if (semana) filters.semana = { consecutivo: { [Op.like]: `%${semana}%` } };
+  
+      console.log("Filtros aplicados:", filters);
+  
+      // Definir asociaciones
       const includes = [
         {
           model: db.Contenedor,
           where: filters.contenedor,
-          include: [{
-            model: db.Listado,
-            include: [{
-              model: db.Embarque,
-              include: [{
-                model: db.semanas,
-                where: filters.semana
-              }]
-            }]
-          }]
+          include: [
+            {
+              model: db.Listado,
+              include: [
+                {
+                  model: db.Embarque,
+                  include: [
+                    {
+                      model: db.semanas,
+                      where: filters.semana
+                    }
+                  ]
+                },
+                {
+                  model: db.combos
+                },
+                {
+                  model: db.almacenes,
+                  as: "almacen" // Corrección del alias
+                }
+              ]
+            }
+          ]
         },
         { model: db.MotivoDeRechazo },
         { model: db.usuarios },
-        {
-          model: db.almacenes,
-          where: filters.productor
-        },
-        {
-          model: db.combos,
-          where: filters.producto
-        }
+        { model: db.almacenes, where: filters.productor },
+        { model: db.combos, where: filters.producto }
       ];
-
-      // Ejecutar ambas consultas en paralelo para mejorar rendimiento
+  
+      // Consultas en paralelo para mejor rendimiento
       const [result, total] = await Promise.all([
-        db.Rechazo.findAll({
-          limit: parsedLimit,
-          offset: parsedOffset,
-          include: includes
-        }),
+        db.Rechazo.findAll({ limit: parsedLimit, offset: parsedOffset, include: includes }),
         db.Rechazo.count({ include: includes })
       ]);
-
-
-      console.log(body)
+  
       return { data: result, total };
     } catch (error) {
-      console.error("Error en la paginación:", error);
-      throw new Error("Ocurrió un error al obtener los datos paginados.");
+      console.error("Error en la paginación:", error.message);
+      throw new Error("Error al obtener los datos paginados. Detalles: " + error.message);
     }
   }
-
+  
 
 
 
