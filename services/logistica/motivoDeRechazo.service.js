@@ -12,6 +12,39 @@ class MotivoDeRechazoService {
     }
   }
 
+   async bulkCreate(dataArray) {
+      const transaction = await db.sequelize.transaction(); // Inicia la transacción
+      try {
+        if (!Array.isArray(dataArray) || dataArray.length === 0) {
+          throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+        }
+    
+        const navieras = await db.MotivoDeRechazo.bulkCreate(dataArray, { 
+          validate: true,
+          transaction // Pasa la transacción
+        });
+    
+        await transaction.commit(); // Confirma los cambios si todo salió bien
+    
+        return { message: 'Carga masiva exitosa', count: navieras.length };
+      } catch (error) {
+        await transaction.rollback(); // Revierte los cambios en caso de error
+        console.error("Error en bulkCreate:", error);
+    
+        if (error.name === "SequelizeUniqueConstraintError") {
+          const codExistente = error.errors?.[0]?.value || "desconocido";
+          throw boom.conflict(`El código '${codExistente}' ya existe. Debe ser único.`);
+        }
+    
+        if (error.name === "SequelizeValidationError") {
+          const detalles = error.errors.map(err => err.message);
+          throw boom.badRequest("Error de validación en los datos de la naviera.", { detalles });
+        }
+    
+        throw boom.internal("Error interno del servidor al crear la naviera.");
+      }
+    }
+
   async find() {
     return db.MotivoDeRechazo.findAll();
   }
@@ -42,21 +75,26 @@ class MotivoDeRechazoService {
     return { message: 'El motivo de rechazo fue eliminado', id };
   }
   
-  async paginate(offset, limit, motivo_rechazo = '') {
-    const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
+  async paginate(offset = 1, limit = 10, motivo_rechazo = '') {
+    const parsedOffset = (Number.isNaN(parseInt(offset)) ? 0 : (parseInt(offset) - 1) * parseInt(limit));
+    const parsedLimit = Number.isNaN(parseInt(limit)) ? 10 : parseInt(limit); // Valor por defecto si es NaN
+
+    console.log(`Offset: ${parsedOffset}, Limit: ${parsedLimit}`);
+
     const whereClause = motivo_rechazo ? { motivo_rechazo: { [Op.like]: `%${motivo_rechazo}%` } } : {};
 
     const [result, total] = await Promise.all([
       db.MotivoDeRechazo.findAll({
         where: whereClause,
-        limit: parseInt(limit),
+        limit: parsedLimit,
         offset: parsedOffset,
       }),
       db.MotivoDeRechazo.count({ where: whereClause }),
     ]);
 
     return { data: result, total };
-  }
+}
+
 }
 
 module.exports = MotivoDeRechazoService;

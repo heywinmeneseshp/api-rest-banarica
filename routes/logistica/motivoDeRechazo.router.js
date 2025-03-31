@@ -14,6 +14,23 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+router.post('/masivo', async (req, res, next) => {
+  try {
+    const dataList = req.body;
+    if (!Array.isArray(dataList) || dataList.length === 0) {
+      return res.status(400).json({ message: 'El formato de los datos es incorrecto o está vacío.' });
+    }
+    const nuevosMotivos = await service.bulkCreate(dataList);
+    res.status(201).json({
+      message: 'Carga masiva exitosa',
+      total: nuevosMotivos.count,
+      data: nuevosMotivos
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Paginar motivos de rechazo
 // Ejemplo: http://localhost:3000/api/v1/motivos-de-rechazo/paginar?offset=1&limit=4&motivo_rechazo=motivo1
 router.get('/paginar', async (req, res, next) => {

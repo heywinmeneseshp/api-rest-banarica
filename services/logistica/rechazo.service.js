@@ -45,71 +45,70 @@ class RechazoService {
 
   async paginate(offset, limit, body) {
     try {
-      console.log("Cuerpo recibido:", body);
-  
-      // Validar y calcular offset y limit
-      const parsedLimit = Number.isNaN(parseInt(limit)) ? 10 : Math.max(1, parseInt(limit));
-      const parsedOffset = Number.isNaN(parseInt(offset)) ? 0 : Math.max(0, (parseInt(offset) - 1) * parsedLimit);
-  
-      // Extraer filtros con valores predeterminados
-      const { semana = "", productor = "", contenedor = "", producto = "" } = body;
-  
-      // Construcción de filtros dinámicos
-      const filters = {};
-      if (contenedor) filters.contenedor = { contenedor: { [Op.like]: `%${contenedor}%` } };
-      if (productor) filters.productor = { nombre: { [Op.like]: `%${productor}%` } };
-      if (producto) filters.producto = { nombre: { [Op.like]: `%${producto}%` } };
-      if (semana) filters.semana = { consecutivo: { [Op.like]: `%${semana}%` } };
-  
-      console.log("Filtros aplicados:", filters);
-  
-      // Definir asociaciones
-      const includes = [
-        {
-          model: db.Contenedor,
-          where: filters.contenedor,
-          include: [
+        console.log("Cuerpo recibido:", body);
+
+        // Validar y calcular offset y limit
+        const parsedLimit = Number.isNaN(parseInt(limit)) ? 10 : Math.max(1, parseInt(limit));
+        const parsedOffset = Number.isNaN(parseInt(offset)) ? 0 : Math.max(0, (parseInt(offset) - 1) * parsedLimit);
+
+        // Extraer filtros con valores predeterminados
+        const { semana = "", productor = "", contenedor = "", producto = "" } = body;
+
+        // Construcción de filtros dinámicos
+        const whereConditions = {};
+        if (contenedor) whereConditions["$Contenedor.contenedor$"] = { [Op.like]: `%${contenedor}%` };
+        if (productor) whereConditions["$almacenes.nombre$"] = { [Op.like]: `%${productor}%` };
+        if (producto) whereConditions["$combos.nombre$"] = { [Op.like]: `%${producto}%` };
+        if (semana) whereConditions["$Contenedor.Listado.Embarque.semanas.consecutivo$"] = { [Op.like]: `%${semana}%` };
+
+        console.log("Filtros aplicados:", whereConditions);
+
+        // Definir asociaciones
+        const includes = [
             {
-              model: db.Listado,
-              include: [
-                {
-                  model: db.Embarque,
-                  include: [
+                model: db.Contenedor,
+                include: [
                     {
-                      model: db.semanas,
-                      where: filters.semana
+                        model: db.Listado,
+                        include: [
+                            {
+                                model: db.Embarque,
+                                include: [{ model: db.semanas }]
+                            },
+                            { model: db.combos },
+                            { model: db.almacenes, as: "almacen" }
+                        ]
                     }
-                  ]
-                },
-                {
-                  model: db.combos
-                },
-                {
-                  model: db.almacenes,
-                  as: "almacen" // Corrección del alias
-                }
-              ]
-            }
-          ]
-        },
-        { model: db.MotivoDeRechazo },
-        { model: db.usuarios },
-        { model: db.almacenes, where: filters.productor },
-        { model: db.combos, where: filters.producto }
-      ];
-  
-      // Consultas en paralelo para mejor rendimiento
-      const [result, total] = await Promise.all([
-        db.Rechazo.findAll({ limit: parsedLimit, offset: parsedOffset, include: includes }),
-        db.Rechazo.count({ include: includes })
-      ]);
-  
-      return { data: result, total };
+                ]
+            },
+            { model: db.MotivoDeRechazo },
+            { model: db.usuarios },
+            { model: db.almacenes },
+            { model: db.combos }
+        ];
+
+        // Consultas en paralelo para mejor rendimiento
+        const [result, total] = await Promise.all([
+            db.Rechazo.findAll({
+                limit: parsedLimit,
+                offset: parsedOffset,
+                where: whereConditions,
+                include: includes
+            }),
+            db.Rechazo.count({
+                where: whereConditions,
+                distinct: true, // Evita duplicados en el conteo
+                col: 'id' // Se asegura de contar solo los registros principales
+            })
+        ]);
+
+        return { data: result, total };
     } catch (error) {
-      console.error("Error en la paginación:", error.message);
-      throw new Error("Error al obtener los datos paginados. Detalles: " + error.message);
+        console.error("Error en la paginación:", error.message);
+        throw new Error("Error al obtener los datos paginados. Detalles: " + error.message);
     }
-  }
+}
+
   
 
 
