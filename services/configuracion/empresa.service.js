@@ -21,17 +21,32 @@ class EmpresaService {
     }
   }
 
-  async findOne(id) {
-    try {
-      const empresa = await db.Empresa.findByPk(id);
-      if (!empresa) {
-        throw boom.notFound('La empresa no existe');
-      }
-      return empresa;
-    } catch (error) {
-      throw boom.badRequest('Error al obtener la empresa');
+async findOne(id) {
+  try {
+    let empresa = await db.Empresa.findByPk(id);
+
+    // Si no se encuentra la empresa, intentamos crearla solo si el ID es 1 (predeterminado)
+    if (!empresa) {
+      await this.create({ razonSocial: "Predeterminado", id: 1 });
+      empresa = await db.Empresa.findByPk(1);
     }
+
+    if (!empresa) {
+      throw boom.notFound(`Empresa con ID ${id} no encontrada`);
+    }
+
+    return empresa;
+  } catch (error) {
+    // Mantenemos el mensaje original si ya es un error de Boom
+    if (boom.isBoom(error)) {
+      throw error;
+    }
+
+    console.error('Error en findOne:', error);
+    throw boom.badImplementation('Error interno al obtener la empresa');
   }
+}
+
 
   async update(id, changes) {
     try {

@@ -14,7 +14,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-
+//http://localhost:3001/api/v1/empresa/1 
 // Obtener una empresa por ID
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
