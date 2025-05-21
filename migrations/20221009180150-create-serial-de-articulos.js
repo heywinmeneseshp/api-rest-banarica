@@ -41,6 +41,9 @@ module.exports = {
       available: {
         type: Sequelize.BOOLEAN
       },
+      revisado: {
+        type: Sequelize.BOOLEAN
+      },
       id_contenedor: {
         type: Sequelize.INTEGER,
         allowNull: true // Cambiar a false si la columna no puede ser nula
@@ -58,8 +61,8 @@ module.exports = {
         allowNull: true // Cambiar a false si la columna no puede ser nula
       },
       ubicacion_en_contenedor: {
-       type: Sequelize.STRING,
-       allowNull: true
+        type: Sequelize.STRING,
+        allowNull: true
       },
       createdAt: {
         allowNull: false,
