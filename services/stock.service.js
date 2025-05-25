@@ -26,63 +26,60 @@ class StockServices {
   }
 
   async generalFilter(body) {
-    if (body?.pagination) {
-      let newlimit = parseInt(body.pagination.limit);
-      let newoffset = (parseInt(body.pagination.offset) - 1) * newlimit;
-      const data = await db.stock.findAll({
-        where: { ...body.stock },
-        include: [{
-          model: db.productos,
-          as: "producto",
-          where: {
-            cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` },
-            name: { [Op.like]: body?.producto?.name ? `%${body?.producto?.name}%` : `%%` },
-            consecutivo: { [Op.like]: body?.producto?.consecutivo ? `%${body?.producto?.consecutivo}%` : `%%` }
-          }
-        }, {
-          model: db.almacenes,
-          as: "almacen",
-          where: body.almacen
-        }],
-        offset: newoffset,
-        limit: newlimit
-      });
-      const total = await db.stock.count({
-        where: { ...body.stock },
-        include: [{
-          model: db.productos,
-          as: "producto",
-          where: {
-            cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` },
-            name: { [Op.like]: body?.producto?.name ? `%${body?.producto?.name}%` : `%%` },
-            consecutivo: { [Op.like]: body?.producto?.consecutivo ? `%${body?.producto?.consecutivo}%` : `%%` }
-          }
-        }, {
-          model: db.almacenes,
-          as: "almacen",
-          where: body.almacen
-        }]
-      });
-      return { data: data, total: total };
-    } else {
-      const data = await db.stock.findAll({
-        where: body.stock, include: ['almacen', {
-          model: db.productos,
-          as: "producto",
-          where: {
-            cons_categoria: { [Op.like]: `%${body.producto.cons_categoria}%` },
-            name: { [Op.like]: body?.producto?.name ? `%${body?.producto?.name}%` : `%%` },
-            consecutivo: { [Op.like]: body?.producto?.consecutivo ? `%${body?.producto?.consecutivo}%` : `%%` }
-          }
-        }, {
-            model: db.almacenes,
-            as: "almacen",
-            where: body.almacen
-          }]
-      });
-      return data;
+    const { pagination, stock = {}, producto = {}, almacen } = body;
+
+    // Filtros comunes
+    const stockWhere = {
+      ...stock,
+      cantidad: { [Op.ne]: 0 } // Solo stock diferente de cero, si quieres mantener esta condición
+    };
+
+    const productoWhere = {
+      cons_categoria: { [Op.like]: `%${producto.cons_categoria || ''}%` },
+      name: { [Op.like]: producto.name ? `%${producto.name}%` : '%%' },
+      consecutivo: { [Op.like]: producto.consecutivo ? `%${producto.consecutivo}%` : '%%' }
+    };
+
+    const include = [
+      {
+        model: db.productos,
+        as: "producto",
+        where: productoWhere
+      },
+      {
+        model: db.almacenes,
+        as: "almacen",
+        where: almacen
+      }
+    ];
+    // Si hay paginación
+    if (pagination) {
+      const limit = parseInt(pagination.limit);
+      const offset = (parseInt(pagination.offset) - 1) * limit;
+      const [data, total] = await Promise.all([
+        db.stock.findAll({
+          where: stockWhere,
+          include,
+          limit,
+          offset
+        }),
+        db.stock.count({
+          where: stockWhere,
+          include,
+          distinct: true,
+          col: 'id' // reemplaza con la PK de stock si no es 'id'
+        })
+      ]);
+      return { data, total };
     }
+    // Sin paginación
+    const data = await db.stock.findAll({
+      where: stockWhere,
+      include
+    });
+    return data;
   }
+
 
   async find() {
     return await db.stock.findAll({ include: ['almacen', 'producto'] });
