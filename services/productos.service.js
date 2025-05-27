@@ -24,6 +24,7 @@ class ProductosService {
   }
 
   async findPost(body) {
+    console.log(body)
     return await db.productos.findAll({
       where: body.producto,
       include: [{

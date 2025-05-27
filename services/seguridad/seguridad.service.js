@@ -141,7 +141,6 @@ class SeguridadService {
 
 
   async listarSeriales(pagination, body = {}) {
-    console.log(body?.available);
 
     const { cons_producto = "", serial = "", bag_pack = "", s_pack = "", m_pack = "", l_pack = "", cons_almacen, available = false } = body;
 
