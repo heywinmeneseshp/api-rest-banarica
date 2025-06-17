@@ -68,8 +68,8 @@ class ListadoService {
         pendiente: false,
         observaciones: data.observaciones,
         cons_semana: data.semana,
-        realizado_por: data.username,
-        vehiculo: data.vehiculo,
+        realizado_por: data.usuario.username,
+        vehiculo: data.vehiculo || "N/A",
         fecha: data.fecha
       };
 
@@ -82,11 +82,12 @@ class ListadoService {
 
       // Crear movimiento
       const movimiento = await movimientoService.create(dataMovimiento, transaction);
-
+      const seriales = await db.serial_de_articulos.findAll({ where: { bag_pack: data.seriales, available: true } });
       // Actualizar seriales
-      const serialesActualizados = await Promise.all(data.seriales.map(async (item) => {
+      const serialesActualizados = await Promise.all(seriales.map(async (item) => {
+
         const itemSerial = {
-          serial: item.value,
+          serial: item.serial,
           cons_movimiento: movimiento.dataValues.consecutivo,
           available: false,
           id_contenedor: contenedor.id,
@@ -95,11 +96,9 @@ class ListadoService {
           id_usuario: data.usuario.id,
           ubicacion_en_contenedor: item.ubicacion_en_contenedor
         };
-
         const { updatedItem } = await seguridadService.actualizarSerial(itemSerial, transaction);
         return updatedItem;
       }));
-
 
       // Contar productos
       const conteoProductos = serialesActualizados.reduce((acc, item) => {
@@ -136,6 +135,8 @@ class ListadoService {
         id_producto: combo.id,
         id_lugar_de_llenado: almacen.id
       };
+
+      console.log(listado)
 
       const itemListado = await db.Listado.create(listado, { transaction });
 
