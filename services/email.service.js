@@ -13,12 +13,12 @@ class emailService {
     }
 
     const transporter = nodemailer.createTransport({
-      host: 'mail.craken.com.co',
+      host: 'smtp.gmail.com',
       port: 465,
       secure: true,
       auth: {
-        user: 'meneses@craken.com.co',
-        pass: "UFkF@,{Ul(}P",
+        user: 'soporteapplog@gmail.com',
+        pass: "jpuw qhoc xgzc cvlg",
       }
     });
     await transporter.sendMail(infoEmail);

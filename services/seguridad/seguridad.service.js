@@ -1,6 +1,6 @@
 const boom = require('@hapi/boom');
 const db = require('../../models');
-const { Op, where } = require('sequelize');
+const { Op, where, json } = require('sequelize');
 const serial_de_articulos = require('../../models/serial_de_articulos');
 const StockService = require('../stock.service');
 const MovimientoService = require('../movimientos.service');
@@ -60,8 +60,28 @@ class SeguridadService {
       return { message: 'Datos cargados exitosamente', cons_movimiento: movimiento.dataValues.consecutivo };
     } catch (e) {
       await t.rollback();
-      console.error("Error al cargar los datos:", e); // Agregar más detalles del error para depuración
-      throw new Error("Error al cargar los datos: " + e.message); // Usa Error en lugar de boom.conflict para manejar errores
+
+      // Si es error de duplicados
+      if (e.original && e.original.code === 'ER_DUP_ENTRY') {
+        // Extraer el valor duplicado del mensaje de error
+        const duplicatedValue = e.original.sqlMessage.match(/'([^']+)'/)[1];
+
+        // Buscar todos los duplicados en los datos que intentamos insertar
+        const allSerials = data.map(item => item.serial); // Asume que el campo se llama 'serial'
+        const duplicateSerials = allSerials.filter(serial =>
+          serial === duplicatedValue || // El que causó el error
+          allSerials.indexOf(serial) !== allSerials.lastIndexOf(serial) // Otros duplicados en el lote
+        );
+
+        // Eliminar duplicados del array para mostrar lista única
+        const uniqueDuplicates = [...new Set(duplicateSerials)];
+
+
+        throw new boom.conflict(`Seriales duplicados detectados, ${e.original.sqlMessage}`);
+      }
+
+
+      throw new Error(`Error al cargar los datos: ${e.original?.sqlMessage || e.message}`);
     }
   }
 
@@ -148,41 +168,41 @@ class SeguridadService {
     const almacenes = Array.isArray(cons_almacen) ? cons_almacen : { [Op.like]: `%${cons_almacen}%` };
 
     const filters = {
-        cons_producto: { [Op.like]: `%${cons_producto}%` },
-        serial: { [Op.like]: `%${serial}%` },
-        bag_pack: { [Op.like]: `%${bag_pack}%` },
-        s_pack: { [Op.like]: `%${s_pack}%` },
-        m_pack: { [Op.like]: `%${m_pack}%` },
-        l_pack: { [Op.like]: `%${l_pack}%` },
-        cons_almacen: almacenes,
-        available: { [Op.or]: available },
+      cons_producto: { [Op.like]: `%${cons_producto}%` },
+      serial: { [Op.like]: `%${serial}%` },
+      bag_pack: { [Op.like]: `%${bag_pack}%` },
+      s_pack: { [Op.like]: `%${s_pack}%` },
+      m_pack: { [Op.like]: `%${m_pack}%` },
+      l_pack: { [Op.like]: `%${l_pack}%` },
+      cons_almacen: almacenes,
+      available: { [Op.or]: available },
     };
 
     const includeModels = [
-        { model: db.movimientos, as: 'movimiento' },
-        { model: db.productos, as: 'producto' },
+      { model: db.movimientos, as: 'movimiento' },
+      { model: db.productos, as: 'producto' },
     ];
 
     if (pagination) {
-        const { limit, offset } = pagination;
-        const parsedLimit = parseInt(limit);
-        const parsedOffset = (parseInt(offset) - 1) * parsedLimit;
+      const { limit, offset } = pagination;
+      const parsedLimit = parseInt(limit);
+      const parsedOffset = (parseInt(offset) - 1) * parsedLimit;
 
-        const [total, result] = await Promise.all([
-            db.serial_de_articulos.count({ where: filters }),
-            db.serial_de_articulos.findAll({
-                where: filters,
-                include: includeModels,
-                limit: parsedLimit,
-                offset: parsedOffset,
-            }),
-        ]);
+      const [total, result] = await Promise.all([
+        db.serial_de_articulos.count({ where: filters }),
+        db.serial_de_articulos.findAll({
+          where: filters,
+          include: includeModels,
+          limit: parsedLimit,
+          offset: parsedOffset,
+        }),
+      ]);
 
-        return { data: result, total };
-    } 
+      return { data: result, total };
+    }
 
     return await db.serial_de_articulos.findAll({ where: filters, include: includeModels });
-}
+  }
 
 
 
