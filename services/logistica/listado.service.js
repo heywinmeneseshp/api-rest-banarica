@@ -272,9 +272,6 @@ class ListadoService {
 
 
 
-
-
-
   async duplicarListado(id, transaction) {
     // Encontrar el listado por ID
     const listado = await db.Listado.findByPk(id);
@@ -406,7 +403,7 @@ class ListadoService {
         order: [["id_contenedor", "DESC"], ["fecha", "DESC"]],
         include: includeOptions,
       }),
-      db.Listado.count({ where: bodyFilter, include: includeOptions }),
+      db.Listado.count({ where: bodyFilter, include: includeOptions, distinct: true, col: 'id' }),
     ]);
 
     return { data: result, total };
