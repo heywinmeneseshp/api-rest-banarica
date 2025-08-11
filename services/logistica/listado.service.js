@@ -326,8 +326,8 @@ class ListadoService {
     return { message: 'El listado fue eliminado', id };
   }
 
-  async paginate(offset, limit, body = {}) {
-  // Manejo de fechas
+async paginate(offset, limit, body = {}) {
+  // Fechas
   let fechaInicial = body.fecha_inicial ? new Date(body.fecha_inicial) : null;
   let fechaFinal = body.fecha_final || null;
   let bodyFilter = {};
@@ -347,73 +347,52 @@ class ListadoService {
   }
 
   const createFilter = (field, value) =>
-    value ? { [field]: { [Op.like]: `%${value}%` } } : null;
+    value ? { [field]: { [Op.like]: `%${value}%` } } : undefined;
 
-  // Construcción dinámica de includes
-  const includeOptions = [];
+  // Includes optimizados: siempre traen datos, pero filtran solo si es necesario
+  const includeOptions = [
+    { model: db.Contenedor, where: createFilter("contenedor", body.contenedor), required: !!body.contenedor },
+    {
+      model: db.Embarque,
+      required: !!(body.booking || body.bl || body.destino || body.naviera || body.cliente || body.buque || body.semana),
+      where: {
+        ...(createFilter("booking", body.booking) || {}),
+        ...(createFilter("bl", body.bl) || {})
+      },
+      include: [
+        { model: db.Destino, where: createFilter("destino", body.destino), required: !!body.destino },
+        { model: db.Naviera, where: createFilter("navieras", body.naviera), required: !!body.naviera },
+        { model: db.clientes, where: createFilter("cod", body.cliente), required: !!body.cliente },
+        { model: db.Buque, where: createFilter("buque", body.buque), required: !!body.buque },
+        { model: db.semanas, where: createFilter("consecutivo", body.semana), required: !!body.semana }
+      ]
+    },
+    { model: db.almacenes, as: "almacen", where: createFilter("nombre", body.llenado), required: !!body.llenado },
+    { model: db.combos, where: createFilter("nombre", body.producto), required: !!body.producto },
+    { model: db.serial_de_articulos, required: false }
+  ];
 
-  if (body.contenedor)
-    includeOptions.push({ model: db.Contenedor, where: createFilter("contenedor", body.contenedor) });
-  else
-    includeOptions.push({ model: db.Contenedor });
-
-  const embarqueInclude = [];
-  if (body.booking) embarqueInclude.push({ model: db.Embarque, where: createFilter("booking", body.booking) });
-  if (body.bl) embarqueInclude.push({ model: db.Embarque, where: createFilter("bl", body.bl) });
-
-  if (embarqueInclude.length > 0) {
-    const embarqueObj = { model: db.Embarque, include: [] };
-
-    if (body.destino) embarqueObj.include.push({ model: db.Destino, where: createFilter("destino", body.destino) });
-    else embarqueObj.include.push({ model: db.Destino });
-
-    if (body.naviera) embarqueObj.include.push({ model: db.Naviera, where: createFilter("navieras", body.naviera) });
-    else embarqueObj.include.push({ model: db.Naviera });
-
-    if (body.cliente) embarqueObj.include.push({ model: db.clientes, where: createFilter("cod", body.cliente) });
-    else embarqueObj.include.push({ model: db.clientes });
-
-    if (body.buque) embarqueObj.include.push({ model: db.Buque, where: createFilter("buque", body.buque) });
-    else embarqueObj.include.push({ model: db.Buque });
-
-    if (body.semana) embarqueObj.include.push({ model: db.semanas, where: createFilter("consecutivo", body.semana) });
-    else embarqueObj.include.push({ model: db.semanas });
-
-    includeOptions.push(embarqueObj);
-  }
-
-  if (body.llenado)
-    includeOptions.push({ model: db.almacenes, as: "almacen", where: createFilter("nombre", body.llenado) });
-  else
-    includeOptions.push({ model: db.almacenes, as: "almacen" });
-
-  if (body.producto)
-    includeOptions.push({ model: db.combos, where: createFilter("nombre", body.producto) });
-  else
-    includeOptions.push({ model: db.combos });
-
-  includeOptions.push({ model: db.serial_de_articulos });
-
-  // Validación de paginación
+  // Paginación
   const parsedLimit = Number(limit) || 10;
   const parsedOffset = Number(offset) ? (Number(offset) - 1) * parsedLimit : 0;
 
-  // Consulta de datos
+  // Consultas
   const [result, total] = await Promise.all([
     db.Listado.findAll({
       where: bodyFilter,
       limit: parsedLimit,
       offset: parsedOffset,
       order: [["id_contenedor", "DESC"], ["fecha", "DESC"]],
-      include: includeOptions,
+      include: includeOptions
     }),
     db.Listado.count({
-      where: bodyFilter,
-    }) // Count mucho más rápido sin JOINs
+      where: bodyFilter
+    })
   ]);
 
   return { data: result, total };
 }
+
 
 
 }
