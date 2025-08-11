@@ -327,91 +327,93 @@ class ListadoService {
   }
 
   async paginate(offset, limit, body = {}) {
-    // Manejo de fechas
-    let fechaInicial = body.fecha_inicial ? new Date(body.fecha_inicial) : null;
-    let fechaFinal = body.fecha_final || null;
-    let bodyFilter = {};
+  // Manejo de fechas
+  let fechaInicial = body.fecha_inicial ? new Date(body.fecha_inicial) : null;
+  let fechaFinal = body.fecha_final || null;
+  let bodyFilter = {};
 
-    if (fechaInicial) {
-      fechaInicial.setDate(fechaInicial.getDate());
-      bodyFilter = fechaFinal
-        ? { fecha: { [Op.between]: [fechaInicial, fechaFinal] } }
-        : { fecha: { [Op.between]: [fechaInicial, `${fechaInicial.getFullYear()}-12-31`] } };
-    }
-
-    if (body?.habilitado !== undefined) {
-      bodyFilter = { ...bodyFilter, habilitado: body?.habilitado }
-    }
-
-    // Creación dinámica de filtros
-    const filters = {
-      semana: { consecutivo: body.semana },
-      contenedor: { contenedor: body.contenedor },
-      booking: { booking: body.booking },
-      bl: { bl: body.bl },
-      destino: { destino: body.destino },
-      naviera: { navieras: body.naviera },
-      cliente: { cod: body.cliente },
-      buque: { buque: body.buque },
-      llenado: { nombre: body.llenado },
-      producto: { nombre: body.producto },
+  if (fechaInicial) {
+    fechaInicial.setDate(fechaInicial.getDate());
+    bodyFilter.fecha = {
+      [Op.between]: [
+        fechaInicial,
+        fechaFinal || `${fechaInicial.getFullYear()}-12-31`
+      ]
     };
-
-    const createFilter = (key) =>
-      body[key] ? { [Object.keys(filters[key])[0]]: { [Op.like]: `%${body[key]}%` } } : {};
-
-    const contenedorFilter = createFilter("contenedor");
-    const bookingFilter = createFilter("booking");
-    const blFilter = createFilter("bl");
-    const destinoFilter = createFilter("destino");
-    const navieraFilter = createFilter("naviera");
-    const clienteFilter = createFilter("cliente");
-    const buqueFilter = createFilter("buque");
-    const llenadoFilter = createFilter("llenado");
-    const productoFilter = createFilter("producto");
-    const semanaFilter = createFilter("semana");
-
-    // Validación de `offset` y `limit`
-    const parsedLimit = isNaN(parseInt(limit)) ? 10 : parseInt(limit);
-    const parsedOffset = isNaN(parseInt(offset)) ? 0 : (parseInt(offset) - 1) * parsedLimit;
-
-    // Configuración de relaciones y filtros
-    const includeOptions = [
-      { model: db.Contenedor, where: contenedorFilter },
-      {
-        model: db.Embarque,
-        where: { ...bookingFilter, ...blFilter },
-        include: [
-          { model: db.Destino, where: destinoFilter },
-          { model: db.Naviera, where: navieraFilter },
-          { model: db.clientes, where: clienteFilter },
-          { model: db.Buque, where: buqueFilter },
-          { model: db.semanas, where: semanaFilter },
-        ],
-      },
-      { model: db.almacenes, as: "almacen", where: llenadoFilter },
-      { model: db.combos, where: productoFilter },
-      { model: db.serial_de_articulos },
-    ];
-
-    // Realizamos las consultas optimizadas
-    const [result, total] = await Promise.all([
-      db.Listado.findAll({
-        where: bodyFilter,
-        limit: parsedLimit,
-        offset: parsedOffset,
-        order: [["id_contenedor", "DESC"], ["fecha", "DESC"]],
-        include: includeOptions,
-      }),
-      db.Listado.count({ where: bodyFilter, include: includeOptions, distinct: true, col: 'id' }),
-    ]);
-
-    return { data: result, total };
   }
 
+  if (body?.habilitado !== undefined) {
+    bodyFilter.habilitado = body.habilitado;
+  }
 
+  const createFilter = (field, value) =>
+    value ? { [field]: { [Op.like]: `%${value}%` } } : null;
 
+  // Construcción dinámica de includes
+  const includeOptions = [];
 
+  if (body.contenedor)
+    includeOptions.push({ model: db.Contenedor, where: createFilter("contenedor", body.contenedor) });
+  else
+    includeOptions.push({ model: db.Contenedor });
+
+  const embarqueInclude = [];
+  if (body.booking) embarqueInclude.push({ model: db.Embarque, where: createFilter("booking", body.booking) });
+  if (body.bl) embarqueInclude.push({ model: db.Embarque, where: createFilter("bl", body.bl) });
+
+  if (embarqueInclude.length > 0) {
+    const embarqueObj = { model: db.Embarque, include: [] };
+
+    if (body.destino) embarqueObj.include.push({ model: db.Destino, where: createFilter("destino", body.destino) });
+    else embarqueObj.include.push({ model: db.Destino });
+
+    if (body.naviera) embarqueObj.include.push({ model: db.Naviera, where: createFilter("navieras", body.naviera) });
+    else embarqueObj.include.push({ model: db.Naviera });
+
+    if (body.cliente) embarqueObj.include.push({ model: db.clientes, where: createFilter("cod", body.cliente) });
+    else embarqueObj.include.push({ model: db.clientes });
+
+    if (body.buque) embarqueObj.include.push({ model: db.Buque, where: createFilter("buque", body.buque) });
+    else embarqueObj.include.push({ model: db.Buque });
+
+    if (body.semana) embarqueObj.include.push({ model: db.semanas, where: createFilter("consecutivo", body.semana) });
+    else embarqueObj.include.push({ model: db.semanas });
+
+    includeOptions.push(embarqueObj);
+  }
+
+  if (body.llenado)
+    includeOptions.push({ model: db.almacenes, as: "almacen", where: createFilter("nombre", body.llenado) });
+  else
+    includeOptions.push({ model: db.almacenes, as: "almacen" });
+
+  if (body.producto)
+    includeOptions.push({ model: db.combos, where: createFilter("nombre", body.producto) });
+  else
+    includeOptions.push({ model: db.combos });
+
+  includeOptions.push({ model: db.serial_de_articulos });
+
+  // Validación de paginación
+  const parsedLimit = Number(limit) || 10;
+  const parsedOffset = Number(offset) ? (Number(offset) - 1) * parsedLimit : 0;
+
+  // Consulta de datos
+  const [result, total] = await Promise.all([
+    db.Listado.findAll({
+      where: bodyFilter,
+      limit: parsedLimit,
+      offset: parsedOffset,
+      order: [["id_contenedor", "DESC"], ["fecha", "DESC"]],
+      include: includeOptions,
+    }),
+    db.Listado.count({
+      where: bodyFilter,
+    }) // Count mucho más rápido sin JOINs
+  ]);
+
+  return { data: result, total };
+}
 
 
 }
