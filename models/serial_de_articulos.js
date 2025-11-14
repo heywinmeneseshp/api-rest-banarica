@@ -15,6 +15,28 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: 'cons_producto'
       });
 
+       this.hasOne(models.Contenedor, {
+        as: "contenedor",
+        foreignKey: 'id',
+        sourceKey: 'id_contenedor'
+      });
+
+        this.hasOne(models.Rechazo, {
+        foreignKey: 'id_contenedor',
+        sourceKey: 'id_contenedor'
+      });
+
+       this.hasOne(models.MotivoDeUso, {
+        foreignKey: 'id',
+        sourceKey: 'id_motivo_de_uso'
+      });
+
+      this.hasOne(models.usuarios, {
+        as: 'usuario',
+        foreignKey: 'id',
+        sourceKey: 'id_usuario'
+      });
+
       this.hasOne(models.movimientos, {
         as: "movimiento",
         foreignKey: 'consecutivo',

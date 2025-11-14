@@ -317,6 +317,89 @@ class ListadoService {
     return { message: 'El listado fue actualizado', id, changes };
   }
 
+  //Actualizacion masiva
+async bulkUpdate(updatesArray) {
+  const transaction = await db.sequelize.transaction();
+  
+  try {
+    const results = [];
+    
+    for (const updateData of updatesArray) {
+      const { fecha, contenedor, bl, ...changes } = updateData;
+      
+      // Validar campos requeridos
+      if (!fecha || !contenedor) {
+        throw boom.badRequest('Fecha y contenedor son requeridos para la actualización');
+      }
+      
+      // Buscar el listado con join a Contenedor
+      const listado = await db.Listado.findOne({
+        where: {
+          fecha: new Date(fecha)
+        },
+        include: [{
+          model: db.Contenedor,
+          where: { contenedor },
+          required: true
+        }],
+        transaction
+      });
+      
+      if (!listado) {
+        throw boom.notFound(`Listado no encontrado para fecha ${fecha} y contenedor ${contenedor}`);
+      }
+      
+      // Buscar el Embarque por BL si se proporcionó
+      let embarqueId = null;
+      if (bl !== undefined && bl !== null) {
+        const embarque = await db.Embarque.findOne({
+          where: { bl },
+          transaction
+        });
+        
+        if (!embarque) {
+          throw boom.notFound(`Embarque con BL ${bl} no encontrado`);
+        }
+        
+        embarqueId = embarque.id;
+        
+        // Agregar el id_embarque a los cambios
+        changes.id_embarque = embarqueId;
+      }
+      
+      // Actualizar usando el ID del listado encontrado
+      await db.Listado.update(changes, {
+        where: { 
+          id: listado.id 
+        },
+        transaction
+      });
+      
+      results.push({
+        message: 'Registro actualizado',
+        id: listado.id,
+        fecha,
+        contenedor,
+        bl,
+        embarqueId,
+        changes
+      });
+    }
+    
+    await transaction.commit();
+    return { 
+      message: 'Actualización masiva completada',
+      total: results.length,
+      results 
+    };
+    
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}
+
+
   async delete(id) {
     const listado = await db.Listado.findByPk(id);
     if (!listado) {
@@ -326,72 +409,72 @@ class ListadoService {
     return { message: 'El listado fue eliminado', id };
   }
 
-async paginate(offset, limit, body = {}) {
-  // Fechas
-  let fechaInicial = body.fecha_inicial ? new Date(body.fecha_inicial) : null;
-  let fechaFinal = body.fecha_final || null;
-  let bodyFilter = {};
+  async paginate(offset, limit, body = {}) {
+    // Fechas
+    let fechaInicial = body.fecha_inicial ? new Date(body.fecha_inicial) : null;
+    let fechaFinal = body.fecha_final || null;
+    let bodyFilter = {};
 
-  if (fechaInicial) {
-    fechaInicial.setDate(fechaInicial.getDate());
-    bodyFilter.fecha = {
-      [Op.between]: [
-        fechaInicial,
-        fechaFinal || `${fechaInicial.getFullYear()}-12-31`
-      ]
-    };
-  }
+    if (fechaInicial) {
+      fechaInicial.setDate(fechaInicial.getDate());
+      bodyFilter.fecha = {
+        [Op.between]: [
+          fechaInicial,
+          fechaFinal || `${fechaInicial.getFullYear()}-12-31`
+        ]
+      };
+    }
 
-  if (body?.habilitado !== undefined) {
-    bodyFilter.habilitado = body.habilitado;
-  }
+    if (body?.habilitado !== undefined) {
+      bodyFilter.habilitado = body.habilitado;
+    }
 
-  const createFilter = (field, value) =>
-    value ? { [field]: { [Op.like]: `%${value}%` } } : undefined;
+    const createFilter = (field, value) =>
+      value ? { [field]: { [Op.like]: `%${value}%` } } : undefined;
 
-  // Includes optimizados: siempre traen datos, pero filtran solo si es necesario
-  const includeOptions = [
-    { model: db.Contenedor, where: createFilter("contenedor", body.contenedor), required: !!body.contenedor },
-    {
-      model: db.Embarque,
-      required: !!(body.booking || body.bl || body.destino || body.naviera || body.cliente || body.buque || body.semana),
-      where: {
-        ...(createFilter("booking", body.booking) || {}),
-        ...(createFilter("bl", body.bl) || {})
+    // Includes optimizados: siempre traen datos, pero filtran solo si es necesario
+    const includeOptions = [
+      { model: db.Contenedor, where: createFilter("contenedor", body.contenedor), required: !!body.contenedor },
+      {
+        model: db.Embarque,
+        required: !!(body.booking || body.bl || body.destino || body.naviera || body.cliente || body.buque || body.semana),
+        where: {
+          ...(createFilter("booking", body.booking) || {}),
+          ...(createFilter("bl", body.bl) || {})
+        },
+        include: [
+          { model: db.Destino, where: createFilter("destino", body.destino), required: !!body.destino },
+          { model: db.Naviera, where: createFilter("navieras", body.naviera), required: !!body.naviera },
+          { model: db.clientes, where: createFilter("cod", body.cliente), required: !!body.cliente },
+          { model: db.Buque, where: createFilter("buque", body.buque), required: !!body.buque },
+          { model: db.semanas, where: createFilter("consecutivo", body.semana), required: !!body.semana }
+        ]
       },
-      include: [
-        { model: db.Destino, where: createFilter("destino", body.destino), required: !!body.destino },
-        { model: db.Naviera, where: createFilter("navieras", body.naviera), required: !!body.naviera },
-        { model: db.clientes, where: createFilter("cod", body.cliente), required: !!body.cliente },
-        { model: db.Buque, where: createFilter("buque", body.buque), required: !!body.buque },
-        { model: db.semanas, where: createFilter("consecutivo", body.semana), required: !!body.semana }
-      ]
-    },
-    { model: db.almacenes, as: "almacen", where: createFilter("nombre", body.llenado), required: !!body.llenado },
-    { model: db.combos, where: createFilter("nombre", body.producto), required: !!body.producto },
-    { model: db.serial_de_articulos, required: false }
-  ];
+      { model: db.almacenes, as: "almacen", where: createFilter("nombre", body.llenado), required: !!body.llenado },
+      { model: db.combos, where: createFilter("nombre", body.producto), required: !!body.producto },
+      { model: db.serial_de_articulos, required: false }
+    ];
 
-  // Paginación
-  const parsedLimit = Number(limit) || 10;
-  const parsedOffset = Number(offset) ? (Number(offset) - 1) * parsedLimit : 0;
+    // Paginación
+    const parsedLimit = Number(limit) || 10;
+    const parsedOffset = Number(offset) ? (Number(offset) - 1) * parsedLimit : 0;
 
-  // Consultas
-  const [result, total] = await Promise.all([
-    db.Listado.findAll({
-      where: bodyFilter,
-      limit: parsedLimit,
-      offset: parsedOffset,
-      order: [["id_contenedor", "DESC"], ["fecha", "DESC"]],
-      include: includeOptions
-    }),
-    db.Listado.count({
-      where: bodyFilter
-    })
-  ]);
+    // Consultas
+    const [result, total] = await Promise.all([
+      db.Listado.findAll({
+        where: bodyFilter,
+        limit: parsedLimit,
+        offset: parsedOffset,
+        order: [["id_contenedor", "DESC"], ["fecha", "DESC"]],
+        include: includeOptions
+      }),
+      db.Listado.count({
+        where: bodyFilter
+      })
+    ]);
 
-  return { data: result, total };
-}
+    return { data: result, total };
+  }
 
 
 

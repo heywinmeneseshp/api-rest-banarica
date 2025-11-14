@@ -93,7 +93,8 @@ class RechazoService {
                 limit: parsedLimit,
                 offset: parsedOffset,
                 where: whereConditions,
-                include: includes
+                include: includes,
+                order: [['createdAt', 'DESC']]
             }),
             db.Rechazo.count({
                 where: whereConditions,

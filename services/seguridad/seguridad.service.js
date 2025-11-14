@@ -181,6 +181,11 @@ class SeguridadService {
     const includeModels = [
       { model: db.movimientos, as: 'movimiento' },
       { model: db.productos, as: 'producto' },
+      { model: db.usuarios, as: 'usuario' },
+      { model: db.Contenedor, as: 'contenedor' },
+       { model: db.MotivoDeUso },
+       { model: db.Rechazo },
+      
     ];
 
     if (pagination) {
@@ -195,6 +200,7 @@ class SeguridadService {
           include: includeModels,
           limit: parsedLimit,
           offset: parsedOffset,
+          order: [['updatedAt', 'DESC']]
         }),
       ]);
 
