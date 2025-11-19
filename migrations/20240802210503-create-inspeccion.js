@@ -14,6 +14,23 @@ module.exports = {
       fecha_inspeccion: {
         type: Sequelize.DATE
       },
+      agente: {
+        type: Sequelize.STRING(100),
+      },
+      zona: {
+        type: Sequelize.STRING(100),
+      },
+      hora_inicio: {
+        type: Sequelize.TIME,
+
+      },
+      hora_fin: {
+        type: Sequelize.TIME,
+      },
+      observaciones: {
+        type: DataTypes.TEXT,
+        allowNull: true
+      },
       habilitado: {
         type: Sequelize.BOOLEAN
       },
