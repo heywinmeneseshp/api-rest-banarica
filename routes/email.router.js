@@ -10,7 +10,7 @@ const service = new EmailService();
 router.post("/send", async (req, res, next) => {
   try {
     const body = req.body;
-    const items = await service.send(body.destinatario, body.asunto, body.cuerpo);
+    const items = await service.send(body);
     res.json(items);
   } catch (error) {
     next(error);
