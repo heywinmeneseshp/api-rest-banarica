@@ -66,6 +66,19 @@ router.post('/masivo', async (req, res, next) => {
   }
 });
 
+router.post('/actualizar-masivo', async (req, res, next) => {
+  try {
+    const body = req.body;
+    const embarqueNuevo = await service.actualizarMasivo(body);
+    res.json({
+      message: 'Embarques creados',
+      data: embarqueNuevo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 // Actualizar un embarque
 router.patch('/:id', async (req, res, next) => {
