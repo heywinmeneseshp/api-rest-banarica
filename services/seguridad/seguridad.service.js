@@ -163,7 +163,7 @@ class SeguridadService {
   async listarSeriales(pagination, body = {}) {
 
     const { cons_producto = "", serial = "", bag_pack = "", s_pack = "", m_pack = "", l_pack = "", cons_almacen, available = false } = body;
-
+    console.log("heywin", cons_almacen)
     // Determinar si cons_almacen es un array o una cadena de búsqueda
     const almacenes = Array.isArray(cons_almacen) ? cons_almacen : { [Op.like]: `%${cons_almacen}%` };
 
@@ -319,6 +319,11 @@ class SeguridadService {
         {
           id_contenedor: formulario.consecutivo,
           fecha_inspeccion: formulario.fecha,
+          hora_inicio: formulario.hora_inicio,
+          hora_fin: formulario.hora_fin,
+          agente: formulario.agente,
+          habilitado: true,
+          zona: formulario.zona
         },
         { transaction }
       );

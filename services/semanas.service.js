@@ -27,6 +27,7 @@ class SemanasService {
   }
 
   async filtrar(body) {
+   
     try {
       // Destructuramos `createdAt` de body para evitar acceder múltiples veces
       const { createdAt, ...otherBody } = body;
@@ -35,6 +36,7 @@ class SemanasService {
       // Fusionamos otros filtros y el de la fecha si aplica
       const filtros = { ...otherBody, ...filtroFecha };
       // Realizamos la búsqueda con los filtros
+     console.log(filtros);
       const semana = await db.semanas.findAll({ where: filtros });
       // Si no se encuentran resultados, lanzamos un error
       if (!semana || semana.length === 0) {

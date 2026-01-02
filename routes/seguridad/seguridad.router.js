@@ -98,6 +98,7 @@ router.post("/inspeccion-antinarcoticos",
   async (req, res, next) => {
     try {
       const body = req.body
+      console.log(body)
       const result = await service.inspeccionAntinarcoticos(body)
       res.json(result)
     } catch (e) {
