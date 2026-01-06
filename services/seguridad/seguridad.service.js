@@ -160,55 +160,122 @@ class SeguridadService {
   }
 
 
-  async listarSeriales(pagination, body = {}) {
+ async listarSeriales(pagination, body = {}) {
 
-    const { cons_producto = "", serial = "", bag_pack = "", s_pack = "", m_pack = "", l_pack = "", cons_almacen, available = false } = body;
-    console.log("heywin", cons_almacen)
-    // Determinar si cons_almacen es un array o una cadena de búsqueda
-    const almacenes = Array.isArray(cons_almacen) ? cons_almacen : { [Op.like]: `%${cons_almacen}%` };
 
-    const filters = {
-      cons_producto: { [Op.like]: `%${cons_producto}%` },
-      serial: { [Op.like]: `%${serial}%` },
-      bag_pack: { [Op.like]: `%${bag_pack}%` },
-      s_pack: { [Op.like]: `%${s_pack}%` },
-      m_pack: { [Op.like]: `%${m_pack}%` },
-      l_pack: { [Op.like]: `%${l_pack}%` },
-      cons_almacen: almacenes,
-      available: { [Op.or]: available },
-    };
 
-    const includeModels = [
-      { model: db.movimientos, as: 'movimiento' },
-      { model: db.productos, as: 'producto' },
-      { model: db.usuarios, as: 'usuario' },
-      { model: db.Contenedor, as: 'contenedor' },
-       { model: db.MotivoDeUso },
-       { model: db.Rechazo },
-      
-    ];
+  const {
+    cons_producto = "",
+    serial = "",
+    bag_pack = "",
+    s_pack = "",
+    m_pack = "",
+    l_pack = "",
+    cons_almacen = "",
+    available,
+    motivo_de_uso,
+    contenedor = "",
+    fecha_inspeccion_inicio ,
+    fecha_inspeccion_fin,
+  } = body;
 
-    if (pagination) {
-      const { limit, offset } = pagination;
-      const parsedLimit = parseInt(limit);
-      const parsedOffset = (parseInt(offset) - 1) * parsedLimit;
 
-      const [total, result] = await Promise.all([
-        db.serial_de_articulos.count({ where: filters }),
-        db.serial_de_articulos.findAll({
-          where: filters,
-          include: includeModels,
-          limit: parsedLimit,
-          offset: parsedOffset,
-          order: [['updatedAt', 'DESC']]
-        }),
-      ]);
+  // Helper para LIKE
+  const like = (value) => ({ [Op.like]: `%${value}%` });
 
-      return { data: result, total };
-    }
+  // cons_almacen puede ser array o string
+  const almacenFilter = Array.isArray(cons_almacen)
+    ? { [Op.in]: cons_almacen }
+    : like(cons_almacen);
 
-    return await db.serial_de_articulos.findAll({ where: filters, include: includeModels });
+  /** =========================
+   * WHERE principal
+   ========================= */
+  const where = {
+    cons_producto: like(cons_producto),
+    serial: like(serial),
+    bag_pack: like(bag_pack),
+    s_pack: like(s_pack),
+    m_pack: like(m_pack),
+    l_pack: like(l_pack),
+    cons_almacen: almacenFilter,
+  };
+
+  if (available !== undefined) {
+    where.available = available;
   }
+
+  /** =========================
+   * INCLUDE dinámico
+   ========================= */
+  const include = [
+    { model: db.movimientos, as: "movimiento" },
+    { model: db.productos, as: "producto" },
+    { model: db.usuarios, as: "usuario" },
+    { model: db.Rechazo },
+    {
+      model: db.Contenedor,
+      as: "contenedor",
+      where: { contenedor: like(contenedor) },
+    }
+  ];
+
+  if (motivo_de_uso) {
+    include.push({
+      model: db.MotivoDeUso,
+      where: { consecutivo: motivo_de_uso },
+      required: true,
+    });
+  }
+
+  if (fecha_inspeccion_inicio && fecha_inspeccion_fin) {
+    include.push({
+      model: db.Inspeccion,
+      where: {
+        fecha_inspeccion: {
+          [Op.between]: [new Date(`${fecha_inspeccion_inicio}T00:00:00.000Z`), new Date(`${fecha_inspeccion_fin}T23:59:59.999Z`)],
+        },
+      },
+      required: true,
+    });
+  } else {
+    include.push({
+      model: db.Inspeccion,
+    });
+  }
+
+
+
+  /** =========================
+   * Paginación
+   ========================= */
+  if (pagination) {
+    const limit = Number(pagination.limit) || 10;
+    const offset = ((Number(pagination.offset) || 1) - 1) * limit;
+
+    const { rows, count } = await db.serial_de_articulos.findAndCountAll({
+      where,
+      include,
+      limit,
+      offset,
+      order: [["updatedAt", "DESC"]],
+      distinct: true,
+    });
+
+    return {
+      data: rows,
+      total: count,
+      page: pagination.offset,
+      limit,
+    };
+  }
+
+  return db.serial_de_articulos.findAll({
+    where,
+    include,
+    order: [["updatedAt", "DESC"]],
+  });
+}
 
 
 

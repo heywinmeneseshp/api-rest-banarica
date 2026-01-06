@@ -318,86 +318,86 @@ class ListadoService {
   }
 
   //Actualizacion masiva
-async bulkUpdate(updatesArray) {
-  const transaction = await db.sequelize.transaction();
-  
-  try {
-    const results = [];
-    
-    for (const updateData of updatesArray) {
-      const { fecha, contenedor, bl, ...changes } = updateData;
-      
-      // Validar campos requeridos
-      if (!fecha || !contenedor) {
-        throw boom.badRequest('Fecha y contenedor son requeridos para la actualización');
-      }
-      
-      // Buscar el listado con join a Contenedor
-      const listado = await db.Listado.findOne({
-        where: {
-          fecha: new Date(fecha)
-        },
-        include: [{
-          model: db.Contenedor,
-          where: { contenedor },
-          required: true
-        }],
-        transaction
-      });
-      
-      if (!listado) {
-        throw boom.notFound(`Listado no encontrado para fecha ${fecha} y contenedor ${contenedor}`);
-      }
-      
-      // Buscar el Embarque por BL si se proporcionó
-      let embarqueId = null;
-      if (bl !== undefined && bl !== null) {
-        const embarque = await db.Embarque.findOne({
-          where: { bl },
+  async bulkUpdate(updatesArray) {
+    const transaction = await db.sequelize.transaction();
+
+    try {
+      const results = [];
+
+      for (const updateData of updatesArray) {
+        const { fecha, contenedor, bl, ...changes } = updateData;
+
+        // Validar campos requeridos
+        if (!fecha || !contenedor) {
+          throw boom.badRequest('Fecha y contenedor son requeridos para la actualización');
+        }
+
+        // Buscar el listado con join a Contenedor
+        const listado = await db.Listado.findOne({
+          where: {
+            fecha: new Date(fecha)
+          },
+          include: [{
+            model: db.Contenedor,
+            where: { contenedor },
+            required: true
+          }],
           transaction
         });
-        
-        if (!embarque) {
-          throw boom.notFound(`Embarque con BL ${bl} no encontrado`);
+
+        if (!listado) {
+          throw boom.notFound(`Listado no encontrado para fecha ${fecha} y contenedor ${contenedor}`);
         }
-        
-        embarqueId = embarque.id;
-        
-        // Agregar el id_embarque a los cambios
-        changes.id_embarque = embarqueId;
+
+        // Buscar el Embarque por BL si se proporcionó
+        let embarqueId = null;
+        if (bl !== undefined && bl !== null) {
+          const embarque = await db.Embarque.findOne({
+            where: { bl },
+            transaction
+          });
+
+          if (!embarque) {
+            throw boom.notFound(`Embarque con BL ${bl} no encontrado`);
+          }
+
+          embarqueId = embarque.id;
+
+          // Agregar el id_embarque a los cambios
+          changes.id_embarque = embarqueId;
+        }
+
+        // Actualizar usando el ID del listado encontrado
+        await db.Listado.update(changes, {
+          where: {
+            id: listado.id
+          },
+          transaction
+        });
+
+        results.push({
+          message: 'Registro actualizado',
+          id: listado.id,
+          fecha,
+          contenedor,
+          bl,
+          embarqueId,
+          changes
+        });
       }
-      
-      // Actualizar usando el ID del listado encontrado
-      await db.Listado.update(changes, {
-        where: { 
-          id: listado.id 
-        },
-        transaction
-      });
-      
-      results.push({
-        message: 'Registro actualizado',
-        id: listado.id,
-        fecha,
-        contenedor,
-        bl,
-        embarqueId,
-        changes
-      });
+
+      await transaction.commit();
+      return {
+        message: 'Actualización masiva completada',
+        total: results.length,
+        results
+      };
+
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
-    
-    await transaction.commit();
-    return { 
-      message: 'Actualización masiva completada',
-      total: results.length,
-      results 
-    };
-    
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
   }
-}
 
 
   async delete(id) {
@@ -435,6 +435,7 @@ async bulkUpdate(updatesArray) {
     // Includes optimizados: siempre traen datos, pero filtran solo si es necesario
     const includeOptions = [
       { model: db.Contenedor, where: createFilter("contenedor", body.contenedor), required: !!body.contenedor },
+      { model: db.Inspeccion },
       {
         model: db.Embarque,
         required: !!(body.booking || body.bl || body.destino || body.naviera || body.cliente || body.buque || body.semana),
@@ -447,7 +448,7 @@ async bulkUpdate(updatesArray) {
           { model: db.Naviera, where: createFilter("navieras", body.naviera), required: !!body.naviera },
           { model: db.clientes, where: createFilter("cod", body.cliente), required: !!body.cliente },
           { model: db.Buque, where: createFilter("buque", body.buque), required: !!body.buque },
-          { model: db.semanas, where: createFilter("consecutivo", body.semana), required: !!body.semana }
+          { model: db.semanas, where: createFilter("consecutivo", body.semana), required: !!body.semana },
         ]
       },
       { model: db.almacenes, as: "almacen", where: createFilter("nombre", body.llenado), required: !!body.llenado },
