@@ -160,10 +160,7 @@ class SeguridadService {
   }
 
 
- async listarSeriales(pagination, body = {}) {
-
-
-
+async listarSeriales(pagination, body = {}) {
   const {
     cons_producto = "",
     serial = "",
@@ -175,106 +172,335 @@ class SeguridadService {
     available,
     motivo_de_uso,
     contenedor = "",
-    fecha_inspeccion_inicio ,
+    fecha_inspeccion_inicio,
     fecha_inspeccion_fin,
   } = body;
 
-
-  // Helper para LIKE
-  const like = (value) => ({ [Op.like]: `%${value}%` });
-
-  // cons_almacen puede ser array o string
-  const almacenFilter = Array.isArray(cons_almacen)
-    ? { [Op.in]: cons_almacen }
-    : like(cons_almacen);
-
-  /** =========================
-   * WHERE principal
-   ========================= */
-  const where = {
-    cons_producto: like(cons_producto),
-    serial: like(serial),
-    bag_pack: like(bag_pack),
-    s_pack: like(s_pack),
-    m_pack: like(m_pack),
-    l_pack: like(l_pack),
-    cons_almacen: almacenFilter,
+  // Helper functions
+  const cleanString = (str) => {
+    if (str == null || str === '') return '';
+    return String(str).trim();
   };
 
+  // WHERE principal - MANTENER solo filtros críticos
+  const where = {};
+  
+  // 1. Filtro MÁS IMPORTANTE y REQUERIDO: cons_almacen
+  if (cons_almacen) {
+    if (Array.isArray(cons_almacen)) {
+      const unique = [...new Set(cons_almacen.filter(a => a && String(a).trim()))];
+      if (unique.length > 0) {
+        where.cons_almacen = { [Op.in]: unique };
+      }
+    } else if (cleanString(cons_almacen)) {
+      where.cons_almacen = { [Op.like]: `%${cleanString(cons_almacen)}%` };
+    }
+  }
+
+  // 2. Filtro available (solo si se especifica)
   if (available !== undefined) {
     where.available = available;
   }
 
-  /** =========================
-   * INCLUDE dinámico
-   ========================= */
-  const include = [
-    { model: db.movimientos, as: "movimiento" },
-    { model: db.productos, as: "producto" },
-    { model: db.usuarios, as: "usuario" },
-    { model: db.Rechazo },
-    {
-      model: db.Contenedor,
-      as: "contenedor",
-      where: { contenedor: like(contenedor) },
-    }
-  ];
+  // 3. Otros filtros básicos (NO requieren JOIN)
+  if (cleanString(cons_producto)) where.cons_producto = { [Op.like]: `%${cleanString(cons_producto)}%` };
+  if (cleanString(serial)) where.serial = { [Op.like]: `%${cleanString(serial)}%` };
+  if (cleanString(bag_pack)) where.bag_pack = { [Op.like]: `%${cleanString(bag_pack)}%` };
+  if (cleanString(s_pack)) where.s_pack = { [Op.like]: `%${cleanString(s_pack)}%` };
+  if (cleanString(m_pack)) where.m_pack = { [Op.like]: `%${cleanString(m_pack)}%` };
+  if (cleanString(l_pack)) where.l_pack = { [Op.like]: `%${cleanString(l_pack)}%` };
 
-  if (motivo_de_uso) {
-    include.push({
-      model: db.MotivoDeUso,
-      where: { consecutivo: motivo_de_uso },
-      required: true,
-    });
-  }
-
-  if (fecha_inspeccion_inicio && fecha_inspeccion_fin) {
-    include.push({
-      model: db.Inspeccion,
-      where: {
-        fecha_inspeccion: {
-          [Op.between]: [new Date(`${fecha_inspeccion_inicio}T00:00:00.000Z`), new Date(`${fecha_inspeccion_fin}T23:59:59.999Z`)],
-        },
-      },
-      required: true,
-    });
-  } else {
-    include.push({
-      model: db.Inspeccion,
-    });
-  }
-
-
-
-  /** =========================
-   * Paginación
-   ========================= */
-  if (pagination) {
-    const limit = Number(pagination.limit) || 10;
-    const offset = ((Number(pagination.offset) || 1) - 1) * limit;
-
-    const { rows, count } = await db.serial_de_articulos.findAndCountAll({
-      where,
-      include,
-      limit,
-      offset,
-      order: [["updatedAt", "DESC"]],
-      distinct: true,
-    });
-
-    return {
-      data: rows,
-      total: count,
-      page: pagination.offset,
-      limit,
-    };
-  }
-
-  return db.serial_de_articulos.findAll({
-    where,
-    include,
-    order: [["updatedAt", "DESC"]],
+  // ============================================
+  // PASO CRÍTICO: INCLUDE MÍNIMO - SOLO 1 JOIN
+  // ============================================
+  const include = [];
+  
+  // SOLO el JOIN MÁS IMPORTANTE para mostrar datos básicos
+  // ¿Qué es lo mínimo que necesitas mostrar en la lista?
+  
+  // Opción A: Si necesitas el nombre del producto
+  include.push({
+    model: db.productos,
+    as: "producto",
+    attributes: ['id', 'consecutivo', 'name'], // SOLO 3 campos
+    required: false // LEFT JOIN, no INNER JOIN
   });
+  
+  // O Opción B: Si necesitas datos del movimiento
+  // include.push({
+  //   model: db.movimientos,
+  //   as: "movimiento",
+  //   attributes: ['id', 'consecutivo', 'remision'], // SOLO 3 campos
+  //   required: false
+  // });
+  
+  // O Opción C: NINGÚN JOIN - solo datos de la tabla principal
+  // const include = [];
+
+  // ============================================
+  // FILTROS que requieren JOIN - MANEJAR DESPUÉS
+  // ============================================
+  
+  // Estos filtros NO van en la consulta principal
+  // Se aplicarán después con lazy loading o subqueries
+  
+  // 1. Filtro por contenedor - aplicaremos después
+  let filtroContenedor = null;
+  if (cleanString(contenedor)) {
+    filtroContenedor = cleanString(contenedor);
+  }
+  
+  // 2. Filtro por motivo_de_uso - aplicaremos después
+  let filtroMotivoUso = null;
+  if (motivo_de_uso !== undefined && motivo_de_uso !== null && motivo_de_uso !== '') {
+    filtroMotivoUso = motivo_de_uso;
+  }
+  
+  // 3. Filtro por fecha inspección - aplicaremos después
+  let rangoFechasInspeccion = null;
+  if (cleanString(fecha_inspeccion_inicio) && cleanString(fecha_inspeccion_fin)) {
+    try {
+      const startDate = new Date(fecha_inspeccion_inicio);
+      const endDate = new Date(fecha_inspeccion_fin);
+      startDate.setUTCHours(0, 0, 0, 0);
+      endDate.setUTCHours(23, 59, 59, 999);
+      
+      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+        rangoFechasInspeccion = { start: startDate, end: endDate };
+      }
+    } catch (error) {
+      console.error('Error procesando fechas:', error);
+    }
+  }
+
+  // ============================================
+  // CONSULTA PRINCIPAL - SUPER SIMPLE
+  // ============================================
+  const queryOptions = {
+    where,
+    include, // MÁXIMO 1-2 JOINS aquí
+    order: [["updatedAt", "DESC"]],
+    distinct: true,
+  };
+
+  if (pagination) {
+    const limit = Math.min(Number(pagination.limit) || 10, 10);
+    const page = Math.max(Number(pagination.offset) || 1, 1);
+    const offset = (page - 1) * limit;
+
+    try {
+      // 1. Consulta RÁPIDA con mínimo de JOINS
+      const { rows, count } = await db.serial_de_articulos.findAndCountAll({
+        ...queryOptions,
+        limit,
+        offset,
+        subQuery: false
+      });
+
+      // ============================================
+      // PASO 2: APLICAR FILTROS ADICIONALES DESPUÉS
+      // ============================================
+      
+      let filteredRows = rows;
+      let filteredCount = count;
+      
+      // A. Filtrar por contenedor (si aplica)
+      if (filtroContenedor && filteredRows.length > 0) {
+        const contenedorIds = filteredRows.map(r => r.id_contenedor).filter(Boolean);
+        
+        if (contenedorIds.length > 0) {
+          const contenedores = await db.Contenedor.findAll({
+            where: {
+              id: { [Op.in]: contenedorIds },
+              contenedor: { [Op.like]: `%${filtroContenedor}%` }
+            },
+            attributes: ['id'],
+            raw: true
+          });
+          
+          const contenedorIdsFiltrados = contenedores.map(c => c.id);
+          filteredRows = filteredRows.filter(row => 
+            !row.id_contenedor || contenedorIdsFiltrados.includes(row.id_contenedor)
+          );
+        }
+      }
+      
+      // B. Filtrar por motivo de uso (si aplica)
+      if (filtroMotivoUso && filteredRows.length > 0) {
+        const motivoIds = filteredRows.map(r => r.id_motivo_de_uso).filter(Boolean);
+        
+        if (motivoIds.length > 0) {
+          const motivos = await db.MotivoDeUso.findAll({
+            where: {
+              id: { [Op.in]: motivoIds },
+              consecutivo: filtroMotivoUso
+            },
+            attributes: ['id'],
+            raw: true
+          });
+          
+          const motivoIdsFiltrados = motivos.map(m => m.id);
+          filteredRows = filteredRows.filter(row => 
+            !row.id_motivo_de_uso || motivoIdsFiltrados.includes(row.id_motivo_de_uso)
+          );
+        }
+      }
+      
+      // C. Filtrar por fecha de inspección (si aplica)
+      if (rangoFechasInspeccion && filteredRows.length > 0) {
+        const contenedorIds = filteredRows.map(r => r.id_contenedor).filter(Boolean);
+        
+        if (contenedorIds.length > 0) {
+          const inspecciones = await db.Inspeccion.findAll({
+            where: {
+              id_contenedor: { [Op.in]: contenedorIds },
+              fecha_inspeccion: {
+                [Op.between]: [rangoFechasInspeccion.start, rangoFechasInspeccion.end]
+              }
+            },
+            attributes: ['id_contenedor'],
+            raw: true
+          });
+          
+          const contenedoresConInspeccion = [...new Set(inspecciones.map(i => i.id_contenedor))];
+          filteredRows = filteredRows.filter(row => 
+            !row.id_contenedor || contenedoresConInspeccion.includes(row.id_contenedor)
+          );
+        }
+      }
+      
+      // ============================================
+      // PASO 3: CARGAR DATOS ADICIONALES (lazy loading)
+      // ============================================
+      
+      if (filteredRows.length > 0) {
+        // Cargar movimientos solo para las filas filtradas
+        const movimientoIds = filteredRows.map(r => r.cons_movimiento).filter(Boolean);
+        if (movimientoIds.length > 0) {
+          const movimientos = await db.movimientos.findAll({
+            where: { consecutivo: { [Op.in]: movimientoIds } },
+            attributes: ['consecutivo', 'remision', 'pendiente'],
+            raw: true
+          });
+          
+          const movimientosMap = {};
+          movimientos.forEach(m => {
+            movimientosMap[m.consecutivo] = m;
+          });
+          
+          filteredRows.forEach(row => {
+            if (row.cons_movimiento && movimientosMap[row.cons_movimiento]) {
+              row.dataValues.movimiento = movimientosMap[row.cons_movimiento];
+            }
+          });
+        }
+        
+        // Cargar usuarios solo para las filas filtradas
+        const usuarioIds = filteredRows.map(r => r.id_usuario).filter(Boolean);
+        if (usuarioIds.length > 0) {
+          const usuarios = await db.usuarios.findAll({
+            where: { id: { [Op.in]: usuarioIds } },
+            attributes: ['id', 'username', 'nombre', 'apellido'],
+            raw: true
+          });
+          
+          const usuariosMap = {};
+          usuarios.forEach(u => {
+            usuariosMap[u.id] = u;
+          });
+          
+          filteredRows.forEach(row => {
+            if (row.id_usuario && usuariosMap[row.id_usuario]) {
+              row.dataValues.usuario = usuariosMap[row.id_usuario];
+            }
+          });
+        }
+        
+        // Cargar rechazos solo para las filas filtradas
+        const contenedorIds = filteredRows.map(r => r.id_contenedor).filter(Boolean);
+        if (contenedorIds.length > 0) {
+          const rechazos = await db.Rechazo.findAll({
+            where: { id_contenedor: { [Op.in]: contenedorIds } },
+            attributes: ['id_contenedor', 'id_producto', 'cantidad'],
+            raw: true
+          });
+          
+          const rechazosMap = {};
+          rechazos.forEach(r => {
+            if (!rechazosMap[r.id_contenedor]) {
+              rechazosMap[r.id_contenedor] = [];
+            }
+            rechazosMap[r.id_contenedor].push(r);
+          });
+          
+          filteredRows.forEach(row => {
+            if (row.id_contenedor && rechazosMap[row.id_contenedor]) {
+              row.dataValues.Rechazos = rechazosMap[row.id_contenedor];
+            }
+          });
+        }
+      }
+
+      return {
+        data: filteredRows,
+        total: filteredRows.length, // Ajustar count según filtros
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit), // Usar count original para paginación
+        filtered: filteredRows.length !== rows.length // Indicar si se filtró
+      };
+    } catch (error) {
+      console.error('Error en consulta optimizada:', error);
+      
+      // Fallback ULTRA simple
+      const simpleData = await db.serial_de_articulos.findAll({
+        where,
+        attributes: ['id', 'cons_producto', 'serial', 'cons_almacen', 'available', 'updatedAt'],
+        limit: 10,
+        offset: 0,
+        order: [["updatedAt", "DESC"]],
+        raw: true
+      });
+      
+      const simpleCount = await db.serial_de_articulos.count({ where });
+      
+      return {
+        data: simpleData,
+        total: simpleCount,
+        page: 1,
+        limit: 10,
+        totalPages: Math.ceil(simpleCount / 10),
+        warning: 'Modo de respaldo activado'
+      };
+    }
+  }
+
+  // Sin paginación - con límite
+  return db.serial_de_articulos.findAll({
+    ...queryOptions,
+    limit: 50 // Límite absoluto
+  });
+}
+
+// Método auxiliar para formatear fechas
+_formatDate(dateString, type = 'start') {
+  try {
+    if (!dateString) return null;
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+
+    if (type === 'start') {
+      date.setUTCHours(0, 0, 0, 0);
+    } else if (type === 'end') {
+      date.setUTCHours(23, 59, 59, 999);
+    }
+    
+    return date;
+  } catch (error) {
+    console.error('Error formateando fecha:', error);
+    return null;
+  }
 }
 
 
