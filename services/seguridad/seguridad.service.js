@@ -161,7 +161,7 @@ class SeguridadService {
 
 
   async listarSeriales(pagination, body = {}) {
-    console.log(body)
+
     const {
       cons_producto, serial, bag_pack, s_pack, m_pack, l_pack,
       cons_almacen, available
@@ -170,7 +170,7 @@ class SeguridadService {
     // 1. Construcción dinámica de filtros para mejorar el rendimiento de la DB
     const filters = {};
 
-    if (cons_producto) filters.cons_producto = { [Op.like]: `%${cons_producto}%` };
+    if (cons_producto) filters.cons_producto = cons_producto;
     if (serial) filters.serial = { [Op.like]: `%${serial}%` };
     if (bag_pack) filters.bag_pack = { [Op.like]: `%${bag_pack}%` };
     if (s_pack) filters.s_pack = { [Op.like]: `%${s_pack}%` };
@@ -185,26 +185,24 @@ class SeguridadService {
     }
 
     // Filtro booleano/estado
-    if (available !== undefined && available !== null) {
+    if (available !== undefined) {
       filters.available = available;
     }
 
     const includeModels = [
-      { model: db.movimientos, as: 'movimiento' },
       { model: db.productos, as: 'producto' },
       { model: db.usuarios, as: 'usuario' },
       { model: db.Contenedor, as: 'contenedor' },
       { model: db.MotivoDeUso },
-      { model: db.Rechazo },
     ];
-
+   
     // 2. Lógica de Paginación Centralizada
     if (pagination) {
       const limit = parseInt(pagination.limit) || 10;
       const page = parseInt(pagination.offset) || 1;
       const offset = (page - 1) * limit;
 
-      console.log(filters)
+ 
       // findAndCountAll ejecuta ambas consultas de forma óptima
       const { count, rows } = await db.serial_de_articulos.findAndCountAll({
         where: filters,

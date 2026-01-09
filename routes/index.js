@@ -105,7 +105,7 @@ function routerApi(app) {
   router.use('/contenedor', contenedorRouter);
   router.use('/destino', destinoRouter);
   router.use('/embarque', embarqueRouter);
-  router.use('/inspeccion', inspeccionRouter);
+  router.use('/inspeccion', inspeccionRouter); 
   router.use('/listado', listadoRouter);
   router.use('/motivoDeRechazo', motivoDeRechazoRouter);
   router.use('/naviera', navieraRouter);
