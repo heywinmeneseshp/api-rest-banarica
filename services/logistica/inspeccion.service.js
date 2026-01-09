@@ -43,62 +43,74 @@ class InspeccionService {
   }
 
   async paginate(offset, limit, body = {}) {
+  const {
+    cons_producto,
+    cons_almacen,
+    contenedor,
+    fecha_inspeccion_inicio,
+    fecha_inspeccion_fin
+  } = body;
 
+  // 1. Filtros para la tabla principal (serial_de_articulos)
+  const filters = { available: false };
+  if (cons_producto) filters.cons_producto = cons_producto;
+  if (cons_almacen) filters.cons_almacen = cons_almacen;
 
-    const {
-      cons_producto,
-      cons_almacen,
-      contenedor,
-      fecha_inspeccion_inicio,
-      fecha_inspeccion_fin
-    } = body
-
-
-    // 1. Construcción dinámica de filtros para mejorar el rendimiento de la DB
-    const filters = {};
-    filters.available = false
-
-    if (cons_producto) filters.cons_producto = cons_producto;
-
-    const inicio = new Date(fecha_inspeccion_inicio).setHours(0, 0, 0, 0)
-    const fin = new Date(fecha_inspeccion_fin).setHours(0, 0, 0, 0)
-    // Manejo de almacenes (Array o String)
-    if (cons_almacen) filters.cons_almacen = cons_almacen;
-
-    const filtroContenedor = contenedor
-      ? { contenedor: { [Op.like]: `%${contenedor}%` } }
-      : {};
-    const filtroInspeccion = fecha_inspeccion_inicio & fecha_inspeccion_fin
-      ? { fecha_inspeccion: { [Op.between]: [inicio, fin] } }
-      : {}
-
-
-    const includeModels = [
-      { model: db.productos, as: 'producto' },
-      { model: db.usuarios, as: 'usuario' },
-      { model: db.Contenedor, as: 'contenedor', where: filtroContenedor },
-      { model: db.MotivoDeUso, where: { consecutivo: "INSP02" } },
-      { model: db.Inspeccion, where: filtroInspeccion },
-    ];
-
-    // 2. Lógica de Paginación Centralizada
-    limit = parseInt(limit) || 25;
-    const page = parseInt(offset) || 1;
-    offset = (page - 1) * limit;
-
-
-    // findAndCountAll ejecuta ambas consultas de forma óptima
-    const { count, rows } = await db.serial_de_articulos.findAndCountAll({
-      where: filters,
-      include: includeModels,
-      limit: limit,
-      offset: offset,
-      order: [['updatedAt', 'DESC']],
-      distinct: true // Necesario cuando hay includes (JOINs) para contar correctamente
-    });
-
-    return { data: rows, total: count };
+  // 2. Preparación de filtros para tablas relacionadas
+  const filtroContenedor = {};
+  if (contenedor) {
+    filtroContenedor.contenedor = { [Op.like]: `%${contenedor}%` };
   }
+
+  const filtroInspeccion = {};
+  if (fecha_inspeccion_inicio && fecha_inspeccion_fin) {
+    // Formateamos a ISO 8601 con horas en 00:00:00.000Z
+    const inicio = new Date(fecha_inspeccion_inicio);
+    inicio.setUTCHours(0, 0, 0, 0);
+
+    const fin = new Date(fecha_inspeccion_fin);
+    fin.setUTCHours(23, 59, 59, 999); // El fin del día para incluir todo el rango
+
+    filtroInspeccion.fecha_inspeccion = { [Op.between]: [inicio.toISOString(), fin.toISOString()] };
+  }
+
+  const includeModels = [
+    { model: db.productos, as: 'producto' },
+    { model: db.usuarios, as: 'usuario' },
+    { 
+      model: db.Contenedor, 
+      as: 'contenedor', 
+      where: Object.keys(filtroContenedor).length > 0 ? filtroContenedor : null,
+      required: !!contenedor // Si hay filtro, hace INNER JOIN, si no, LEFT JOIN
+    },
+    { 
+      model: db.MotivoDeUso, 
+      where: { consecutivo: "INSP02" },
+      required: true 
+    },
+    { 
+      model: db.Inspeccion, 
+      where: Object.keys(filtroInspeccion).length > 0 ? filtroInspeccion : null,
+      required: !!fecha_inspeccion_inicio // Si busca por fecha, la inspección es obligatoria
+    },
+  ];
+
+  // 3. Lógica de Paginación
+  const parsedLimit = parseInt(limit) || 25;
+  const page = parseInt(offset) || 1;
+  const parsedOffset = (page - 1) * parsedLimit;
+
+  const { count, rows } = await db.serial_de_articulos.findAndCountAll({
+    where: filters,
+    include: includeModels,
+    limit: parsedLimit,
+    offset: parsedOffset,
+    order: [['updatedAt', 'DESC']],
+    distinct: true // Evita duplicados en el conteo por los JOINS
+  });
+
+  return { data: rows, total: count };
+}
 
 
 
