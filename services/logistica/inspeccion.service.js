@@ -1,5 +1,5 @@
 const boom = require('@hapi/boom');
-const { Op } = require('sequelize');
+const { Op, where } = require('sequelize');
 const db = require('../../models');
 
 class InspeccionService {
@@ -41,44 +41,67 @@ class InspeccionService {
     await db.Inspeccion.destroy({ where: { id } });
     return { message: 'La inspección fue eliminada', id };
   }
+
+  async paginate(offset, limit, body = {}) {
+
+
+    const {
+      cons_producto,
+      cons_almacen,
+      contenedor,
+      fecha_inspeccion_inicio,
+      fecha_inspeccion_fin
+    } = body
+
+
+       // 1. Construcción dinámica de filtros para mejorar el rendimiento de la DB
+       const filters = {};
+       filters.available = false
+   
+       if (cons_producto) filters.cons_producto = cons_producto;
+   
+   
+       // Manejo de almacenes (Array o String)
+       if (cons_almacen) filters.cons_almacen = cons_almacen;
+   
   
-  async paginate(offset, limit, filters = {}) {
-
-    console.log(offset,limit,filters, "hewwwwwin")
-
-/*const busqueda = {
-    "cons_producto": [
-        "SEL5"
-    ],
-    "cons_almacen": [
-        "BAN",
-        "525",
-    ],
-    "available": [
-        false
-    ],
-    "motivo_de_uso": "INSP02",
-    "contenedor": "rtr",
-    "fecha_inspeccion_inicio": "",
-    "fecha_inspeccion_fin": "2027-01-01"
-}*/
-  
-
-    const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
-    const whereClause = { ...filters };
-
-    const [result, total] = await Promise.all([
-      db.Inspeccion.findAll({
-        where: whereClause,
-        limit: parseInt(limit),
-        offset: parsedOffset,
-      }),
-      db.Inspeccion.count({ where: whereClause }),
-    ]);
 
 
-    return { data: result, total };
-  }
+       const includeModels = [
+         { model: db.productos, as: 'producto' },
+         { model: db.usuarios, as: 'usuario' },
+         { model: db.Contenedor, as: 'contenedor' },
+         { model: db.MotivoDeUso, where: {consecutivo: "INSP02"} },
+       ];
+      
+       // 2. Lógica de Paginación Centralizada
+       if (pagination) {
+         const limit = parseInt(pagination.limit) || 10;
+         const page = parseInt(pagination.offset) || 1;
+         const offset = (page - 1) * limit;
+   
+    
+         // findAndCountAll ejecuta ambas consultas de forma óptima
+         const { count, rows } = await db.serial_de_articulos.findAndCountAll({
+           where: filters,
+           include: includeModels,
+           limit: limit,
+           offset: offset,
+           order: [['updatedAt', 'DESC']],
+           distinct: true // Necesario cuando hay includes (JOINs) para contar correctamente
+         });
+   
+         return { data: rows, total: count };
+       }
+   
+       // Retorno sin paginación
+       return await db.serial_de_articulos.findAll({
+         where: filters,
+         include: includeModels,
+         order: [['updatedAt', 'DESC']]
+       });
+     }
+   
 }
 
 module.exports = InspeccionService;
