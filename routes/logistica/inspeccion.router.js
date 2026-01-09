@@ -15,11 +15,11 @@ router.get('/', async (req, res, next) => {
 });
 
 // Paginar inspecciones
-// Ejemplo: http://localhost:3000/api/v1/inspecciones/paginar?offset=1&limit=4
-router.post('/paginar', async (req, res, next) => {
+// Ejemplo: http://localhost:3000/api/v1/inspecciones/paginar?offset=1&limit=4&filters={"nombre":"inspeccion1"}
+router.get('/paginar', async (req, res, next) => {
   try {
-    const { offset, limit } = req.query;
-    const filterObject = req.body;
+    const { offset, limit, filters } = req.query;
+    const filterObject = filters ? JSON.parse(filters) : {};
     const items = await service.paginate(offset, limit, filterObject);
     res.json(items);
   } catch (error) {

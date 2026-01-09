@@ -14,12 +14,6 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: 'id_contenedor',
         foreignKey: 'id'
       })
-
-      this.hasOne(models.Inspeccion, {
-        foreignKey: 'id_contenedor',
-        sourceKey: 'id_contenedor'
-      });
-
       this.hasOne(models.Embarque, {
         sourceKey: 'id_embarque',
         foreignKey: 'id'

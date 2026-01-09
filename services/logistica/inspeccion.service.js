@@ -41,7 +41,7 @@ class InspeccionService {
     await db.Inspeccion.destroy({ where: { id } });
     return { message: 'La inspección fue eliminada', id };
   }
-
+  
   async paginate(offset, limit, filters = {}) {
 
 /*const busqueda = {
@@ -110,10 +110,6 @@ class InspeccionService {
     const [result, total] = await Promise.all([
       db.Inspeccion.findAll({
         where: whereClause,
-        include: [
-          { model: db.Contenedor }
-        ],
-        order: [["id_contenedor", "DESC"], ["fecha", "DESC"]],
         limit: parseInt(limit),
         offset: parsedOffset,
       }),

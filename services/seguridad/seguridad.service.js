@@ -160,6 +160,7 @@ class SeguridadService {
   }
 
 
+<<<<<<< HEAD
 async listarSeriales(pagination, body = {}) {
 
   const {
@@ -265,15 +266,57 @@ async listarSeriales(pagination, body = {}) {
       total: count,
       page: pagination.offset,
       limit,
-    };
-  }
+=======
+  async listarSeriales(pagination, body = {}) {
 
-  return db.serial_de_articulos.findAll({
-    where,
-    include,
-    order: [["updatedAt", "DESC"]],
-  });
-}
+    const { cons_producto = "", serial = "", bag_pack = "", s_pack = "", m_pack = "", l_pack = "", cons_almacen, available = false } = body;
+    console.log("heywin", cons_almacen)
+    // Determinar si cons_almacen es un array o una cadena de búsqueda
+    const almacenes = Array.isArray(cons_almacen) ? cons_almacen : { [Op.like]: `%${cons_almacen}%` };
+
+    const filters = {
+      cons_producto: { [Op.like]: `%${cons_producto}%` },
+      serial: { [Op.like]: `%${serial}%` },
+      bag_pack: { [Op.like]: `%${bag_pack}%` },
+      s_pack: { [Op.like]: `%${s_pack}%` },
+      m_pack: { [Op.like]: `%${m_pack}%` },
+      l_pack: { [Op.like]: `%${l_pack}%` },
+      cons_almacen: almacenes,
+      available: { [Op.or]: available },
+>>>>>>> parent of 73281d5 (Inspecciones)
+    };
+
+    const includeModels = [
+      { model: db.movimientos, as: 'movimiento' },
+      { model: db.productos, as: 'producto' },
+      { model: db.usuarios, as: 'usuario' },
+      { model: db.Contenedor, as: 'contenedor' },
+       { model: db.MotivoDeUso },
+       { model: db.Rechazo },
+      
+    ];
+
+    if (pagination) {
+      const { limit, offset } = pagination;
+      const parsedLimit = parseInt(limit);
+      const parsedOffset = (parseInt(offset) - 1) * parsedLimit;
+
+      const [total, result] = await Promise.all([
+        db.serial_de_articulos.count({ where: filters }),
+        db.serial_de_articulos.findAll({
+          where: filters,
+          include: includeModels,
+          limit: parsedLimit,
+          offset: parsedOffset,
+          order: [['updatedAt', 'DESC']]
+        }),
+      ]);
+
+      return { data: result, total };
+    }
+
+    return await db.serial_de_articulos.findAll({ where: filters, include: includeModels });
+  }
 
 
   // Método auxiliar para formatear fechas

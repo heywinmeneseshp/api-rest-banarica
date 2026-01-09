@@ -10,10 +10,7 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.hasOne(models.Contenedor, {
-        sourceKey: 'id_contenedor',
-        foreignKey: 'id'
-      })
+      // define association here
     }
   }
   Inspeccion.init({
@@ -40,8 +37,8 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     agente: DataTypes.STRING(100),
-    zona: DataTypes.STRING(100),
-    observaciones: {
+    zona: DataTypes.STRING(100), 
+      observaciones: {
       type: DataTypes.TEXT,
       allowNull: true
     },
