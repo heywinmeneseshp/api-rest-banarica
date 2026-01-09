@@ -21,6 +21,12 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: 'id_contenedor'
       });
 
+      
+       this.hasOne(models.Inspeccion, {
+        foreignKey: 'id_contenedor',
+        sourceKey: 'id_contenedor'
+      });
+
         this.hasOne(models.Rechazo, {
         foreignKey: 'id_contenedor',
         sourceKey: 'id_contenedor'
