@@ -160,222 +160,70 @@ class SeguridadService {
   }
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-async listarSeriales(pagination, body = {}) {
-
-  const {
-    cons_producto = "",
-    serial = "",
-    bag_pack = "",
-    s_pack = "",
-    m_pack = "",
-    l_pack = "",
-    cons_almacen = "",
-    available,
-    motivo_de_uso,
-    contenedor = "",
-    fecha_inspeccion_inicio ,
-    fecha_inspeccion_fin,
-  } = body;
-
-
-  // Helper para LIKE
-  const like = (value) => ({ [Op.like]: `%${value}%` });
-
-  // cons_almacen puede ser array o string
-  const almacenFilter = Array.isArray(cons_almacen)
-    ? { [Op.in]: cons_almacen }
-    : like(cons_almacen);
-
-  /** =========================
-   * WHERE principal
-   ========================= */
-  const where = {
-    cons_producto: like(cons_producto),
-    serial: like(serial),
-    bag_pack: like(bag_pack),
-    s_pack: like(s_pack),
-    m_pack: like(m_pack),
-    l_pack: like(l_pack),
-    cons_almacen: almacenFilter,
-  };
-
-  if (available !== undefined) {
-    where.available = available;
-  }
-
-  /** =========================
-   * INCLUDE dinámico
-   ========================= */
-  const include = [
-    { model: db.movimientos, as: "movimiento" },
-    { model: db.productos, as: "producto" },
-    { model: db.usuarios, as: "usuario" },
-    { model: db.Rechazo },
-    {
-      model: db.Contenedor,
-      as: "contenedor",
-      where: { contenedor: like(contenedor) },
-    }
-  ];
-
-  if (motivo_de_uso) {
-    include.push({
-      model: db.MotivoDeUso,
-      where: { consecutivo: motivo_de_uso },
-      required: true,
-    });
-  }
-
-  if (fecha_inspeccion_inicio && fecha_inspeccion_fin) {
-    include.push({
-      model: db.Inspeccion,
-      where: {
-        fecha_inspeccion: {
-          [Op.between]: [new Date(`${fecha_inspeccion_inicio}T00:00:00.000Z`), new Date(`${fecha_inspeccion_fin}T23:59:59.999Z`)],
-        },
-      },
-      required: true,
-    });
-  } else {
-    include.push({
-      model: db.Inspeccion,
-    });
-  }
-
-
-
-  /** =========================
-   * Paginación
-   ========================= */
-  if (pagination) {
-    const limit = Number(pagination.limit) || 10;
-    const offset = ((Number(pagination.offset) || 1) - 1) * limit;
-
-    const { rows, count } = await db.serial_de_articulos.findAndCountAll({
-      where,
-      include,
-      limit,
-      offset,
-      order: [["updatedAt", "DESC"]],
-      distinct: true,
-    });
-
-    return {
-      data: rows,
-      total: count,
-      page: pagination.offset,
-      limit,
-=======
-=======
->>>>>>> parent of 73281d5 (Inspecciones)
   async listarSeriales(pagination, body = {}) {
+    console.log(body)
+    const {
+      cons_producto, serial, bag_pack, s_pack, m_pack, l_pack,
+      cons_almacen, available
+    } = body;
 
-    const { cons_producto = "", serial = "", bag_pack = "", s_pack = "", m_pack = "", l_pack = "", cons_almacen, available = false } = body;
-    console.log("heywin", cons_almacen)
-    // Determinar si cons_almacen es un array o una cadena de búsqueda
-    const almacenes = Array.isArray(cons_almacen) ? cons_almacen : { [Op.like]: `%${cons_almacen}%` };
+    // 1. Construcción dinámica de filtros para mejorar el rendimiento de la DB
+    const filters = {};
 
-    const filters = {
-      cons_producto: { [Op.like]: `%${cons_producto}%` },
-      serial: { [Op.like]: `%${serial}%` },
-      bag_pack: { [Op.like]: `%${bag_pack}%` },
-      s_pack: { [Op.like]: `%${s_pack}%` },
-      m_pack: { [Op.like]: `%${m_pack}%` },
-      l_pack: { [Op.like]: `%${l_pack}%` },
-      cons_almacen: almacenes,
-      available: { [Op.or]: available },
-<<<<<<< HEAD
->>>>>>> parent of 73281d5 (Inspecciones)
-    };
+    if (cons_producto) filters.cons_producto = { [Op.like]: `%${cons_producto}%` };
+    if (serial) filters.serial = { [Op.like]: `%${serial}%` };
+    if (bag_pack) filters.bag_pack = { [Op.like]: `%${bag_pack}%` };
+    if (s_pack) filters.s_pack = { [Op.like]: `%${s_pack}%` };
+    if (m_pack) filters.m_pack = { [Op.like]: `%${m_pack}%` };
+    if (l_pack) filters.l_pack = { [Op.like]: `%${l_pack}%` };
+
+    // Manejo de almacenes (Array o String)
+    if (cons_almacen) {
+      filters.cons_almacen = Array.isArray(cons_almacen)
+        ? cons_almacen
+        : { [Op.like]: `%${cons_almacen}%` };
+    }
+
+    // Filtro booleano/estado
+    if (available !== undefined && available !== null) {
+      filters.available = available;
+    }
 
     const includeModels = [
       { model: db.movimientos, as: 'movimiento' },
       { model: db.productos, as: 'producto' },
       { model: db.usuarios, as: 'usuario' },
       { model: db.Contenedor, as: 'contenedor' },
-       { model: db.MotivoDeUso },
-       { model: db.Rechazo },
-      
+      { model: db.MotivoDeUso },
+      { model: db.Rechazo },
     ];
 
+    // 2. Lógica de Paginación Centralizada
     if (pagination) {
-      const { limit, offset } = pagination;
-      const parsedLimit = parseInt(limit);
-      const parsedOffset = (parseInt(offset) - 1) * parsedLimit;
+      const limit = parseInt(pagination.limit) || 10;
+      const page = parseInt(pagination.offset) || 1;
+      const offset = (page - 1) * limit;
 
-      const [total, result] = await Promise.all([
-        db.serial_de_articulos.count({ where: filters }),
-        db.serial_de_articulos.findAll({
-          where: filters,
-          include: includeModels,
-          limit: parsedLimit,
-          offset: parsedOffset,
-          order: [['updatedAt', 'DESC']]
-        }),
-      ]);
+      console.log(filters)
+      // findAndCountAll ejecuta ambas consultas de forma óptima
+      const { count, rows } = await db.serial_de_articulos.findAndCountAll({
+        where: filters,
+        include: includeModels,
+        limit: limit,
+        offset: offset,
+        order: [['updatedAt', 'DESC']],
+        distinct: true // Necesario cuando hay includes (JOINs) para contar correctamente
+      });
 
-      return { data: result, total };
+      return { data: rows, total: count };
     }
 
-    return await db.serial_de_articulos.findAll({ where: filters, include: includeModels });
-  }
-
-
-  // Método auxiliar para formatear fechas
-  _formatDate(dateString, type = 'start') {
-    try {
-      if (!dateString) return null;
-
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return null;
-
-      if (type === 'start') {
-        date.setUTCHours(0, 0, 0, 0);
-      } else if (type === 'end') {
-        date.setUTCHours(23, 59, 59, 999);
-      }
-
-      return date;
-    } catch (error) {
-      console.error('Error formateando fecha:', error);
-      return null;
-    }
-=======
-    };
-
-    const includeModels = [
-      { model: db.movimientos, as: 'movimiento' },
-      { model: db.productos, as: 'producto' },
-      { model: db.usuarios, as: 'usuario' },
-      { model: db.Contenedor, as: 'contenedor' },
-       { model: db.MotivoDeUso },
-       { model: db.Rechazo },
-      
-    ];
-
-    if (pagination) {
-      const { limit, offset } = pagination;
-      const parsedLimit = parseInt(limit);
-      const parsedOffset = (parseInt(offset) - 1) * parsedLimit;
-
-      const [total, result] = await Promise.all([
-        db.serial_de_articulos.count({ where: filters }),
-        db.serial_de_articulos.findAll({
-          where: filters,
-          include: includeModels,
-          limit: parsedLimit,
-          offset: parsedOffset,
-          order: [['updatedAt', 'DESC']]
-        }),
-      ]);
-
-      return { data: result, total };
-    }
-
-    return await db.serial_de_articulos.findAll({ where: filters, include: includeModels });
->>>>>>> parent of 73281d5 (Inspecciones)
+    // Retorno sin paginación
+    return await db.serial_de_articulos.findAll({
+      where: filters,
+      include: includeModels,
+      order: [['updatedAt', 'DESC']]
+    });
   }
 
 
