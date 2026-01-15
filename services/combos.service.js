@@ -64,7 +64,7 @@ class combosService {
   }
 
   async find() {
-    return await db.combos.findAll();
+    return await db.combos.findAll({ where: { isBlock: false }});
   }
 
   async findOneCombo(cons_combo) {
@@ -72,7 +72,7 @@ class combosService {
   }
 
   async findAllCombos() {
-    return await db.tabla_combos.findAll({ where: { isBlock: false } });
+    return await db.tabla_combos.findAll();
   }
 
   async findOne(consecutivo) {
