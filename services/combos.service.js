@@ -25,35 +25,35 @@ class combosService {
       if (!Array.isArray(dataArray) || dataArray.length === 0) {
         throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
       }
-  
+
       console.log(dataArray);
-  
-      const results = await db.combos.bulkCreate(dataArray, { 
+
+      const results = await db.combos.bulkCreate(dataArray, {
         validate: true,
         transaction // Pasa la transacción
       });
-  
+
       await transaction.commit(); // Confirma la transacción si todo salió bien
-  
+
       return { message: 'Carga masiva exitosa', count: results.length };
     } catch (error) {
       await transaction.rollback(); // Revierte los cambios si hay error
       console.error("Error en bulkCreate:", error);
-  
+
       if (error.name === "SequelizeUniqueConstraintError") {
         const codExistente = error.errors?.[0]?.value || "desconocido";
         throw boom.conflict(`El código '${codExistente}' ya existe. Debe ser único.`);
       }
-  
+
       if (error.name === "SequelizeValidationError") {
         const detalles = error.errors.map(err => err.message);
         throw boom.badRequest("Error de validación en los datos.", { detalles });
       }
-  
+
       throw boom.internal("Error interno del servidor al crear el item.");
     }
   }
-  
+
   async armarCombo(body) {
     try {
       await db.tabla_combos.create(body);
@@ -72,7 +72,7 @@ class combosService {
   }
 
   async findAllCombos() {
-    return await db.tabla_combos.findAll();
+    return await db.tabla_combos.findAll({ where: { isBlock: false } });
   }
 
   async findOne(consecutivo) {
@@ -98,20 +98,50 @@ class combosService {
     return { message: "El combo fue eliminado", consecutivo, }
   }
 
-  async paginate(offset, limit, nombre) {
-    if(!nombre) nombre = ""
-    let newlimit = parseInt(limit);
-    let newoffset = (parseInt(offset) - 1) * newlimit;
-    const result = await db.combos.findAll({
-      where: { nombre: { [Op.like]: `%${nombre}%` } },
-      limit: newlimit,
-      offset: newoffset,
-      order: [['id', 'DESC']] // Ordenar por id en orden descendente
-    });
-    const total = await db.combos.count({
-      where: { nombre: { [Op.like]: `%${nombre}%` } },
-    });
-    return { data: result, total: total };
+
+  async paginate(page = 1, limit = 10, nombre = "", filters = {}) {
+    // Configuración rápida
+    const currentPage = Math.max(1, parseInt(page) || 1);
+    const itemsPerPage = Math.min(parseInt(limit) || 10, 100);
+    const offset = (currentPage - 1) * itemsPerPage;
+    // WHERE inicial
+    const where = {
+      nombre: { [Op.like]: `%${String(nombre || "").trim()}%` },
+      isBlock: true // Valor por defecto
+    };
+    // Manejo inteligente de isBlock
+    if (filters.isBlock !== undefined) {
+      const val = filters.isBlock;
+      const arr = Array.isArray(val) ? val : [val];
+      const bools = arr.map(v =>
+        v === true || v === 'true' ? 'true' :
+          v === false || v === 'false' ? 'false' : null
+      ).filter(Boolean);
+      const hasTrue = bools.includes('true');
+      const hasFalse = bools.includes('false');
+
+      // Solo actualizar si no son ambos
+      if (!(hasTrue && hasFalse)) {
+        where.isBlock = hasFalse ? false : true;
+      } else {
+        delete where.isBlock; // Mostrar todos
+      }
+    }
+
+    // Consulta paralela
+    const [items, total] = await Promise.all([
+      db.combos.findAll({ where, limit: itemsPerPage, offset, order: [['id', 'DESC']] }),
+      db.combos.count({ where })
+    ]);
+
+    return {
+      data: items,
+      total,
+      page: currentPage,
+      limit: itemsPerPage,
+      totalPages: Math.ceil(total / itemsPerPage),
+      hasMore: currentPage * itemsPerPage < total
+    };
   }
 
 }

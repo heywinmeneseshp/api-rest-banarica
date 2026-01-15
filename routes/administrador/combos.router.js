@@ -18,10 +18,11 @@ router.get("/", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
-router.get("/paginar", async (req, res, next) => {
+router.post("/paginar", async (req, res, next) => {
   try {
     const { page, limit, nombre } = req.query;
-    const items = await service.paginate(page, limit, nombre);
+    const body = req.body;
+    const items = await service.paginate(page, limit, nombre, body);
     res.json(items);
   } catch (error) {
     next(error);
