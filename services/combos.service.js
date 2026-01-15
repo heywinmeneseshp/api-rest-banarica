@@ -107,7 +107,7 @@ class combosService {
     // WHERE inicial
     const where = {
       nombre: { [Op.like]: `%${String(nombre || "").trim()}%` },
-      isBlock: true // Valor por defecto
+      isBlock: false // Valor por defecto
     };
     // Manejo inteligente de isBlock
     if (filters.isBlock !== undefined) {
