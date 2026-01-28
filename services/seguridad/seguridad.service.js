@@ -544,7 +544,7 @@ class SeguridadService {
           );
 
           if (!primerArticulo) return;
-console.log(
+          console.log(
             primerArticulo.dataValues.cons_almacen,  // primer parámetro: cons_almacen
             cons_producto,                          // segundo parámetro: cons_producto
             { cantidad: productosCantidad[cons_producto] }, "heywin")

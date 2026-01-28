@@ -88,6 +88,7 @@ class StockServices {
   async update(cons_almacen, cons_producto, changes) {
     const updatedItem = await db.stock.update(changes, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     if (updatedItem == 0) throw boom.conflict('El item no existe')
+      console.log(cons_almacen, cons_producto, changes, "heywinnnnnnnnnnnnnnnnnnnnnn")
     return changes;
   }
 
@@ -184,102 +185,102 @@ class StockServices {
   }
 
   async subtractAmounts(cons_almacen, cons_producto, body) {
-  try {
-    console.log(`📦 Buscando stock: ${cons_producto} en ${cons_almacen}, cantidad a restar: ${body.cantidad}`);
-    
-    // Buscar el item
-    const item = await db.stock.findOne({ 
-      where: { 
-        cons_almacen: cons_almacen, 
-        cons_producto: cons_producto 
-      } 
-    });
-    
-    let nuevaCantidad;
-    
-    // Si no existe, crearlo con cantidad inicial 0
-    if (!item) {
-      console.log(`⚠️ Producto ${cons_producto} no encontrado en almacén ${cons_almacen}. Creando registro...`);
-      
-      // Crear registro con cantidad inicial 0
-      await db.stock.create({
-        cons_almacen: cons_almacen,
+    try {
+      console.log(`📦 Buscando stock: ${cons_producto} en ${cons_almacen}, cantidad a restar: ${body.cantidad}`);
+
+      // Buscar el item
+      const item = await db.stock.findOne({
+        where: {
+          cons_almacen: cons_almacen,
+          cons_producto: cons_producto
+        }
+      });
+
+      let nuevaCantidad;
+
+      // Si no existe, crearlo con cantidad inicial 0
+      if (!item) {
+        console.log(`⚠️ Producto ${cons_producto} no encontrado en almacén ${cons_almacen}. Creando registro...`);
+
+        // Crear registro con cantidad inicial 0
+        await db.stock.create({
+          cons_almacen: cons_almacen,
+          cons_producto: cons_producto,
+          cantidad: 0,
+          no_disponible: 0,
+          aviso: null,
+          isBlock: false
+        });
+
+        console.log(`✅ Registro creado para ${cons_producto} en ${cons_almacen}`);
+
+        // Como se creó con 0, la resta será negativa
+        nuevaCantidad = 0 - parseFloat(body.cantidad);
+      } else {
+        // Si existe, calcular la nueva cantidad
+        nuevaCantidad = parseFloat(item.cantidad) - parseFloat(body.cantidad);
+      }
+
+      // Actualizar la cantidad en la base de datos
+      await db.stock.update(
+        { cantidad: nuevaCantidad },
+        { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } }
+      );
+
+      const data = {
         cons_producto: cons_producto,
-        cantidad: 0,
-        no_disponible: 0,
-        aviso: null,
-        isBlock: false
-      });
-      
-      console.log(`✅ Registro creado para ${cons_producto} en ${cons_almacen}`);
-      
-      // Como se creó con 0, la resta será negativa
-      nuevaCantidad = 0 - parseFloat(body.cantidad);
-    } else {
-      // Si existe, calcular la nueva cantidad
-      nuevaCantidad = parseFloat(item.cantidad) - parseFloat(body.cantidad);
-    }
-    
-    // Actualizar la cantidad en la base de datos
-    await db.stock.update(
-      { cantidad: nuevaCantidad }, 
-      { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } }
-    );
-    
-    const data = { 
-      cons_producto: cons_producto, 
-      cantidad: nuevaCantidad,
-      cons_almacen: cons_almacen
-    };
+        cantidad: nuevaCantidad,
+        cons_almacen: cons_almacen
+      };
 
-    console.log(`✅ Stock actualizado: ${cons_producto} en ${cons_almacen}, nueva cantidad: ${nuevaCantidad}`);
+      console.log(`✅ Stock actualizado: ${cons_producto} en ${cons_almacen}, nueva cantidad: ${nuevaCantidad}`);
 
-    // Lógica específica para PRE33 (precintos)
-    if (cons_producto == "PRE33") {
-      // Si el item no existía, buscar el registro recién creado
-      const itemActual = item || await db.stock.findOne({
-        where: { cons_almacen: cons_almacen, cons_producto: cons_producto }
-      });
-      
-      if (nuevaCantidad < 11) {
-        if (itemActual?.aviso == null || itemActual?.aviso == 1) {
-          console.log(`🚨 Alerta PRE33: Stock bajo en ${cons_almacen} (${nuevaCantidad} unidades)`);
-          
-          await serviceEmail.send(
-            'hmeneses@banarica.com, jtaite@banarica.com',
-            `Alerta Precintos - ${cons_almacen}  ${new Date().getTime()}`,
-            `<h3>Almacén <b>${cons_almacen}</b></h3>
+      // Lógica específica para PRE33 (precintos)
+      if (cons_producto == "PRE33") {
+        // Si el item no existía, buscar el registro recién creado
+        const itemActual = item || await db.stock.findOne({
+          where: { cons_almacen: cons_almacen, cons_producto: cons_producto }
+        });
+
+        if (nuevaCantidad < 11) {
+          if (itemActual?.aviso == null || itemActual?.aviso == 1) {
+            console.log(`🚨 Alerta PRE33: Stock bajo en ${cons_almacen} (${nuevaCantidad} unidades)`);
+
+            await serviceEmail.send(
+              'hmeneses@banarica.com, jtaite@banarica.com',
+              `Alerta Precintos - ${cons_almacen}  ${new Date().getTime()}`,
+              `<h3>Almacén <b>${cons_almacen}</b></h3>
             <p>Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b></p>
             <p>Cantidad actual: <b>${nuevaCantidad}</b> unidades</p>`
-          );
-          
-          await db.stock.update(
-            { aviso: 0 }, 
-            { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } }
-          );
+            );
+
+            await db.stock.update(
+              { aviso: 0 },
+              { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } }
+            );
+          }
+        }
+
+        if (nuevaCantidad >= 11) {
+          if (itemActual?.aviso == null || itemActual?.aviso == 0) {
+            await db.stock.update(
+              { aviso: 1 },
+              { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } }
+            );
+          }
         }
       }
 
-      if (nuevaCantidad >= 11) {
-        if (itemActual?.aviso == null || itemActual?.aviso == 0) {
-          await db.stock.update(
-            { aviso: 1 }, 
-            { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } }
-          );
-        }
-      }
+      return {
+        message: item ? "El item fue actualizado" : "Registro creado y actualizado",
+        data: data
+      };
+
+    } catch (error) {
+      console.error('❌ Error en subtractAmounts:', error);
+      throw error;
     }
-
-    return { 
-      message: item ? "El item fue actualizado" : "Registro creado y actualizado", 
-      data: data 
-    };
-    
-  } catch (error) {
-    console.error('❌ Error en subtractAmounts:', error);
-    throw error;
   }
-}
 
   async exportCombo(body) {
     const almacen = body.cons_almacen;

@@ -119,6 +119,22 @@ router.patch("/habilitar/:cons_almacen/:cons_producto",
     }
   });
 
+
+  router.post("/actualizar/:cons_almacen/:cons_producto",
+  async (req, res, next) => {
+    try {
+      const { cons_almacen, cons_producto } = req.params
+      const changes = req.body;
+      const item = await service.update(cons_almacen, cons_producto, changes)
+      res.json({
+        message: 'El item fue actualizado',
+        data: item
+      })
+    } catch (error) {
+      next(error);
+    }
+  });
+
 router.patch("/sumar/:cons_almacen/:cons_producto",
   validatorHandler(addAndSubtract, "body"),
   async (req, res, next) => {
