@@ -195,14 +195,14 @@ class SeguridadService {
       { model: db.Contenedor, as: 'contenedor' },
       { model: db.MotivoDeUso },
     ];
-   
+
     // 2. Lógica de Paginación Centralizada
     if (pagination) {
       const limit = parseInt(pagination.limit) || 10;
       const page = parseInt(pagination.offset) || 1;
       const offset = (page - 1) * limit;
 
- 
+
       // findAndCountAll ejecuta ambas consultas de forma óptima
       const { count, rows } = await db.serial_de_articulos.findAndCountAll({
         where: filters,
@@ -457,7 +457,6 @@ class SeguridadService {
   }
 
   async usarSeriales(body) {
-
     const { formulario, motivo_de_uso } = body;
     console.log(body);
 
@@ -465,7 +464,7 @@ class SeguridadService {
     const transaction = await db.sequelize.transaction();
 
     try {
-      // 🔹 Buscar kit de inventario asociado a la bolsa
+      // 🔹 Buscar kit de inventario
       const kitsInventario = await db.serial_de_articulos.findAll({
         where: { bag_pack: formulario.bolsa, available: true },
         transaction,
@@ -476,10 +475,10 @@ class SeguridadService {
       }
 
       // 🔹 Contar cuántas veces aparece cada cons_producto
-      const productosCantidad = kitsInventario.reduce((acc, { dataValues: article }) => {
-        acc[article.cons_producto] = (acc[article.cons_producto] || 0) + 1;
-        return acc;
-      }, {});
+      const productosCantidad = {};
+      kitsInventario.forEach(({ dataValues: article }) => {
+        productosCantidad[article.cons_producto] = (productosCantidad[article.cons_producto] || 0) + 1;
+      });
 
       // 🔹 Asegurar motivo de uso
       let cons_motivo_de_uso = motivo_de_uso?.consecutivo || "PRED01";
@@ -493,7 +492,7 @@ class SeguridadService {
           },
           transaction,
         });
-        cons_motivo_de_uso = moviUso.id; // Guardar solo el ID
+        cons_motivo_de_uso = moviUso.id;
       } else {
         cons_motivo_de_uso = motivo_de_uso.id;
       }
@@ -509,10 +508,9 @@ class SeguridadService {
         transaction
       );
 
-      // 🔹 Procesar artículos del inventario
+      // 🔹 1. PRIMERO: Actualizar cada artículo individualmente
       await Promise.all(
         kitsInventario.map(async ({ dataValues: article }) => {
-          // Desactivar artículo y actualizar su estado
           const updateResult = await db.serial_de_articulos.update(
             {
               available: false,
@@ -531,29 +529,53 @@ class SeguridadService {
           if (updateResult[0] === 0) {
             throw new Error(`❌ No se pudo actualizar el artículo con ID: ${article.id}`);
           }
-
-          // Restar del stock con la cantidad correcta
-          await stockService.subtractAmounts(
-            article.cons_almacen,
-            article.cons_producto,
-            { cantidad: productosCantidad[article.cons_producto] }
-          );
         })
       );
 
-      // 🔹 Registrar movimientos en historial (solo una vez por `cons_producto`)
+      // 🔹 2. SEGUNDO: Restar del stock (SOLO UNA VEZ POR PRODUCTO)
+      // Obtener productos únicos
+      const productosUnicos = [...new Set(kitsInventario.map(item => item.dataValues.cons_producto))];
+
+      await Promise.all(
+        productosUnicos.map(async (cons_producto) => {
+          // Encontrar el primer artículo de este producto para obtener su almacén
+          const primerArticulo = kitsInventario.find(
+            item => item.dataValues.cons_producto === cons_producto
+          );
+
+          if (!primerArticulo) return;
+console.log(
+            primerArticulo.dataValues.cons_almacen,  // primer parámetro: cons_almacen
+            cons_producto,                          // segundo parámetro: cons_producto
+            { cantidad: productosCantidad[cons_producto] }, "heywin")
+          // Llamar a subtractAmounts con los parámetros correctos
+          await stockService.subtractAmounts(
+            primerArticulo.dataValues.cons_almacen,  // primer parámetro: cons_almacen
+            cons_producto,                          // segundo parámetro: cons_producto
+            { cantidad: productosCantidad[cons_producto] }  // tercer parámetro: body con cantidad
+          );
+
+          console.log(`✅ Restado stock: ${cons_producto}, cantidad: ${productosCantidad[cons_producto]}, almacén: ${primerArticulo.dataValues.cons_almacen}`);
+        })
+      );
+
+      // 🔹 3. Registrar movimientos en historial
       await Promise.all(
         Object.entries(productosCantidad).map(async ([cons_producto, cantidad]) => {
+          const primerArticulo = kitsInventario.find(
+            item => item.dataValues.cons_producto === cons_producto
+          );
+
           await historialMovimientoService.create(
             {
               cons_movimiento: movimiento.consecutivo,
               cons_producto,
-              cons_almacen_gestor: kitsInventario[0].dataValues.cons_almacen, // Tomamos el almacén del primer producto
-              cons_almacen_receptor: kitsInventario[0].dataValues.cons_almacen, // Misma lógica
+              cons_almacen_gestor: primerArticulo.dataValues.cons_almacen,
+              cons_almacen_receptor: primerArticulo.dataValues.cons_almacen,
               cons_lista_movimientos: "EX",
               tipo_movimiento: "Salida",
               razon_movimiento: "Inspección antinarcóticos",
-              cantidad: cantidad.toString(), // Convertimos a string si la DB lo requiere
+              cantidad: cantidad.toString(),
             },
             transaction
           );
@@ -563,7 +585,8 @@ class SeguridadService {
       // 🔹 Confirmar transacción
       await transaction.commit();
       console.log("✅ Inspección antinarcóticos completada con éxito.");
-      return true
+      return true;
+
     } catch (error) {
       // 🔹 Revertir transacción en caso de error
       if (transaction) await transaction.rollback();
