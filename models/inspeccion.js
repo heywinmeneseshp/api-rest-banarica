@@ -29,10 +29,8 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TIME,
       allowNull: true,
       validate: {
-        isAfterStart(value) {
-          if (value && this.hora_inicio && value <= this.hora_inicio) {
-            throw new Error('La hora fin debe ser posterior a la hora inicio');
-          }
+        notEmpty: {
+          msg: 'La hora final es requerida'
         }
       }
     },
