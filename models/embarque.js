@@ -26,9 +26,9 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'id',
         sourceKey: 'id_buque'
       });
-      this.hasOne(models.semanas, {
-        foreignKey: 'id',
-        sourceKey: 'id_semana'
+      this.belongsTo(models.semanas, {
+        targetKey: 'id',
+        foreignKey: 'id_semana'
       });
       this.hasMany(models.Listado, { foreignKey: 'id_embarque', sourceKey: "id" });
       // define association here

@@ -6,7 +6,7 @@ const { Op } = require('sequelize');
 
 class SemanasService {
 
-  constructor() {}
+  constructor() { }
 
 
   async create(data) {
@@ -27,7 +27,7 @@ class SemanasService {
   }
 
   async filtrar(body) {
-   
+
     try {
       // Destructuramos `createdAt` de body para evitar acceder múltiples veces
       const { createdAt, ...otherBody } = body;
@@ -36,7 +36,7 @@ class SemanasService {
       // Fusionamos otros filtros y el de la fecha si aplica
       const filtros = { ...otherBody, ...filtroFecha };
       // Realizamos la búsqueda con los filtros
-     console.log(filtros);
+      console.log(filtros);
       const semana = await db.semanas.findAll({ where: filtros });
       // Si no se encuentran resultados, lanzamos un error
       if (!semana || semana.length === 0) {
@@ -48,7 +48,7 @@ class SemanasService {
       throw boom.badImplementation('Error al filtrar los datos', { error });
     }
   }
-  
+
 
   async update(id, changes) {
     const semana = await db.semanas.findByPk(id);
@@ -64,14 +64,26 @@ class SemanasService {
     return { message: "El item fue eliminado" };
   }
 
-  async paginar(offset, limit, consecutivo ) {
-    const newOffset = (offset - 1) * limit;
+  async paginar(offset, limit, consecutivo) {
+    // CORRECCIÓN CRUCIAL: Convertir a números enteros
+    const pLimit = parseInt(limit, 10) || 10;
+    const pPage = parseInt(offset, 10) || 1;
+
+    // Calcular el salto de registros
+    const newOffset = (pPage - 1) * pLimit;
+
+    console.log(`Ejecutando paginación: Offset real ${newOffset}, Limite ${pLimit}`);
+
     return await db.semanas.findAll({
-        limit: limit,
-        offset: newOffset,
-        where: { consecutivo: { [Op.like]: `%${consecutivo}%` } }
+      // Ahora pasamos números, no strings
+      limit: pLimit,
+      offset: newOffset,
+      where: {
+        consecutivo: { [Op.like]: `%${consecutivo}%` }
+      },
+      order: [['id', 'DESC']]
     });
-}
+  }
 
 
 }

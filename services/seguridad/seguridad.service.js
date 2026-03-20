@@ -366,6 +366,7 @@ class SeguridadService {
                 id_usuario: formulario?.id_usuario,
                 habilitado: false,
                 observaciones: formulario.observaciones,
+                fecha_rechazo: formulario.fecha,
               },
               { transaction }
             )

@@ -1,6 +1,7 @@
 const boom = require('@hapi/boom');
 const { Op, where } = require('sequelize');
 const db = require('../../models');
+const { required } = require('joi');
 
 class RechazoService {
   async create(data) {
@@ -43,77 +44,88 @@ class RechazoService {
   }
 
 
-  async paginate(offset, limit, body) {
-    try {
-        console.log("Cuerpo recibido:", body);
 
-        // Validar y calcular offset y limit
-        const parsedLimit = Number.isNaN(parseInt(limit)) ? 10 : Math.max(1, parseInt(limit));
-        const parsedOffset = Number.isNaN(parseInt(offset)) ? 0 : Math.max(0, (parseInt(offset) - 1) * parsedLimit);
 
-        // Extraer filtros con valores predeterminados
-        const { semana = "", productor = "", contenedor = "", producto = "" } = body;
+async paginate(offset, limit, body) {
+  try {
+    const parsedLimit = parseInt(limit, 10) || 10;
+    const currentPage = parseInt(offset, 10) || 1;
+    const parsedOffset = (currentPage - 1) * parsedLimit;
 
-        // Construcción de filtros dinámicos
-        const whereConditions = {};
-        if (contenedor) whereConditions["$Contenedor.contenedor$"] = { [Op.like]: `%${contenedor}%` };
-        if (productor) whereConditions["$almacenes.nombre$"] = { [Op.like]: `%${productor}%` };
-        if (producto) whereConditions["$combos.nombre$"] = { [Op.like]: `%${producto}%` };
-        if (semana) whereConditions["$Contenedor.Listado.Embarque.semanas.consecutivo$"] = { [Op.like]: `%${semana}%` };
+    const { semana, productor, contenedor, producto } = body;
 
-        console.log("Filtros aplicados:", whereConditions);
+    const whereConditions = {}; 
 
-        // Definir asociaciones
-        const includes = [
-            {
-                model: db.Contenedor,
-                include: [
-                    {
-                        model: db.Listado,
-                        include: [
-                            {
-                                model: db.Embarque,
-                                include: [{ model: db.semanas }]
-                            },
-                            { model: db.combos },
-                            { model: db.almacenes, as: "almacen" }
-                        ]
-                    }
-                ]
-            },
-            { model: db.MotivoDeRechazo },
-            { model: db.usuarios },
-            { model: db.almacenes },
-            { model: db.combos }
-        ];
+    const includes = [
+      {
+        model: db.Contenedor,
+        // CRUCIAL: Si hay semana, el Contenedor TIENE que ser obligatorio
+        required: !!(semana || contenedor), 
+        where: contenedor ? { contenedor: { [Op.like]: `%${contenedor}%` } } : {},
+        include: [
+          {
+            model: db.Listado,
+            // CRUCIAL: Si hay semana, el Listado TIENE que ser obligatorio
+            required: !!semana, 
+            include: [
+              {
+                model: db.Embarque,
+                // Si pones el where aquí, Sequelize debería filtrar, 
+                // pero usamos !!semana para forzar el INNER JOIN
+                required: !!semana, 
+                where: semana ? { id_semana: semana } : {}, 
+                include: [ { model: db.semanas } ]
+              },
+              { model: db.combos },
+              { model: db.almacenes, as: "almacen" }
+            ]
+          }
+        ]
+      },
+      { model: db.MotivoDeRechazo },
+      { model: db.usuarios },
+      { 
+        model: db.almacenes, 
+        where: productor ? { nombre: { [Op.like]: `%${productor}%` } } : {},
+        required: !!productor // Si buscas productor y no hay match, elimina el Rechazo
+      },
+      { 
+        model: db.combos,
+        where: producto ? { nombre: { [Op.like]: `%${producto}%` } } : {},
+        required: !!producto // Si buscas producto y no hay match, elimina el Rechazo
+      }
+    ];
 
-        // Consultas en paralelo para mejor rendimiento
-        const [result, total] = await Promise.all([
-            db.Rechazo.findAll({
-                limit: parsedLimit,
-                offset: parsedOffset,
-                where: whereConditions,
-                include: includes,
-                order: [['createdAt', 'DESC']]
-            }),
-            db.Rechazo.count({
-                where: whereConditions,
-                distinct: true, // Evita duplicados en el conteo
-                col: 'id' // Se asegura de contar solo los registros principales
-            })
-        ]);
+    const [result, total] = await Promise.all([
+      db.Rechazo.findAll({
+        limit: parsedLimit,
+        offset: parsedOffset,
+        where: whereConditions,
+        include: includes,
+        order: [['id', 'DESC']],
+        distinct: true, 
+        subQuery: false // Mantener en false para que los filtros profundos funcionen
+      }),
+      db.Rechazo.count({
+        where: whereConditions,
+        include: includes, 
+        distinct: true,
+        col: 'id'
+      })
+    ]);
 
-        return { data: result, total };
-    } catch (error) {
-        console.error("Error en la paginación:", error.message);
-        throw new Error("Error al obtener los datos paginados. Detalles: " + error.message);
-    }
+    return { 
+      data: result, 
+      total,
+      currentPage,
+      totalPages: Math.ceil(total / parsedLimit)
+    };
+
+  } catch (error) {
+    console.error("Error en la paginación de Rechazos:", error.message);
+    throw error;
+  }
 }
-
-  
-
-
-
 }
 
 module.exports = RechazoService;

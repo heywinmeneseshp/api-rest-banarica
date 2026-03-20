@@ -11,25 +11,25 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      this.hasOne(models.Contenedor, {
-        foreignKey: "id",
-        sourceKey: "id_contenedor"
+      this.belongsTo(models.Contenedor, {
+        foreignKey: "id_contenedor",
+        targetKey: "id"
       })
-      this.hasOne(models.MotivoDeRechazo, {
-        sourceKey: "id_motivo_de_rechazo",
-        foreignKey: "id"
+      this.belongsTo(models.MotivoDeRechazo, {
+        foreignKey: "id_motivo_de_rechazo",
+        targetKey: "id"
       })
-      this.hasOne(models.combos, {
-        sourceKey: "id_producto",
-        foreignKey: "id"
+      this.belongsTo(models.combos, {
+        foreignKey: "id_producto",
+        targetKey: "id"
       })
-      this.hasOne(models.usuarios, {
-        sourceKey: "id_usuario",
-        foreignKey: "id"
+      this.belongsTo(models.usuarios, {
+        foreignKey: "id_usuario",
+        targetKey: "id"
       })
-      this.hasOne(models.almacenes, {
-        sourceKey: "cod_productor",
-        foreignKey: "consecutivo"
+      this.belongsTo(models.almacenes, {
+        foreignKey: "cod_productor",
+        targetKey: "consecutivo"
       })
 
     }
@@ -43,7 +43,8 @@ module.exports = (sequelize, DataTypes) => {
     id_contenedor: DataTypes.INTEGER,
     observaciones: DataTypes.TEXT,
     id_usuario: DataTypes.INTEGER,
-    habilitado: DataTypes.BOOLEAN
+    habilitado: DataTypes.BOOLEAN,
+    fecha_rechazo: DataTypes.DATE
   }, {
     sequelize,
     modelName: 'Rechazo',

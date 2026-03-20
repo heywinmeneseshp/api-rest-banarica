@@ -41,6 +41,7 @@ router.post("/filter", async (req, res, next) => {
 router.post('/paginar', async (req, res, next) => {
   try {
     const { offset, limit, consecutivo } = req.query;
+    console.log("hewwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww", offset, limit, consecutivo  )
     const items = await service.paginar(offset, limit, consecutivo);
     res.json(items);
   } catch (error) {
