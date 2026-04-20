@@ -1,4 +1,5 @@
 const express = require("express");
+const passport = require('passport');
 
 const EmailService = require('../services/email.service');
 
@@ -7,7 +8,9 @@ const router = express.Router();
 const service = new EmailService();
 
 
-router.post("/send", async (req, res, next) => {
+router.post("/send",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
   try {
     const body = req.body;
     const items = await service.send(body);

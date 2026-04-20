@@ -50,6 +50,7 @@ module.exports = (sequelize, DataTypes) => {
     conductor_id: DataTypes.STRING,
     vehiculo_id: DataTypes.STRING,
     contenedor: DataTypes.STRING,
+    bl: DataTypes.STRING,
     semana: DataTypes.STRING,
     fecha: DataTypes.STRING,
     detalles: DataTypes.STRING,

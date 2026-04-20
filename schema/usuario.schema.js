@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const { ROLES } = require('../middlewares/auth.handler');
 
 const username = Joi.string();
 const nombre = Joi.string();
@@ -6,7 +7,7 @@ const apellido = Joi.string();
 const email = Joi.string().email();
 const password = Joi.string();
 const tel = Joi.string().min(7);
-const id_rol = Joi.string();
+const id_rol = Joi.string().valid(ROLES.SUPER_ADMIN, ROLES.OPERADOR);
 const isBlock = Joi.boolean();
 
 const id_almacen = Joi.string();

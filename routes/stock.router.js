@@ -198,7 +198,7 @@ router.get("/:id", async (req, res, next) => {
 router.delete("/:cons_almacen/:cons_producto", async (req, res, next) => {
   const { cons_almacen, cons_producto } = req.params
   try {
-    const result = await service.delete(cons_almacen, cons_producto)
+    const result = await service.deleteStock(cons_almacen, cons_producto)
     res.json(result)
   } catch (error) {
     next(error);

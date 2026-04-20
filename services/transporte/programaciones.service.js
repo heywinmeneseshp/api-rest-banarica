@@ -4,8 +4,133 @@ const db = require('../../models');
 
 
 class ProgramacionService {
+  getLiquidatedBalance(record) {
+    if (!record) {
+      return null;
+    }
+
+    if (record.stock_real != null && record.stock_real !== '') {
+      return Number(record.stock_real);
+    }
+
+    if (record.stock_final != null && record.stock_final !== '') {
+      return Number(record.stock_final);
+    }
+
+    return null;
+  }
+
+  normalizeDate(value) {
+    if (!value) {
+      return '';
+    }
+
+    const text = String(value).trim();
+    const exactMatch = text.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (exactMatch) {
+      return exactMatch[1];
+    }
+
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  async getLastLiquidatedRecordByVehicle(vehiculoId) {
+    if (!vehiculoId) {
+      return null;
+    }
+
+    return db.record_consumos.findOne({
+      where: {
+        vehiculo_id: String(vehiculoId),
+        liquidado: true,
+      },
+      order: [['fecha', 'DESC'], ['id', 'DESC']],
+    });
+  }
+
+  async validateFechaPosteriorALiquidacion(vehiculoId, fecha) {
+    const normalizedFecha = this.normalizeDate(fecha);
+    if (!vehiculoId || !normalizedFecha) {
+      return null;
+    }
+
+    const lastLiquidatedRecord = await this.getLastLiquidatedRecordByVehicle(vehiculoId);
+    const lastLiquidatedDate = this.normalizeDate(lastLiquidatedRecord?.fecha);
+
+    if (lastLiquidatedDate && normalizedFecha < lastLiquidatedDate) {
+      throw boom.conflict(`No se puede programar el vehiculo en ${normalizedFecha} porque su ultima fecha liquidada es ${lastLiquidatedDate}`);
+    }
+
+    return lastLiquidatedRecord;
+  }
+
+  async validateSaldoConsistenteConUltimaLiquidacion(vehiculoId) {
+    if (!vehiculoId) {
+      return null;
+    }
+
+    const [vehiculo, lastLiquidatedRecord] = await Promise.all([
+      db.vehiculo.findOne({ where: { id: String(vehiculoId) } }),
+      this.getLastLiquidatedRecordByVehicle(vehiculoId),
+    ]);
+
+    if (!vehiculo || !lastLiquidatedRecord) {
+      return null;
+    }
+
+    const saldoLiquidado = this.getLiquidatedBalance(lastLiquidatedRecord);
+    if (saldoLiquidado == null || Number.isNaN(saldoLiquidado)) {
+      return null;
+    }
+
+    const lastTanqueo = await db.tanqueos.findOne({
+      where: { vehiculo_id: String(vehiculoId) },
+      order: [['fecha', 'DESC'], ['id', 'DESC']],
+    });
+
+    const lastLiquidatedDate = this.normalizeDate(lastLiquidatedRecord.fecha);
+    const lastTanqueoDate = this.normalizeDate(lastTanqueo?.fecha);
+    const saldoBase = lastTanqueoDate && lastLiquidatedDate && lastTanqueoDate >= lastLiquidatedDate
+      ? Number(lastTanqueo?.saldo_nuevo ?? saldoLiquidado)
+      : saldoLiquidado;
+
+    if (saldoBase == null || Number.isNaN(saldoBase)) {
+      return null;
+    }
+
+    const saldoActual = Number(vehiculo.combustible || 0);
+    if (Math.abs(saldoActual - saldoBase) > 0.0001) {
+      throw boom.conflict(`El vehiculo ${vehiculo.placa || vehiculo.id} tiene un descuadre de saldo. Saldo actual: ${saldoActual.toFixed(2)}. Ultimo saldo conciliado: ${saldoBase.toFixed(2)} con fecha ${lastTanqueoDate && lastTanqueoDate >= lastLiquidatedDate ? lastTanqueoDate : lastLiquidatedDate}`);
+    }
+
+    return lastLiquidatedRecord;
+  }
+
+  async validateBl(bl) {
+    if (!bl) {
+      return null;
+    }
+
+    const embarque = await db.Embarque.findOne({ where: { bl } });
+    if (!embarque) {
+      throw boom.notFound(`El BL ${bl} no existe en embarques`);
+    }
+
+    return embarque;
+  }
 
   async create(data) {
+    await this.validateBl(data?.bl);
+    await this.validateFechaPosteriorALiquidacion(data?.vehiculo_id, data?.fecha);
+    await this.validateSaldoConsistenteConUltimaLiquidacion(data?.vehiculo_id);
     const body = { ...data, eliminado: false }
     return await db.programacion.create(body);
   }
@@ -35,6 +160,13 @@ class ProgramacionService {
     if (!item) {
       throw boom.notFound('El item no existe');
     }
+    if (Object.prototype.hasOwnProperty.call(changes, 'bl')) {
+      await this.validateBl(changes.bl);
+    }
+    const vehiculoId = changes?.vehiculo_id || item?.vehiculo_id;
+    const fecha = Object.prototype.hasOwnProperty.call(changes, 'fecha') ? changes.fecha : item?.fecha;
+    await this.validateFechaPosteriorALiquidacion(vehiculoId, fecha);
+    await this.validateSaldoConsistenteConUltimaLiquidacion(vehiculoId);
     await db.programacion.update(changes, { where: { id } });
     return { message: "El item fue actualizado", id };
   }
@@ -104,6 +236,10 @@ class ProgramacionService {
 
     if (body.eliminado) {
       whereClause.where.eliminado = body.eliminado;
+    }
+
+    if (body?.bl) {
+      whereClause.where.bl = { [Op.like]: `%${body.bl}%` };
     }
 
     const result = await db.programacion.findAll(whereClause);

@@ -87,8 +87,7 @@ class StockServices {
 
   async update(cons_almacen, cons_producto, changes) {
     const updatedItem = await db.stock.update(changes, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    if (updatedItem == 0) throw boom.conflict('El item no existe')
-      console.log(cons_almacen, cons_producto, changes, "heywinnnnnnnnnnnnnnnnnnnnnn")
+    if (updatedItem[0] == 0) throw boom.conflict('El item no existe')
     return changes;
   }
 
@@ -140,31 +139,7 @@ class StockServices {
         const data = { cons_producto, cantidad: suma };
 
         // Verifica y envía alertas si es necesario
-        if (cons_producto === "PRE33") {
-          if (suma < 11) {
-            if (items[0]?.aviso == null || items[0]?.aviso == 1) {
-              await serviceEmail.send(
-                'hmeneses@banarica.com, jtaite@banarica.com',
-                `Alerta Precintos - ${cons_almacen} ${new Date().getTime()}`,
-                `<h3>Almacén <b>${cons_almacen}</b></h3>
-                <p>
-                 Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b>
-               </p>`
-              );
-              await db.stock.update(
-                { aviso: 0 },
-                { where: { cons_almacen, cons_producto }, transaction: t }
-              );
-            }
-          } else if (suma >= 11) {
-            if (items[0]?.aviso == null || items[0]?.aviso == 0) {
-              await db.stock.update(
-                { aviso: 1 },
-                { where: { cons_almacen, cons_producto }, transaction: t }
-              );
-            }
-          }
-        }
+        await this.handlePre33Alert(cons_almacen, cons_producto, suma, items[0], t);
 
         // Si la transacción fue creada dentro de esta función, confírmala
         if (!transaction) {
@@ -185,6 +160,7 @@ class StockServices {
   }
 
   async subtractAmounts(cons_almacen, cons_producto, body) {
+    const t = await db.sequelize.transaction();
     try {
       console.log(`📦 Buscando stock: ${cons_producto} en ${cons_almacen}, cantidad a restar: ${body.cantidad}`);
 
@@ -193,7 +169,8 @@ class StockServices {
         where: {
           cons_almacen: cons_almacen,
           cons_producto: cons_producto
-        }
+        },
+        transaction: t
       });
 
       let nuevaCantidad;
@@ -210,7 +187,7 @@ class StockServices {
           no_disponible: 0,
           aviso: null,
           isBlock: false
-        });
+        }, { transaction: t });
 
         console.log(`✅ Registro creado para ${cons_producto} en ${cons_almacen}`);
 
@@ -224,7 +201,7 @@ class StockServices {
       // Actualizar la cantidad en la base de datos
       await db.stock.update(
         { cantidad: nuevaCantidad },
-        { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } }
+        { where: { cons_almacen: cons_almacen, cons_producto: cons_producto }, transaction: t }
       );
 
       const data = {
@@ -236,40 +213,9 @@ class StockServices {
       console.log(`✅ Stock actualizado: ${cons_producto} en ${cons_almacen}, nueva cantidad: ${nuevaCantidad}`);
 
       // Lógica específica para PRE33 (precintos)
-      if (cons_producto == "PRE33") {
-        // Si el item no existía, buscar el registro recién creado
-        const itemActual = item || await db.stock.findOne({
-          where: { cons_almacen: cons_almacen, cons_producto: cons_producto }
-        });
+      await this.handlePre33Alert(cons_almacen, cons_producto, nuevaCantidad, item, t);
 
-        if (nuevaCantidad < 11) {
-          if (itemActual?.aviso == null || itemActual?.aviso == 1) {
-            console.log(`🚨 Alerta PRE33: Stock bajo en ${cons_almacen} (${nuevaCantidad} unidades)`);
-
-            await serviceEmail.send(
-              'hmeneses@banarica.com, jtaite@banarica.com',
-              `Alerta Precintos - ${cons_almacen}  ${new Date().getTime()}`,
-              `<h3>Almacén <b>${cons_almacen}</b></h3>
-            <p>Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b></p>
-            <p>Cantidad actual: <b>${nuevaCantidad}</b> unidades</p>`
-            );
-
-            await db.stock.update(
-              { aviso: 0 },
-              { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } }
-            );
-          }
-        }
-
-        if (nuevaCantidad >= 11) {
-          if (itemActual?.aviso == null || itemActual?.aviso == 0) {
-            await db.stock.update(
-              { aviso: 1 },
-              { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } }
-            );
-          }
-        }
-      }
+      await t.commit();
 
       return {
         message: item ? "El item fue actualizado" : "Registro creado y actualizado",
@@ -277,8 +223,44 @@ class StockServices {
       };
 
     } catch (error) {
+      await t.rollback();
       console.error('❌ Error en subtractAmounts:', error);
       throw error;
+    }
+  }
+
+  async handlePre33Alert(cons_almacen, cons_producto, nuevaCantidad, item, transaction) {
+    if (cons_producto !== "PRE33") return;
+
+    const itemActual = item || await db.stock.findOne({
+      where: { cons_almacen, cons_producto },
+      transaction
+    });
+
+    if (nuevaCantidad < 11) {
+      if (itemActual?.aviso == null || itemActual?.aviso == 1) {
+        console.log(`🚨 Alerta PRE33: Stock bajo en ${cons_almacen} (${nuevaCantidad} unidades)`);
+
+        await serviceEmail.send(
+          'hmeneses@banarica.com, jtaite@banarica.com',
+          `Alerta Precintos - ${cons_almacen} ${new Date().getTime()}`,
+          `<h3>Almacén <b>${cons_almacen}</b></h3>
+          <p>Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b></p>
+          <p>Cantidad actual: <b>${nuevaCantidad}</b> unidades</p>`
+        );
+
+        await db.stock.update(
+          { aviso: 0 },
+          { where: { cons_almacen, cons_producto }, transaction }
+        );
+      }
+    } else if (nuevaCantidad >= 11) {
+      if (itemActual?.aviso == null || itemActual?.aviso == 0) {
+        await db.stock.update(
+          { aviso: 1 },
+          { where: { cons_almacen, cons_producto }, transaction }
+        );
+      }
     }
   }
 
@@ -293,53 +275,52 @@ class StockServices {
       aprobado_por: body.aprobado_por,
       observaciones: body.observaciones,
       vehiculo: body?.vehiculo
-    }
-    let movimientoR;
-    await serviceMovimiento.create(movimiento).then(res => {
-      movimientoR = res
+    };
+    const movimientoR = await serviceMovimiento.create(movimiento);
+
+    // Collect all combo cons to fetch tabla_combos in one query
+    const comboCons = comboList.map(c => c.cons_combo);
+    const tablaCombos = await db.tabla_combos.findAll({
+      where: { cons_combo: { [Op.in]: comboCons } }
     });
-    const resultado = comboList.map(async element => {
-      return await db.tabla_combos.findAll({ where: { cons_combo: element.cons_combo } });
-    })
-    const res = (await Promise.all(resultado)).flat()
-    const resB = res.map(element => element.dataValues)
-    const resC = resB.map(element => {
-      const prodcutosByCant = comboList.map(element2 => {
-        if (element.cons_combo === element2.cons_combo) {
-          return { cons_producto: element.cons_producto, cantidad: element2.cantidad }
-        }
-      })
-      return prodcutosByCant
-    })
-    const resD = resC.flat().filter(element => element !== undefined)
-    let objeto = {};
-    resD.forEach(element => {
-      objeto[element.cons_producto] = parseFloat(element.cantidad) + parseFloat(objeto[element.cons_producto] || 0);
-    })
-    for (const key in objeto) {
-      const number = parseFloat(objeto[key]);
-      this.subtractAmounts(almacen, key, { cantidad: number })
+
+    // Create a map of combo to quantity
+    const comboQuantities = new Map(comboList.map(c => [c.cons_combo, c.cantidad]));
+
+    // Aggregate products
+    const productMap = new Map();
+    for (const tc of tablaCombos) {
+      const qty = comboQuantities.get(tc.cons_combo);
+      if (qty) {
+        const key = tc.cons_producto;
+        productMap.set(key, (productMap.get(key) || 0) + parseFloat(qty));
+      }
+    }
+
+    // Process each product
+    for (const [cons_producto, cantidad] of productMap) {
+      await this.subtractAmounts(almacen, cons_producto, { cantidad });
       const historial = {
         cons_movimiento: movimientoR.consecutivo,
-        cons_producto: key,
+        cons_producto,
         cons_almacen_gestor: almacen,
         cons_lista_movimientos: "EX",
         tipo_movimiento: "Salida",
         razon_movimiento: "Exportacion",
-        cantidad: objeto[key],
-      }
-      await serviceHistorial.create(historial)
+        cantidad,
+      };
+      await serviceHistorial.create(historial);
     }
-    const result = {
+
+    return {
       cons_almacen: almacen,
       tipo_movimiento: "Salida",
       razon_movimiento: "Exportacion",
       movimiento: movimientoR
-    }
-    return result
+    };
   }
 
-  async delete(cons_almacen, cons_producto) {
+  async deleteStock(cons_almacen, cons_producto) {
     const item = await db.stock.destroy({ where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
     if (!item) throw boom.notFound('El item no existe')
     return { message: "El item fue eliminado" };
@@ -355,7 +336,7 @@ class StockServices {
       offset: newoffset,
       where: {
         cons_almacen: {
-          [Op.or]: almacenesCons
+          [Op.in]: almacenesCons
         }
       },
       include: ['almacen', 'producto']

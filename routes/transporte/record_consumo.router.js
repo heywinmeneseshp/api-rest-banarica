@@ -13,12 +13,9 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-// Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
-//Paginar
 router.post("/paginar", async (req, res, next) => {
   try {
-  
-    const item = req.body
+    const item = req.body;
     const { page, limit } = req.query;
     const items = await service.paginate(page, limit, item);
     res.json(items);
@@ -46,78 +43,97 @@ router.get("/sin-liquidar", async (req, res, next) => {
   }
 });
 
-router.post("/",
-  async (req, res, next) => {
-    try {
-      const body = req.body;
-      const itemNuevo = await service.create(body);
-      res.json({
-        message: "item creado",
-        data: itemNuevo
-      })
-    } catch (error) {
-      next(error);
-    }
-  });
+router.post("/preview-liquidacion-ruta", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const result = await service.previewLiquidacionRuta(body);
+    res.json({
+      message: "Preliquidacion calculada",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-  router.post("/consultar-consumo",
-  async (req, res, next) => {
-    try {
-      const body = req.body;
-      const itemNuevo = await service.consultarConsumo(body);
-      res.json({
-        message: "Consulta Existosa",
-        data: itemNuevo
-      })
-    } catch (error) {
-      next(error);
-    }
-  });
+router.post("/liquidar-ruta", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const result = await service.liquidarRuta(body);
+    res.json({
+      message: "Liquidacion realizada",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-  router.get("/consultar-consumo",
-  async (req, res, next) => {
-    try {
-      const body = req.body;
-      const itemNuevo = await service.consultarConsumo(body);
-      res.json({
-        message: "Consulta Existosa",
-        data: itemNuevo
-      })
-    } catch (error) {
-      next(error);
-    }
-  });
+router.post("/", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const itemNuevo = await service.create(body);
+    res.json({
+      message: "item creado",
+      data: itemNuevo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-  //Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
-  router.post("/liquidar",
-  async (req, res, next) => {
-    try {
-      const body = req.body;
-      const itemNuevo = await service.liquidar(body);
-      res.json({
-        message: "Consulta Existosa",
-        data: itemNuevo
-      })
-    } catch (error) {
-      next(error);
-    }
-  });
+router.post("/consultar-consumo", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const itemNuevo = await service.consultarConsumo(body);
+    res.json({
+      message: "Consulta Existosa",
+      data: itemNuevo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
+router.get("/consultar-consumo", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const itemNuevo = await service.consultarConsumo(body);
+    res.json({
+      message: "Consulta Existosa",
+      data: itemNuevo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-router.patch("/:id",
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const body = req.body;
-      const item = await service.update(id, body)
-      res.json({
-        message: "item actualizado",
-        data: item
-      })
-    } catch (error) {
-      next(error)
-    }
-  });
+router.post("/liquidar", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const itemNuevo = await service.liquidar(body);
+    res.json({
+      message: "Consulta Existosa",
+      data: itemNuevo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    const item = await service.update(id, body)
+    res.json({
+      message: "item actualizado",
+      data: item
+    })
+  } catch (error) {
+    next(error)
+  }
+});
 
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params;

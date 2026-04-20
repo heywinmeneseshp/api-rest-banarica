@@ -3,6 +3,7 @@ const boom = require('@hapi/boom');
 const bcrypt = require('bcryptjs');
 const { Op } = require('sequelize');
 const db = require('../models');
+const { normalizeRole, ROLES } = require('../middlewares/auth.handler');
 
 
 class UsuariosService {
@@ -13,7 +14,15 @@ class UsuariosService {
     const existe = await db.usuarios.findOne({ where: { username: data.username } });
     if (existe) throw boom.conflict('El usuarios ya existe')
     const password = await bcrypt.hash(data.password, 10);
-    const user = { ...data, password: password };
+    const user = {
+      ...data,
+      id_rol: normalizeRole(data.id_rol) || ROLES.OPERADOR,
+      password: password,
+      isBlock: Boolean(data.isBlock),
+      password_changed_at: new Date(),
+      password_reminder_sent_at: null,
+      password_blocked_at: null,
+    };
     const newUser = await db.usuarios.create(user);
     delete newUser.dataValues.password;
     return newUser
@@ -27,6 +36,9 @@ class UsuariosService {
       delete item.dataValues.createdAt
       delete item.dataValues.updatedAt
       delete item.dataValues.recovery_token
+      delete item.dataValues.password_changed_at
+      delete item.dataValues.password_reminder_sent_at
+      delete item.dataValues.password_blocked_at
       delete item.dataValues.id
       return item.dataValues
     })
@@ -49,9 +61,20 @@ class UsuariosService {
     let userUpdated;
     if (changes.password) {
       const password = await bcrypt.hash(changes.password, 10);
-      userUpdated = { ...changes, password: password };
+      userUpdated = {
+        ...changes,
+        ...(changes.id_rol ? { id_rol: normalizeRole(changes.id_rol) } : {}),
+        password: password,
+        password_changed_at: new Date(),
+        password_reminder_sent_at: null,
+        password_blocked_at: null,
+        isBlock: user.password_blocked_at ? false : user.isBlock,
+      };
     } else {
-      userUpdated = { ...changes };
+      userUpdated = {
+        ...changes,
+        ...(changes.id_rol ? { id_rol: normalizeRole(changes.id_rol) } : {})
+      };
     }
     await db.usuarios.update(userUpdated, { where: { username } });
     delete userUpdated.password;
@@ -120,7 +143,7 @@ class UsuariosService {
     const { count, rows: data } = await db.usuarios.findAndCountAll({
       where: {
         username: { [Op.like]: `%${username}%` },
-        id_rol: { [Op.notIn]: ["Super seguridad", "Seguridad"] }
+        id_rol: { [Op.in]: [ROLES.SUPER_ADMIN, ROLES.OPERADOR, 'Administrador', 'Seguridad', 'Super seguridad'] }
       },
       limit: newlimit,
       offset: newoffset

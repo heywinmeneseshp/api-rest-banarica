@@ -39,6 +39,7 @@ const ubicacionesRouter = require('./transporte/ubicaciones.router.js');
 const vehiculosRouter = require('./transporte/vehiculos.router.js');
 const productosViajesRouter = require('./transporte/productos-viaje.router.js');
 const tanqueoRouter = require('./transporte/tanqueos.router.js');
+const consumoRutaVehiculoRouter = require('./transporte/consumoRutaVehiculo.router.js');
 //LOGISTICA
 const buqueRouter = require('./logistica/buque.router.js');
 const caidaRouter = require('./logistica/caida.router.js');
@@ -99,6 +100,7 @@ function routerApi(app) {
   router.use('/vehiculos', vehiculosRouter);
   router.use('/productos-viaje', productosViajesRouter);
   router.use('/tanqueo', tanqueoRouter);
+  router.use('/consumoRutaVehiculo', consumoRutaVehiculoRouter);
   //LOGISTICA
   router.use('/buque', buqueRouter);
   router.use('/caida', caidaRouter);

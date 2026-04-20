@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recuperar contrasena | Banarica</title>
+    <link rel="stylesheet" href="/static/admin/styles.css" />
+  </head>
+  <body>
+    <main class="recovery-shell">
+      <section class="recovery-card">
+        <header class="recovery-hero">
+          <span class="brand-kicker">Acceso seguro</span>
+          <h1>Recuperar contrasena</h1>
+          <p>Solicita un enlace de recuperacion y, cuando abras el correo, cambia tu clave desde esta misma pantalla.</p>
+        </header>
+
+        <div class="recovery-body">
+          <div class="recovery-grid">
+            <section class="info-box">
+              <h2>Solicitar enlace</h2>
+              <form id="recovery-request-form" class="stack">
+                <label>
+                  <span>Usuario</span>
+                  <input type="text" id="recovery-username" placeholder="Tu usuario" required />
+                </label>
+                <button type="submit" class="primary">Enviar correo</button>
+              </form>
+            </section>
+
+            <section class="info-box">
+              <h2>Cambiar contrasena</h2>
+              <form id="reset-password-form" class="stack">
+                <label>
+                  <span>Token</span>
+                  <input type="text" id="reset-token" placeholder="Se completa solo si abriste el enlace" />
+                </label>
+                <label>
+                  <span>Nueva contrasena</span>
+                  <input type="password" id="reset-password" placeholder="Nueva clave" required />
+                </label>
+                <label>
+                  <span>Confirmar contrasena</span>
+                  <input type="password" id="reset-password-confirm" placeholder="Repite la nueva clave" required />
+                </label>
+                <button type="submit" class="primary">Actualizar contrasena</button>
+              </form>
+            </section>
+          </div>
+
+          <section class="info-box">
+            <h2>Indicaciones</h2>
+            <p class="helper">1. Escribe tu usuario y envia el correo.</p>
+            <p class="helper">2. Abre el enlace del mensaje recibido.</p>
+            <p class="helper">3. Define una nueva contrasena antes de que expire el token.</p>
+            <a class="text-link" href="/admin">Volver al panel</a>
+          </section>
+
+          <pre id="recovery-status" class="status-box">Listo para recuperar tu acceso.</pre>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/recovery/app.js"></script>
+  </body>
+</html>

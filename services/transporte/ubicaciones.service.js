@@ -5,44 +5,57 @@ const db = require('../../models');
 class ubicacionesService {
 
   async create(data) {
-    const existe = await db.ubicaciones.findOne({ where: { id: data.id } });
-    if (existe) throw boom.conflict('El item ya existe')
-    delete data.id
-    const newAlamacen = await db.ubicaciones.create(data);
-    return newAlamacen
+    const payload = { ...data };
+    delete payload.id;
+
+    const where = [];
+    if (payload.cod) {
+      where.push({ cod: payload.cod });
+    }
+    if (payload.ubicacion) {
+      where.push({ ubicacion: payload.ubicacion });
+    }
+
+    if (where.length > 0) {
+      const existe = await db.ubicaciones.findOne({ where: { [Op.or]: where } });
+      if (existe) throw boom.conflict('El item ya existe');
+    }
+
+    const newAlamacen = await db.ubicaciones.create(payload);
+    return newAlamacen;
   }
 
   async find() {
     await db.ubicaciones.findOrCreate({
-      where: { cod: "PRE" }, defaults: {
-        ubicacion: "Predeterminado",
-        detalle: "N/A",
+      where: { cod: 'PRE' }, defaults: {
+        ubicacion: 'Predeterminado',
+        detalle: 'N/A',
         activo: true,
-        cod: "PRE"
+        cod: 'PRE'
       }
-    })
-    const res = await db.ubicaciones.findAll()
-    const ubicaciones = res.sort((a,b)=>{
-      if (a.dataValues.nombre == b.dataValues.ubicacion) {
+    });
+    const res = await db.ubicaciones.findAll();
+    const ubicaciones = res.sort((a, b) => {
+      if (a.dataValues.ubicacion == b.dataValues.ubicacion) {
         return 0;
       }
-      if (a.dataValues.nombre < b.dataValues.ubicacion) {
+      if (a.dataValues.ubicacion < b.dataValues.ubicacion) {
         return -1;
       }
       return 1;
-    })
+    });
     return ubicaciones;
   }
 
   async findOne(id) {
     const item = await db.ubicaciones.findOne({ where: { id } });
-    if (!item) throw boom.notFound('El item no existe')
+    if (!item) throw boom.notFound('El item no existe');
     return item;
   }
 
   async update(id, changes) {
     const item = await db.ubicaciones.findOne({ where: { id } });
-    if (!item) throw boom.notFound('El item no existe')
+    if (!item) throw boom.notFound('El item no existe');
     const result = await db.ubicaciones.update(changes, { where: { id } });
     return result;
   }
@@ -51,18 +64,18 @@ class ubicacionesService {
     const existe = await db.ubicaciones.findOne({ where: { id } });
     if (!existe) throw boom.notFound('El item no existe');
     await db.ubicaciones.destroy({ where: { id } });
-    return { message: "El item fue eliminado", id }
+    return { message: 'El item fue eliminado', id };
   }
 
   async paginate(offset, limit, item) {
     await db.ubicaciones.findOrCreate({
-      where: { cod: "PRE" }, defaults: {
-        ubicacion: "Predeterminado",
-        detalle: "N/A",
+      where: { cod: 'PRE' }, defaults: {
+        ubicacion: 'Predeterminado',
+        detalle: 'N/A',
         activo: true,
-        cod: "PRE"
+        cod: 'PRE'
       }
-    })
+    });
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const total = await db.ubicaciones.count({
@@ -78,4 +91,4 @@ class ubicacionesService {
 
 }
 
-module.exports = ubicacionesService
+module.exports = ubicacionesService;

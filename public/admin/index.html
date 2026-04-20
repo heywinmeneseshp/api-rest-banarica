@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Banarica Admin</title>
+    <link rel="stylesheet" href="/static/admin/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-kicker">Panel interno</span>
+          <h1>Banarica Admin</h1>
+          <p>Gestiona la data principal de la API desde una sola vista.</p>
+        </div>
+
+        <section class="auth-card">
+          <h2>Sesion</h2>
+          <form id="login-form" class="stack">
+            <label>
+              <span>Usuario</span>
+              <input type="text" id="login-username" placeholder="admin" required />
+            </label>
+            <label>
+              <span>Clave</span>
+              <input type="password" id="login-password" placeholder="••••••••" required />
+            </label>
+            <button type="submit" class="primary">Entrar</button>
+          </form>
+          <a class="text-link" href="/recovery">Olvide mi contrasena</a>
+          <div class="session-actions">
+            <button id="load-profile" type="button" class="ghost">Ver perfil</button>
+            <button id="logout" type="button" class="ghost danger">Salir</button>
+          </div>
+          <p id="session-status" class="muted">Sin token activo.</p>
+        </section>
+
+        <nav id="module-nav" class="module-nav"></nav>
+      </aside>
+
+      <main class="content">
+        <section class="hero">
+          <div>
+            <span class="eyebrow">CRUD integrado</span>
+            <h2 id="module-title">Cargando...</h2>
+            <p id="module-description"></p>
+          </div>
+          <div class="toolbar">
+            <button id="refresh-data" class="ghost" type="button">Actualizar</button>
+            <button id="new-record" class="primary" type="button">Nuevo registro</button>
+          </div>
+        </section>
+
+        <section class="panel-grid">
+          <article class="panel panel-table">
+            <div class="panel-header">
+              <h3>Registros</h3>
+              <input id="search-input" type="search" placeholder="Filtrar en pantalla..." />
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead id="table-head"></thead>
+                <tbody id="table-body"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel panel-form">
+            <div class="panel-header">
+              <h3 id="form-title">Editar</h3>
+              <button id="reset-form" class="ghost" type="button">Limpiar</button>
+            </div>
+            <form id="record-form" class="record-form"></form>
+          </article>
+        </section>
+
+        <section class="panel status-panel">
+          <div class="panel-header">
+            <h3>Estado</h3>
+          </div>
+          <pre id="status-log">Listo para trabajar.</pre>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/admin/app.js"></script>
+  </body>
+</html>

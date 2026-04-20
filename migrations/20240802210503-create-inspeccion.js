@@ -28,7 +28,7 @@ module.exports = {
         type: Sequelize.TIME,
       },
       observaciones: {
-        type: DataTypes.TEXT,
+        type: Sequelize.TEXT,
         allowNull: true
       },
       habilitado: {

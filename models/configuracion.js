@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
      * This method is not a part of Sequelize lifecycle.
      * The `models/index` file will call this method automatically.
      */
-    static associate(models) {
+    static associate() {
       // define association here
     }
   }
@@ -20,6 +20,8 @@ module.exports = (sequelize, DataTypes) => {
     semana_siguiente: DataTypes.INTEGER,
     semana_previa: DataTypes.INTEGER,
     anho_actual: DataTypes.INTEGER,
+    fecha_inicio_semana_1: DataTypes.DATEONLY,
+    total_semanas_anho: DataTypes.INTEGER,
     detalles: DataTypes.STRING,
     mes_reporte: DataTypes.INTEGER,
     sem_reporte: DataTypes.INTEGER,

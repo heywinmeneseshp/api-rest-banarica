@@ -2,6 +2,7 @@ const boom = require('@hapi/boom');
 const db = require('../../models');
 const { Op, where, json } = require('sequelize');
 const serial_de_articulos = require('../../models/serial_de_articulos');
+const { ROLES } = require('../../middlewares/auth.handler');
 const StockService = require('../stock.service');
 const MovimientoService = require('../movimientos.service');
 const HistorialMovimientosServiceService = require('../historialMovimientos.service');
@@ -246,13 +247,13 @@ class SeguridadService {
     const total = await db.usuarios.count({
       where: {
         username: { [Op.like]: `%${username}%` },
-        id_rol: { [Op.in]: { [Op.or]: ["Super seguridad", "Seguridad"] } }
+        id_rol: { [Op.in]: [ROLES.OPERADOR, 'Administrador', 'Seguridad', 'Super seguridad'] }
       },
     });
     const result = await db.usuarios.findAll({
       where: {
         username: { [Op.like]: `%${username}%` },
-        id_rol: { [Op.in]: ["Super seguridad", "Seguridad"] }
+        id_rol: { [Op.in]: [ROLES.OPERADOR, 'Administrador', 'Seguridad', 'Super seguridad'] }
       },
       limit: newlimit,
       offset: newoffset
