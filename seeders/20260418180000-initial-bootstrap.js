@@ -197,6 +197,21 @@ const defaultConfiguracionSemana = {
   updatedAt: now
 };
 
+const defaultConfiguracionEmailEnvio = {
+  modulo: 'email_envio',
+  habilitado: true,
+  detalles: JSON.stringify({
+    smtp_host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    smtp_port: Number(process.env.SMTP_PORT || 465),
+    smtp_secure: process.env.SMTP_SECURE !== 'false',
+    email_correo: process.env.EMAIL || '',
+    password_correo: process.env.PASSWORD || '',
+    email_from_name: 'Bana Rica',
+  }),
+  createdAt: now,
+  updatedAt: now,
+};
+
 module.exports = {
   async up(queryInterface) {
     const adminHash = await bcrypt.hash(adminPassword, 10);
@@ -401,6 +416,16 @@ module.exports = {
         await queryInterface.bulkInsert('configuracions', [defaultConfiguracionSemana], { transaction });
       }
 
+      const configEmailId = await queryInterface.rawSelect(
+        'configuracions',
+        { where: { modulo: defaultConfiguracionEmailEnvio.modulo }, transaction },
+        'id'
+      );
+
+      if (!configEmailId) {
+        await queryInterface.bulkInsert('configuracions', [defaultConfiguracionEmailEnvio], { transaction });
+      }
+
       await transaction.commit();
     } catch (error) {
       await transaction.rollback();
@@ -415,6 +440,12 @@ module.exports = {
       await queryInterface.bulkDelete(
         'configuracions',
         { modulo: defaultConfiguracionSemana.modulo },
+        { transaction }
+      );
+
+      await queryInterface.bulkDelete(
+        'configuracions',
+        { modulo: defaultConfiguracionEmailEnvio.modulo },
         { transaction }
       );
 

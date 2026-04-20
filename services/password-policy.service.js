@@ -1,7 +1,9 @@
 const boom = require('@hapi/boom');
-const nodemailer = require('nodemailer');
 const db = require('../models');
 const env = require('../config/env');
+const EmailService = require('./email.service');
+
+const emailService = new EmailService();
 
 const PASSWORD_MAX_AGE_DAYS = 90;
 const PASSWORD_REMINDER_DAYS = 15;
@@ -35,20 +37,13 @@ class PasswordPolicyService {
     this.intervalId = null;
   }
 
-  createTransporter() {
-    if (!env.email || !env.password) {
+  async createTransporter() {
+    const config = await emailService.getEmailConfig();
+    if (!config.email_correo || !config.password_correo) {
       throw boom.internal('El servicio de correo no esta configurado');
     }
 
-    return nodemailer.createTransport({
-      host: env.smtpHost,
-      port: env.smtpPort,
-      secure: env.smtpSecure,
-      auth: {
-        user: env.email,
-        pass: env.password,
-      }
-    });
+    return emailService.buildTransporter(config);
   }
 
   async sendReminderEmail(user, policyState) {
@@ -56,12 +51,13 @@ class PasswordPolicyService {
       return;
     }
 
-    const transporter = this.createTransporter();
+    const transporter = await this.createTransporter();
+    const config = await emailService.getEmailConfig();
     const recoveryLink = `${env.appUrl}/recovery`;
     const dayLabel = policyState.daysUntilExpiry === 1 ? '1 dia' : `${policyState.daysUntilExpiry} dias`;
 
     await transporter.sendMail({
-      from: env.email,
+      from: emailService.buildFrom(config),
       to: user.email,
       subject: 'Recordatorio de cambio de contrasena',
       html: `

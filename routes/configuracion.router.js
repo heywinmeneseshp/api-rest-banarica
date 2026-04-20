@@ -1,4 +1,5 @@
 const express = require('express');
+const passport = require('passport');
 
 const ConfigService = require('./../services/configuracion.service');
 const service = new ConfigService();
@@ -8,6 +9,7 @@ const service = new ConfigService();
 const router = express.Router();
 
 router.get('/encontrar/:modulo',
+  passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
     try {
       const { modulo } = req.params;
@@ -19,10 +21,34 @@ router.get('/encontrar/:modulo',
   });
 
 router.patch('/actualizar',
+  passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
     try {
       const body = req.body;
       const result = await service.update(body)
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+router.get('/email',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const result = await service.findEmailConfig()
+      res.json([result]);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+router.patch('/email',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const body = req.body;
+      const result = await service.updateEmailConfig(body)
       res.json(result);
     } catch (err) {
       next(err);

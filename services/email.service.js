@@ -1,12 +1,48 @@
 const nodemailer = require('nodemailer');
 const boom = require('@hapi/boom');
-const env = require('../config/env');
+const ConfigService = require('./configuracion.service');
+const configService = new ConfigService();
 
 class emailService {
+  async getEmailConfig() {
+    return await configService.findEmailConfig();
+  }
 
-  async send(datosCorreo) {
-    const { destinatario, asunto, cuerpo, archivo } = datosCorreo;
+  normalizePayload(datosCorreo, asunto, cuerpo) {
+    if (typeof datosCorreo === 'string') {
+      return {
+        destinatario: datosCorreo,
+        asunto,
+        cuerpo,
+      };
+    }
+
+    return datosCorreo || {};
+  }
+
+  buildTransporter(config) {
+    return nodemailer.createTransport({
+      host: config.smtp_host,
+      port: config.smtp_port,
+      secure: config.smtp_secure,
+      auth: {
+        user: config.email_correo,
+        pass: config.password_correo,
+      }
+    });
+  }
+
+  buildFrom(config) {
+    const fromName = config.email_from_name || 'Bana Rica';
+    return `"${fromName}" <${config.email_correo}>`;
+  }
+
+  async send(datosCorreo, asunto, cuerpo) {
+    const payload = this.normalizePayload(datosCorreo, asunto, cuerpo);
+    const { destinatario, archivo } = payload;
     const adjuntos = [];
+    const htmlBody = payload.cuerpo || payload.html || '';
+    const subject = payload.asunto || '';
 
     if (archivo && archivo.contenido) {
       try {
@@ -22,27 +58,21 @@ class emailService {
       }
     }
 
-    if (!env.email || !env.password) {
+    const config = await this.getEmailConfig();
+
+    if (!config.email_correo || !config.password_correo) {
       throw boom.internal('El servicio de correo no esta configurado');
     }
 
     const infoEmail = {
-      from: env.email,
+      from: this.buildFrom(config),
       to: destinatario,
-      subject: asunto,
-      html: `<div>${cuerpo}</div>`,
+      subject,
+      html: `<div>${htmlBody}</div>`,
       attachments: adjuntos
     };
 
-    const transporter = nodemailer.createTransport({
-      host: env.smtpHost,
-      port: env.smtpPort,
-      secure: env.smtpSecure,
-      auth: {
-        user: env.email,
-        pass: env.password,
-      }
-    });
+    const transporter = this.buildTransporter(config);
 
     try {
       await transporter.sendMail(infoEmail);

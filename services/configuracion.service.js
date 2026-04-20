@@ -1,5 +1,16 @@
 const db = require('../models');
 const { generarConsecutivoSemana } = require('../middlewares/generarId.handler');
+const env = require('../config/env');
+
+const EMAIL_CONFIG_MODULE = 'email_envio';
+const DEFAULT_EMAIL_CONFIG = {
+  smtp_host: env.smtpHost || 'smtp.gmail.com',
+  smtp_port: env.smtpPort || 465,
+  smtp_secure: typeof env.smtpSecure === 'boolean' ? env.smtpSecure : true,
+  email_correo: env.email || '',
+  password_correo: env.password || '',
+  email_from_name: 'Bana Rica',
+};
 
 function toDateOnlyString(date) {
   return date.toISOString().slice(0, 10);
@@ -20,6 +31,53 @@ function getDefaultWeekOneMonday(year) {
 
 class ConfigService {
   constructor() {}
+
+  normalizeEmailConfig(detalles = {}) {
+    const normalized = {
+      ...DEFAULT_EMAIL_CONFIG,
+      ...detalles,
+      smtp_port: parseInt(detalles.smtp_port, 10) || DEFAULT_EMAIL_CONFIG.smtp_port,
+      smtp_secure:
+        typeof detalles.smtp_secure === 'boolean'
+          ? detalles.smtp_secure
+          : detalles.smtp_secure !== 'false' && detalles.smtp_secure !== false,
+    };
+
+    if (!normalized.email_correo) {
+      normalized.email_correo = env.email || DEFAULT_EMAIL_CONFIG.email_correo;
+    }
+
+    if (!normalized.password_correo) {
+      normalized.password_correo = env.password || DEFAULT_EMAIL_CONFIG.password_correo;
+    }
+
+    if (!normalized.smtp_host) {
+      normalized.smtp_host = env.smtpHost || DEFAULT_EMAIL_CONFIG.smtp_host;
+    }
+
+    if (!normalized.smtp_port) {
+      normalized.smtp_port = env.smtpPort || DEFAULT_EMAIL_CONFIG.smtp_port;
+    }
+
+    return normalized;
+  }
+
+  parseConfigDetails(detalles, fallback = {}) {
+    if (!detalles) {
+      return fallback;
+    }
+
+    if (typeof detalles === 'object') {
+      return detalles;
+    }
+
+    try {
+      return JSON.parse(detalles);
+    } catch (error) {
+      console.warn('Error al parsear detalles de configuracion:', error);
+      return fallback;
+    }
+  }
 
   normalizeSemanaConfig(moduloData) {
     const now = new Date();
@@ -157,6 +215,40 @@ class ConfigService {
         modulo: data.modulo,
       },
     });
+  }
+
+  async findEmailConfig() {
+    const [config] = await db.configuracion.findOrCreate({
+      where: { modulo: EMAIL_CONFIG_MODULE },
+      defaults: {
+        habilitado: false,
+        detalles: JSON.stringify(DEFAULT_EMAIL_CONFIG),
+      },
+    });
+
+    const detalles = this.normalizeEmailConfig(this.parseConfigDetails(config.detalles));
+    return { modulo: config.modulo, detalles: JSON.stringify(detalles), ...detalles };
+  }
+
+  async updateEmailConfig(data) {
+    const existing = await db.configuracion.findOne({ where: { modulo: EMAIL_CONFIG_MODULE } });
+    const normalizedData = this.normalizeEmailConfig(data);
+
+    if (!existing) {
+      return await db.configuracion.create({
+        modulo: EMAIL_CONFIG_MODULE,
+        habilitado: false,
+        detalles: JSON.stringify(normalizedData),
+      });
+    }
+
+    const currentDetails = this.normalizeEmailConfig(this.parseConfigDetails(existing.detalles));
+    const updatedDetails = this.normalizeEmailConfig({ ...currentDetails, ...normalizedData });
+
+    return await db.configuracion.update(
+      { detalles: JSON.stringify(updatedDetails) },
+      { where: { modulo: EMAIL_CONFIG_MODULE } }
+    );
   }
 }
 

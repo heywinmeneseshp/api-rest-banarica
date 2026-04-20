@@ -26,18 +26,29 @@ class StockServices {
   }
 
   async generalFilter(body) {
-    const { pagination, stock = {}, producto = {}, almacen } = body;
+    const { pagination, stock = {}, producto = {}, almacen = {} } = body;
+    const { includeZero, ...stockFilters } = stock;
 
-    // Filtros comunes
     const stockWhere = {
-      ...stock,
-      cantidad: { [Op.ne]: 0 } // Solo stock diferente de cero, si quieres mantener esta condición
+      ...stockFilters,
+      ...(includeZero ? {} : { cantidad: { [Op.ne]: 0 } })
     };
 
     const productoWhere = {
-      cons_categoria: { [Op.like]: `%${producto.cons_categoria || ''}%` },
+      cons_categoria: Array.isArray(producto.cons_categoria)
+        ? { [Op.in]: producto.cons_categoria }
+        : { [Op.like]: `%${producto.cons_categoria || ''}%` },
       name: { [Op.like]: producto.name ? `%${producto.name}%` : '%%' },
-      consecutivo: { [Op.like]: producto.consecutivo ? `%${producto.consecutivo}%` : '%%' }
+      consecutivo: Array.isArray(producto.consecutivo)
+        ? { [Op.in]: producto.consecutivo }
+        : { [Op.like]: producto.consecutivo ? `%${producto.consecutivo}%` : '%%' }
+    };
+
+    const almacenWhere = {
+      ...almacen,
+      consecutivo: Array.isArray(almacen?.consecutivo)
+        ? { [Op.in]: almacen.consecutivo }
+        : almacen?.consecutivo || { [Op.like]: '%%' }
     };
 
     const include = [
@@ -49,33 +60,41 @@ class StockServices {
       {
         model: db.almacenes,
         as: "almacen",
-        where: almacen
+        where: almacenWhere
       }
     ];
-    // Si hay paginación
+
     if (pagination) {
-      const limit = parseInt(pagination.limit);
-      const offset = (parseInt(pagination.offset) - 1) * limit;
+      const limit = parseInt(pagination.limit, 10) || 10;
+      const offset = ((parseInt(pagination.offset, 10) || 1) - 1) * limit;
       const [data, total] = await Promise.all([
         db.stock.findAll({
           where: stockWhere,
           include,
           limit,
-          offset
+          offset,
+          order: [
+            ['cons_almacen', 'ASC'],
+            ['cons_producto', 'ASC']
+          ]
         }),
         db.stock.count({
           where: stockWhere,
           include,
           distinct: true,
-          col: 'id' // reemplaza con la PK de stock si no es 'id'
+          col: 'id'
         })
       ]);
       return { data, total };
     }
-    // Sin paginación
+
     const data = await db.stock.findAll({
       where: stockWhere,
-      include
+      include,
+      order: [
+        ['cons_almacen', 'ASC'],
+        ['cons_producto', 'ASC']
+      ]
     });
     return data;
   }
@@ -102,34 +121,29 @@ class StockServices {
   async addAmounts(cons_almacen, cons_producto, body, transaction = null) {
     let t;
     try {
-      // Usa la transacción proporcionada o crea una nueva si no se proporciona
       if (!transaction) {
         t = await db.sequelize.transaction();
       } else {
         t = transaction;
       }
 
-      // Obtén el registro del stock
       const items = await db.stock.findAll({
         where: { cons_almacen, cons_producto },
         transaction: t
       });
 
       if (!items[0]) {
-        // Si no hay registros, crea uno nuevo
         await db.stock.findOrCreate({
           where: { cons_almacen, cons_producto, cantidad: body.cantidad, isBlock: false },
           transaction: t
         });
 
-        // Si la transacción fue creada dentro de esta función, confírmala
         if (!transaction) {
           await t.commit();
         }
 
         return items[0];
       } else {
-        // Si hay registros, actualiza la cantidad
         const suma = parseFloat(items[0].cantidad) + parseFloat(body.cantidad);
         await db.stock.update(
           { cantidad: suma },
@@ -138,10 +152,8 @@ class StockServices {
 
         const data = { cons_producto, cantidad: suma };
 
-        // Verifica y envía alertas si es necesario
         await this.handlePre33Alert(cons_almacen, cons_producto, suma, items[0], t);
 
-        // Si la transacción fue creada dentro de esta función, confírmala
         if (!transaction) {
           await t.commit();
         }
@@ -150,11 +162,9 @@ class StockServices {
       }
 
     } catch (error) {
-      // Realiza un rollback si se creó una transacción
       if (t) {
         await t.rollback();
       }
-      // Maneja el error
       throw boom.badRequest(error.message || 'Error al actualizar el stock');
     }
   }
@@ -162,9 +172,8 @@ class StockServices {
   async subtractAmounts(cons_almacen, cons_producto, body) {
     const t = await db.sequelize.transaction();
     try {
-      console.log(`📦 Buscando stock: ${cons_producto} en ${cons_almacen}, cantidad a restar: ${body.cantidad}`);
+      console.log(`Buscando stock: ${cons_producto} en ${cons_almacen}, cantidad a restar: ${body.cantidad}`);
 
-      // Buscar el item
       const item = await db.stock.findOne({
         where: {
           cons_almacen: cons_almacen,
@@ -175,11 +184,9 @@ class StockServices {
 
       let nuevaCantidad;
 
-      // Si no existe, crearlo con cantidad inicial 0
       if (!item) {
-        console.log(`⚠️ Producto ${cons_producto} no encontrado en almacén ${cons_almacen}. Creando registro...`);
+        console.log(`Producto ${cons_producto} no encontrado en almacen ${cons_almacen}. Creando registro...`);
 
-        // Crear registro con cantidad inicial 0
         await db.stock.create({
           cons_almacen: cons_almacen,
           cons_producto: cons_producto,
@@ -189,16 +196,13 @@ class StockServices {
           isBlock: false
         }, { transaction: t });
 
-        console.log(`✅ Registro creado para ${cons_producto} en ${cons_almacen}`);
+        console.log(`Registro creado para ${cons_producto} en ${cons_almacen}`);
 
-        // Como se creó con 0, la resta será negativa
         nuevaCantidad = 0 - parseFloat(body.cantidad);
       } else {
-        // Si existe, calcular la nueva cantidad
         nuevaCantidad = parseFloat(item.cantidad) - parseFloat(body.cantidad);
       }
 
-      // Actualizar la cantidad en la base de datos
       await db.stock.update(
         { cantidad: nuevaCantidad },
         { where: { cons_almacen: cons_almacen, cons_producto: cons_producto }, transaction: t }
@@ -210,9 +214,8 @@ class StockServices {
         cons_almacen: cons_almacen
       };
 
-      console.log(`✅ Stock actualizado: ${cons_producto} en ${cons_almacen}, nueva cantidad: ${nuevaCantidad}`);
+      console.log(`Stock actualizado: ${cons_producto} en ${cons_almacen}, nueva cantidad: ${nuevaCantidad}`);
 
-      // Lógica específica para PRE33 (precintos)
       await this.handlePre33Alert(cons_almacen, cons_producto, nuevaCantidad, item, t);
 
       await t.commit();
@@ -224,7 +227,7 @@ class StockServices {
 
     } catch (error) {
       await t.rollback();
-      console.error('❌ Error en subtractAmounts:', error);
+      console.error('Error en subtractAmounts:', error);
       throw error;
     }
   }
@@ -239,13 +242,13 @@ class StockServices {
 
     if (nuevaCantidad < 11) {
       if (itemActual?.aviso == null || itemActual?.aviso == 1) {
-        console.log(`🚨 Alerta PRE33: Stock bajo en ${cons_almacen} (${nuevaCantidad} unidades)`);
+        console.log(`Alerta PRE33: Stock bajo en ${cons_almacen} (${nuevaCantidad} unidades)`);
 
         await serviceEmail.send(
           'hmeneses@banarica.com, jtaite@banarica.com',
           `Alerta Precintos - ${cons_almacen} ${new Date().getTime()}`,
-          `<h3>Almacén <b>${cons_almacen}</b></h3>
-          <p>Cantidad de precintos plásticos inferior a 11 unidades en el almacén <b>${cons_almacen}</b></p>
+          `<h3>Almacen <b>${cons_almacen}</b></h3>
+          <p>Cantidad de precintos plasticos inferior a 11 unidades en el almacen <b>${cons_almacen}</b></p>
           <p>Cantidad actual: <b>${nuevaCantidad}</b> unidades</p>`
         );
 
@@ -278,16 +281,13 @@ class StockServices {
     };
     const movimientoR = await serviceMovimiento.create(movimiento);
 
-    // Collect all combo cons to fetch tabla_combos in one query
     const comboCons = comboList.map(c => c.cons_combo);
     const tablaCombos = await db.tabla_combos.findAll({
       where: { cons_combo: { [Op.in]: comboCons } }
     });
 
-    // Create a map of combo to quantity
     const comboQuantities = new Map(comboList.map(c => [c.cons_combo, c.cantidad]));
 
-    // Aggregate products
     const productMap = new Map();
     for (const tc of tablaCombos) {
       const qty = comboQuantities.get(tc.cons_combo);
@@ -297,7 +297,6 @@ class StockServices {
       }
     }
 
-    // Process each product
     for (const [cons_producto, cantidad] of productMap) {
       await this.subtractAmounts(almacen, cons_producto, { cantidad });
       const historial = {
@@ -344,7 +343,5 @@ class StockServices {
     return { data: result, total: total };
   }
 }
-
-
 
 module.exports = StockServices

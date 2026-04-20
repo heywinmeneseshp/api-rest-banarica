@@ -20,6 +20,17 @@ router.post("/send",
   }
 });
 
+router.get("/config",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+  try {
+    const config = await service.getEmailConfig();
+    res.json([config]);
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 
 module.exports = router;

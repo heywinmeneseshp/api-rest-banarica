@@ -1,4 +1,3 @@
-const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 const boom = require('@hapi/boom');
 const bcrypt = require('bcryptjs');
@@ -8,8 +7,10 @@ const { normalizeRole } = require('../middlewares/auth.handler');
 const { PasswordPolicyService } = require('./password-policy.service');
 
 const userService = require('./usuarios.service');
+const EmailService = require('./email.service');
 const service = new userService();
 const passwordPolicyService = new PasswordPolicyService();
+const emailService = new EmailService();
 
 
 class AuthService {
@@ -47,7 +48,7 @@ class AuthService {
     return jwt.sign({ username, id_rol }, env.secret, { expiresIn: '24h' });
   }
 
-  async recoveryPassword(username) {
+async recoveryPassword(username) {
     const user = await service.findOne(username);
     if (!user) {
       throw boom.unauthorized("El usuario no existe");
@@ -59,7 +60,6 @@ class AuthService {
 
     const link = `${env.appUrl}/recovery?token=${token}`;
     const infoEmail = {
-      from: env.email,
       to: user.email,
       subject: "Recuperar contraseña",
       html: `<p>Hola ${user.nombre} ${user.apellido}, tienes 15 minutos para recuperar tu contraseña ingresando a este <a href="${link}">enlace</a>.</p>`
@@ -90,17 +90,14 @@ class AuthService {
     return await passwordPolicyService.runCycle();
   }
 
-  async sendMail(infoEmail) {
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: {
-        user: env.email,
-        pass: env.password,
-      }
+async sendMail(infoEmail) {
+    const config = await emailService.getEmailConfig();
+    const transporter = emailService.buildTransporter(config);
+
+    await transporter.sendMail({
+      ...infoEmail,
+      from: emailService.buildFrom(config),
     });
-    await transporter.sendMail(infoEmail);
     return { message: "Se ha enviado un correo a tu cuenta de correo" }
   }
 

@@ -181,13 +181,15 @@ class SeguridadService {
     // Manejo de almacenes (Array o String)
     if (cons_almacen) {
       filters.cons_almacen = Array.isArray(cons_almacen)
-        ? cons_almacen
-        : { [Op.like]: `%${cons_almacen}%` };
+        ? { [Op.in]: cons_almacen }
+        : cons_almacen;
     }
 
     // Filtro booleano/estado
     if (available !== undefined) {
-      filters.available = available;
+      filters.available = Array.isArray(available)
+        ? { [Op.in]: available }
+        : available;
     }
 
     const includeModels = [

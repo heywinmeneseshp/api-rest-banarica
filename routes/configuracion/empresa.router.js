@@ -1,4 +1,5 @@
 const express = require('express');
+const passport = require('passport');
 const EmpresaService = require('../../services/configuracion/empresa.service');
 
 const router = express.Router();
@@ -27,34 +28,30 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Crear una nueva empresa
-router.post('/', 
-  async (req, res, next) => {
-    try {
-      const body = req.body;
-      const nuevaEmpresa = await service.create(body);
-      res.json({
-        message: 'Empresa creada',
-        data: nuevaEmpresa
-      });
-    } catch (error) {
-      next(error);
-    }
+router.post('/', async (req, res, next) => {
+  try {
+    const body = req.body;
+    const nuevaEmpresa = await service.create(body);
+    res.json({
+      message: 'Empresa creada',
+      data: nuevaEmpresa
+    });
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 // Actualizar una empresa
-router.patch('/:id', 
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const body = req.body;
-      const empresa = await service.update(id, body);
-      res.json(empresa);
-    } catch (error) {
-      next(error);
-    }
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    const empresa = await service.update(id, body);
+    res.json(empresa);
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 // Eliminar una empresa
 router.delete('/:id', async (req, res, next) => {

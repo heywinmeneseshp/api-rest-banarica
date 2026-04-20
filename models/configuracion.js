@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
     anho_actual: DataTypes.INTEGER,
     fecha_inicio_semana_1: DataTypes.DATEONLY,
     total_semanas_anho: DataTypes.INTEGER,
-    detalles: DataTypes.STRING,
+    detalles: DataTypes.TEXT,
     mes_reporte: DataTypes.INTEGER,
     sem_reporte: DataTypes.INTEGER,
     email_reporte: DataTypes.STRING,
