@@ -1,7 +1,7 @@
 const express = require("express");
 const TrasladosService = require('../services/traslados.service');
 const validatorHandler = require('../middlewares/validator.handler');
-const { realizarTraslado, modificarTraslado, recibirTraslado } = require('../schema/traslado.schema');
+const { realizarTraslado, modificarTraslado, recibirTraslado, ejecutarTraslado } = require('../schema/traslado.schema');
 
 
 const router = express.Router();
@@ -39,6 +39,17 @@ router.post("/filter", async (req, res, next) => {
     next(error);
   }
 });
+
+router.post("/ejecutar",
+  validatorHandler(ejecutarTraslado, "body"),
+  async (req, res, next) => {
+    try {
+      const result = await service.executeTransfer(req.body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
 
 
 //ACTUALIZACIONES PARCIALES

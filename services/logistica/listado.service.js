@@ -332,10 +332,15 @@ async bulkUpdate(updatesArray) {
         throw boom.badRequest('Fecha y contenedor son requeridos para la actualización');
       }
       
+      const fechaInicio = new Date(`${fecha}T00:00:00.000`);
+      const fechaFin = new Date(`${fecha}T23:59:59.999`);
+
       // Buscar el listado con join a Contenedor
       const listado = await db.Listado.findOne({
         where: {
-          fecha: new Date(fecha)
+          fecha: {
+            [Op.between]: [fechaInicio, fechaFin]
+          }
         },
         include: [{
           model: db.Contenedor,
@@ -409,8 +414,7 @@ async bulkUpdate(updatesArray) {
     return { message: 'El listado fue eliminado', id };
   }
 
-  async paginate(offset, limit, body = {}) {
-    // Fechas
+  buildPaginateQuery(body = {}) {
     let fechaInicial = body.fecha_inicial ? new Date(body.fecha_inicial) : null;
     let fechaFinal = body.fecha_final || null;
     let bodyFilter = {};
@@ -432,7 +436,6 @@ async bulkUpdate(updatesArray) {
     const createFilter = (field, value) =>
       value ? { [field]: { [Op.like]: `%${value}%` } } : undefined;
 
-    // Includes optimizados: siempre traen datos, pero filtran solo si es necesario
     const includeOptions = [
       { model: db.Contenedor, where: createFilter("contenedor", body.contenedor), required: !!body.contenedor },
       {
@@ -455,6 +458,15 @@ async bulkUpdate(updatesArray) {
       { model: db.serial_de_articulos, required: false }
     ];
 
+    return { bodyFilter, includeOptions };
+  }
+
+  async paginate(offset, limit, body = {}) {
+    const { bodyFilter, includeOptions } = this.buildPaginateQuery(body);
+    const countIncludeOptions = includeOptions.filter(
+      (include) => include.model !== db.serial_de_articulos
+    );
+
     // Paginación
     const parsedLimit = Number(limit) || 10;
     const parsedOffset = Number(offset) ? (Number(offset) - 1) * parsedLimit : 0;
@@ -469,7 +481,10 @@ async bulkUpdate(updatesArray) {
         include: includeOptions
       }),
       db.Listado.count({
-        where: bodyFilter
+        where: bodyFilter,
+        include: countIncludeOptions,
+        distinct: true,
+        col: 'id'
       })
     ]);
 

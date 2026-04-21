@@ -169,9 +169,10 @@ class StockServices {
     }
   }
 
-  async subtractAmounts(cons_almacen, cons_producto, body) {
-    const t = await db.sequelize.transaction();
+  async subtractAmounts(cons_almacen, cons_producto, body, transaction = null) {
+    let t;
     try {
+      t = transaction || await db.sequelize.transaction();
       console.log(`Buscando stock: ${cons_producto} en ${cons_almacen}, cantidad a restar: ${body.cantidad}`);
 
       const item = await db.stock.findOne({
@@ -218,7 +219,9 @@ class StockServices {
 
       await this.handlePre33Alert(cons_almacen, cons_producto, nuevaCantidad, item, t);
 
-      await t.commit();
+      if (!transaction) {
+        await t.commit();
+      }
 
       return {
         message: item ? "El item fue actualizado" : "Registro creado y actualizado",
@@ -226,7 +229,9 @@ class StockServices {
       };
 
     } catch (error) {
-      await t.rollback();
+      if (t && !transaction) {
+        await t.rollback();
+      }
       console.error('Error en subtractAmounts:', error);
       throw error;
     }

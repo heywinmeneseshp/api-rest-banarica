@@ -13,8 +13,39 @@ const movimientoService = new MovimientoService();
 
 class SeguridadService {
 
+  validateSerialUploadRows(rows = []) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw boom.badRequest('No se recibieron seriales para cargar.');
+    }
+
+    const almacenes = [...new Set(rows.map((item) => item?.cons_almacen).filter(Boolean))];
+    if (almacenes.length !== 1) {
+      throw boom.badRequest('Todos los seriales del archivo deben pertenecer al mismo almacen.');
+    }
+
+    const invalidRow = rows.findIndex((item) => !item?.cons_producto || !item?.serial);
+    if (invalidRow !== -1) {
+      throw boom.badRequest(`La fila ${invalidRow + 1} del archivo no tiene articulo o serial valido.`);
+    }
+
+    const repeatedSerials = rows.reduce((acc, item) => {
+      acc[item.serial] = (acc[item.serial] || 0) + 1;
+      return acc;
+    }, {});
+
+    const duplicates = Object.entries(repeatedSerials)
+      .filter(([, count]) => count > 1)
+      .map(([serial]) => serial);
+
+    if (duplicates.length > 0) {
+      throw boom.conflict(`El archivo contiene seriales repetidos: ${duplicates.join(', ')}`);
+    }
+
+    return almacenes[0];
+  }
+
   async cargarSeriales({ data, remision, pedido, semana, fecha, observaciones, username }) {
-    console.log(data)
+    const consAlmacen = this.validateSerialUploadRows(data);
 
     const batchSize = 500; // Tamaño del lote
     const t = await db.sequelize.transaction();
@@ -29,36 +60,35 @@ class SeguridadService {
         acc[item.cons_producto] = (acc[item.cons_producto] || 0) + 1;
         return acc;
       }, {});
-      const const_almacen = data[0].cons_almacen
       const dataMovimiento = {
         prefijo: "RC", remision: remision, pendiente: false, observaciones: observaciones, cons_semana: semana,
-        realizado_por: username, realizado_por: username, vehiculo: null, fecha: fecha
+        realizado_por: username, aprobado_por: username, vehiculo: null, fecha: fecha
       };
-      const movimiento = await movimientoService.create(dataMovimiento);
+      const movimiento = await movimientoService.create(dataMovimiento, t);
 
 
       for (const key in countConsProductos) {
         if (countConsProductos.hasOwnProperty(key)) {
           const cons_producto = key;
           const cantidad = countConsProductos[key];
-          stockService.addAmounts(const_almacen, cons_producto, { cantidad: cantidad })
+          await stockService.addAmounts(consAlmacen, cons_producto, { cantidad: cantidad }, t)
           const dataHistorial = {
             cons_movimiento: movimiento.dataValues.consecutivo,
             cons_producto: cons_producto,
-            cons_almacen_gestor: const_almacen,
-            cons_almacen_receptor: const_almacen,
+            cons_almacen_gestor: consAlmacen,
+            cons_almacen_receptor: consAlmacen,
             cons_lista_movimientos: "RC",
             tipo_movimiento: "Entrada",
             razon_movimiento: null,
             cantidad: cantidad,
-            cons_pedido: pedido,
+            cons_pedido: pedido || null,
           }
-          await historialMovimientoService.create(dataHistorial);
+          await historialMovimientoService.create(dataHistorial, t);
         };
       }
 
       await t.commit();
-      return { message: 'Datos cargados exitosamente', cons_movimiento: movimiento.dataValues.consecutivo };
+      return { bool: true, message: 'Datos cargados exitosamente', cons_movimiento: movimiento.dataValues.consecutivo, total_seriales: data.length };
     } catch (e) {
       await t.rollback();
 
@@ -78,11 +108,11 @@ class SeguridadService {
         const uniqueDuplicates = [...new Set(duplicateSerials)];
 
 
-        throw new boom.conflict(`Seriales duplicados detectados, ${e.original.sqlMessage}`);
+        throw new boom.conflict(`Seriales duplicados detectados: ${e.original.sqlMessage}`);
       }
 
 
-      throw new Error(`Error al cargar los datos: ${e.original?.sqlMessage || e.message}`);
+      throw boom.badRequest(e.message || e.original?.sqlMessage || 'Error al cargar los datos.');
     }
   }
 

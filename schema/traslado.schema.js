@@ -9,6 +9,23 @@ const estado = Joi.string();
 const semana = Joi.string().min(4);
 const observaciones = Joi.string();
 const fecha = Joi.string();
+const id = Joi.number().integer();
+const serial = Joi.string().allow('', null);
+const bag_pack = Joi.string().allow('', null);
+const s_pack = Joi.string().allow('', null);
+const m_pack = Joi.string().allow('', null);
+const l_pack = Joi.string().allow('', null);
+
+const trasladoItem = Joi.object({
+  id: id,
+  cons_producto: Joi.string().required(),
+  cons_almacen: Joi.string().required(),
+  serial: serial,
+  bag_pack: bag_pack,
+  s_pack: s_pack,
+  m_pack: m_pack,
+  l_pack: l_pack,
+});
 
 const realizarTraslado = Joi.object({
   transportadora: transportadora.required(),
@@ -41,4 +58,14 @@ const recibirTraslado = Joi.object({
   observaciones: observaciones.required(),
 });
 
-module.exports = { realizarTraslado, recibirTraslado, modificarTraslado };
+const ejecutarTraslado = Joi.object({
+  origen: origen.required(),
+  destino: destino.required(),
+  semana: semana.required(),
+  fecha: fecha.required(),
+  realizado_por: Joi.string().required(),
+  items: Joi.array().items(trasladoItem).min(1).required(),
+  observaciones: observaciones.allow('', null),
+});
+
+module.exports = { realizarTraslado, recibirTraslado, modificarTraslado, ejecutarTraslado };
