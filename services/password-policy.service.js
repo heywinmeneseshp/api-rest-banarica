@@ -53,7 +53,7 @@ class PasswordPolicyService {
 
     const transporter = await this.createTransporter();
     const config = await emailService.getEmailConfig();
-    const recoveryLink = `${env.appUrl}/recovery`;
+    const recoveryLink = `${env.frontendUrl}/recovery`;
     const dayLabel = policyState.daysUntilExpiry === 1 ? '1 dia' : `${policyState.daysUntilExpiry} dias`;
 
     await transporter.sendMail({

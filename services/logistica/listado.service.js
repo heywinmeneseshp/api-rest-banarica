@@ -416,16 +416,28 @@ async bulkUpdate(updatesArray) {
 
   buildPaginateQuery(body = {}) {
     let fechaInicial = body.fecha_inicial ? new Date(body.fecha_inicial) : null;
-    let fechaFinal = body.fecha_final || null;
+    let fechaFinal = body.fecha_final ? new Date(body.fecha_final) : null;
     let bodyFilter = {};
 
-    if (fechaInicial) {
+    if (fechaInicial && fechaFinal) {
+      fechaInicial.setHours(0, 0, 0, 0);
+      fechaFinal.setHours(23, 59, 59, 999);
+      bodyFilter.fecha = {
+        [Op.between]: [fechaInicial, fechaFinal]
+      };
+    } else if (fechaInicial) {
       fechaInicial.setDate(fechaInicial.getDate());
+      fechaInicial.setHours(0, 0, 0, 0);
       bodyFilter.fecha = {
         [Op.between]: [
           fechaInicial,
-          fechaFinal || `${fechaInicial.getFullYear()}-12-31`
+          new Date(`${fechaInicial.getFullYear()}-12-31T23:59:59.999`)
         ]
+      };
+    } else if (fechaFinal) {
+      fechaFinal.setHours(23, 59, 59, 999);
+      bodyFilter.fecha = {
+        [Op.lte]: fechaFinal
       };
     }
 

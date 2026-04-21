@@ -22,15 +22,6 @@ function addDays(date, days) {
   return nextDate;
 }
 
-function parseDateOrNull(value) {
-  if (!value) {
-    return null;
-  }
-
-  const parsedDate = new Date(value);
-  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-}
-
 function getDefaultWeekOneMonday(year) {
   const janFirst = new Date(Date.UTC(year, 0, 1));
   const day = janFirst.getUTCDay();
@@ -179,54 +170,11 @@ class ConfigService {
     return persistedWeeks;
   }
 
-  getWeekIdForDate(date, persistedWeeks) {
-    const normalizedDate = toDateOnlyString(date);
-    const matchingWeek = persistedWeeks.find(
-      (week) => normalizedDate >= week.fecha_inicio && normalizedDate <= week.fecha_fin,
-    );
-
-    return matchingWeek?.id || null;
-  }
-
-  async repairEmbarqueWeekReferences(persistedWeeks) {
-    const embarques = await db.Embarque.findAll({
-      attributes: ['id', 'id_semana', 'fecha_zarpe', 'fecha_arribo', 'createdAt'],
-      include: [
-        {
-          model: db.semanas,
-          attributes: ['id'],
-          required: false,
-        },
-      ],
-    });
-
-    for (const embarque of embarques) {
-      if (embarque.semana?.id) {
-        continue;
-      }
-
-      const candidateDates = [
-        parseDateOrNull(embarque.fecha_zarpe),
-        parseDateOrNull(embarque.fecha_arribo),
-        parseDateOrNull(embarque.createdAt),
-      ].filter(Boolean);
-
-      const nextWeekId = candidateDates
-        .map((candidateDate) => this.getWeekIdForDate(candidateDate, persistedWeeks))
-        .find(Boolean);
-
-      if (nextWeekId) {
-        await embarque.update({ id_semana: nextWeekId });
-      }
-    }
-  }
-
   async syncWeeksCalendar(moduloData) {
     const normalized = this.normalizeSemanaConfig(moduloData);
     const weeks = this.buildWeeksForYear(normalized);
     const currentWeekNumber = this.getCurrentWeekNumber(weeks);
-    const persistedWeeks = await this.upsertWeeksCalendar(weeks);
-    await this.repairEmbarqueWeekReferences(persistedWeeks);
+    await this.upsertWeeksCalendar(weeks);
 
     return {
       ...normalized,

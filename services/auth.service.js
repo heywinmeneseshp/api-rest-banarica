@@ -58,7 +58,7 @@ async recoveryPassword(username) {
     const token = jwt.sign(payload, env.recoverySecret, { expiresIn: '15min' });
     await service.update(username, { recovery_token: token });
 
-    const link = `${env.appUrl}/recovery?token=${token}`;
+    const link = `${env.frontendUrl}/recovery?token=${token}`;
     const infoEmail = {
       to: user.email,
       subject: "Recuperar contraseña",

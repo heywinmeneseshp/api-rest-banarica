@@ -12,7 +12,7 @@ const env = {
   smtpPort: Number(process.env.SMTP_PORT || 465),
   smtpSecure: process.env.SMTP_SECURE !== 'false',
   corsOrigin: process.env.CORS_ORIGIN || '',
-  appUrl: process.env.APP_URL || 'http://localhost:3000',
+  frontendUrl: process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000',
   seedAdminUsername: process.env.SEED_ADMIN_USERNAME || 'admin',
   seedAdminEmail: process.env.SEED_ADMIN_EMAIL || 'admin@banarica.local',
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD || 'Admin123*',
