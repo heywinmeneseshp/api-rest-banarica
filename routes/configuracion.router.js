@@ -8,6 +8,8 @@ const service = new ConfigService();
 
 const router = express.Router();
 
+// Endpoints usados por el modal de configuracion del frontend.
+
 router.get('/encontrar/:modulo',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
