@@ -22,6 +22,15 @@ function addDays(date, days) {
   return nextDate;
 }
 
+function parseDateOrNull(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsedDate = new Date(value);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
 function getDefaultWeekOneMonday(year) {
   const janFirst = new Date(Date.UTC(year, 0, 1));
   const day = janFirst.getUTCDay();
@@ -137,19 +146,87 @@ class ConfigService {
     return parseInt(weeks[weeks.length - 1].semana, 10);
   }
 
+  async upsertWeeksCalendar(weeks) {
+    const persistedWeeks = [];
+
+    for (const week of weeks) {
+      const [weekRecord] = await db.semanas.findOrCreate({
+        where: { consecutivo: week.consecutivo },
+        defaults: week,
+      });
+
+      const needsUpdate =
+        weekRecord.semana !== week.semana ||
+        weekRecord.anho !== week.anho ||
+        weekRecord.fecha_inicio !== week.fecha_inicio ||
+        weekRecord.fecha_fin !== week.fecha_fin ||
+        weekRecord.dias_semana !== week.dias_semana;
+
+      if (needsUpdate) {
+        await weekRecord.update(week);
+      }
+
+      persistedWeeks.push({
+        id: weekRecord.id,
+        consecutivo: week.consecutivo,
+        semana: week.semana,
+        anho: week.anho,
+        fecha_inicio: week.fecha_inicio,
+        fecha_fin: week.fecha_fin,
+      });
+    }
+
+    return persistedWeeks;
+  }
+
+  getWeekIdForDate(date, persistedWeeks) {
+    const normalizedDate = toDateOnlyString(date);
+    const matchingWeek = persistedWeeks.find(
+      (week) => normalizedDate >= week.fecha_inicio && normalizedDate <= week.fecha_fin,
+    );
+
+    return matchingWeek?.id || null;
+  }
+
+  async repairEmbarqueWeekReferences(persistedWeeks) {
+    const embarques = await db.Embarque.findAll({
+      attributes: ['id', 'id_semana', 'fecha_zarpe', 'fecha_arribo', 'createdAt'],
+      include: [
+        {
+          model: db.semanas,
+          attributes: ['id'],
+          required: false,
+        },
+      ],
+    });
+
+    for (const embarque of embarques) {
+      if (embarque.semana?.id) {
+        continue;
+      }
+
+      const candidateDates = [
+        parseDateOrNull(embarque.fecha_zarpe),
+        parseDateOrNull(embarque.fecha_arribo),
+        parseDateOrNull(embarque.createdAt),
+      ].filter(Boolean);
+
+      const nextWeekId = candidateDates
+        .map((candidateDate) => this.getWeekIdForDate(candidateDate, persistedWeeks))
+        .find(Boolean);
+
+      if (nextWeekId) {
+        await embarque.update({ id_semana: nextWeekId });
+      }
+    }
+  }
+
   async syncWeeksCalendar(moduloData) {
     const normalized = this.normalizeSemanaConfig(moduloData);
     const weeks = this.buildWeeksForYear(normalized);
     const currentWeekNumber = this.getCurrentWeekNumber(weeks);
-
-    await db.semanas.destroy({
-      where: {
-        anho: String(normalized.anho_actual),
-        consecutivo: { [db.Sequelize.Op.ne]: 'S00-2000' },
-      },
-    });
-
-    await db.semanas.bulkCreate(weeks);
+    const persistedWeeks = await this.upsertWeeksCalendar(weeks);
+    await this.repairEmbarqueWeekReferences(persistedWeeks);
 
     return {
       ...normalized,
