@@ -195,7 +195,7 @@ class SeguridadService {
 
     const {
       cons_producto, serial, bag_pack, s_pack, m_pack, l_pack,
-      cons_almacen, available
+      cons_almacen, available, id_contenedor, id_motivo_de_uso, cons_movimiento
     } = body;
 
     // 1. Construcción dinámica de filtros para mejorar el rendimiento de la DB
@@ -207,6 +207,9 @@ class SeguridadService {
     if (s_pack) filters.s_pack = { [Op.like]: `%${s_pack}%` };
     if (m_pack) filters.m_pack = { [Op.like]: `%${m_pack}%` };
     if (l_pack) filters.l_pack = { [Op.like]: `%${l_pack}%` };
+    if (id_contenedor) filters.id_contenedor = id_contenedor;
+    if (id_motivo_de_uso) filters.id_motivo_de_uso = id_motivo_de_uso;
+    if (cons_movimiento) filters.cons_movimiento = cons_movimiento;
 
     // Manejo de almacenes (Array o String)
     if (cons_almacen) {
