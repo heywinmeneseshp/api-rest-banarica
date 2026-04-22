@@ -1,4 +1,4 @@
-const boom = require('@hapi/boom');
+﻿const boom = require('@hapi/boom');
 const { Op, where } = require('sequelize');
 const db = require('../../models');
 
@@ -16,8 +16,8 @@ const historialMovimientoService = new HistorialMovimientoService()
 class ListadoService {
 
   async create(data) {
-    const transaction = await db.sequelize.transaction(); // Inicia una nueva transacción
-    // Datos predeterminados para la creación de registros
+    const transaction = await db.sequelize.transaction(); // Inicia una nueva transacciÃ³n
+    // Datos predeterminados para la creaciÃ³n de registros
     const defaults = {
       destino: { pais: "Predeterminado", cod: "PRE", habilitado: true },
       naviera: { cod: "PRE", habilitado: true },
@@ -76,7 +76,7 @@ class ListadoService {
       // Asegurar existencia del motivo de uso
       const [moviUso] = await db.MotivoDeUso.findOrCreate({
         where: { consecutivo: "INSP01" },
-        defaults: { consecutivo: "INSP01", motivo_de_uso: "Inspección vacío", habilitado: true },
+        defaults: { consecutivo: "INSP01", motivo_de_uso: "InspecciÃ³n vacÃ­o", habilitado: true },
         transaction
       });
 
@@ -118,7 +118,7 @@ class ListadoService {
           cons_almacen_receptor: cons_almacen,
           cons_lista_movimientos: "EX",
           tipo_movimiento: "Salida",
-          razon_movimiento: "Inspección vacío",
+          razon_movimiento: "InspecciÃ³n vacÃ­o",
           cantidad,
           cons_pedido: null
         };
@@ -140,12 +140,12 @@ class ListadoService {
 
       const itemListado = await db.Listado.create(listado, { transaction });
 
-      // Confirmar la transacción
+      // Confirmar la transacciÃ³n
       await transaction.commit();
       return itemListado;
 
     } catch (error) {
-      // Revertir transacción en caso de error
+      // Revertir transacciÃ³n en caso de error
       await transaction.rollback();
       throw boom.badRequest(error.message || "Error al crear el listado");
     }
@@ -157,13 +157,13 @@ class ListadoService {
     const transaction = await db.sequelize.transaction();
     try {
       if (!Array.isArray(dataArray) || dataArray.length === 0) {
-        throw boom.badRequest("El formato de los datos es incorrecto o está vacío.");
+        throw boom.badRequest("El formato de los datos es incorrecto o estÃ¡ vacÃ­o.");
       }
 
-      // Validar que ningún campo en los objetos de dataArray sea null o undefined
+      // Validar que ningÃºn campo en los objetos de dataArray sea null o undefined
       for (const item of dataArray) {
         if (Object.values(item).some(value => value === null || value === undefined)) {
-          throw boom.badRequest("Todos los campos deben contener valores válidos, no se permiten valores nulos.");
+          throw boom.badRequest("Todos los campos deben contener valores vÃ¡lidos, no se permiten valores nulos.");
         }
       }
 
@@ -176,7 +176,7 @@ class ListadoService {
         }
       }
 
-      // Obtener todos los embarques válidos
+      // Obtener todos los embarques vÃ¡lidos
       const blList = [...new Set(dataArray.map(item => String(item.bl)))]; // Convertir a string
       const embarques = await db.Embarque.findAll({ where: { bl: blList } });
       const embarqueMap = new Map(embarques.map(e => [String(e.bl), e.id])); // Convertir claves a string
@@ -184,7 +184,7 @@ class ListadoService {
       // Validar existencia de embarques
       for (const item of dataArray) {
         if (!embarqueMap.has(String(item.bl))) {
-          throw boom.notFound(`No se encontró un embarque con BL: ${item.bl}`);
+          throw boom.notFound(`No se encontrÃ³ un embarque con BL: ${item.bl}`);
         }
       }
 
@@ -241,7 +241,7 @@ class ListadoService {
       });
 
       // Insertar datos en Listado
-      // Asegúrate de agregar habilitado: true en todos los objetos
+      // AsegÃºrate de agregar habilitado: true en todos los objetos
       const datosConHabilitado = datosValidos.map(item => ({
         ...item,
         habilitado: item.habilitado !== undefined ? item.habilitado : true
@@ -258,12 +258,12 @@ class ListadoService {
 
       if (error.name === "SequelizeUniqueConstraintError") {
         const codExistente = error.errors?.[0]?.value || "desconocido";
-        throw boom.conflict(`El código '${codExistente}' ya existe. Debe ser único.`);
+        throw boom.conflict(`El cÃ³digo '${codExistente}' ya existe. Debe ser Ãºnico.`);
       }
 
       if (error.name === "SequelizeValidationError") {
         const detalles = error.errors.map(err => err.message);
-        throw boom.badRequest("Error de validación en los datos.", { detalles });
+        throw boom.badRequest("Error de validaciÃ³n en los datos.", { detalles });
       }
 
       throw boom.internal("Error interno del servidor al crear el item.");
@@ -286,7 +286,7 @@ class ListadoService {
     delete listadoData.id;  // Eliminar la propiedad 'id'
 
     try {
-      // Crear un nuevo listado en la base de datos usando la transacción
+      // Crear un nuevo listado en la base de datos usando la transacciÃ³n
       const itemListado = await db.Listado.create(listadoData, { transaction });
       return itemListado;
     } catch (error) {
@@ -329,32 +329,37 @@ async bulkUpdate(updatesArray) {
       
       // Validar campos requeridos
       if (!fecha || !contenedor) {
-        throw boom.badRequest('Fecha y contenedor son requeridos para la actualización');
+        throw boom.badRequest('Fecha y contenedor son requeridos para la actualizaciÃ³n');
       }
-      
-      const fechaInicio = new Date(`${fecha}T00:00:00.000`);
-      const fechaFin = new Date(`${fecha}T23:59:59.999`);
+      const fechaInicio = new Date(fecha);
+      const fechaFin = new Date(fecha);
+      fechaInicio.setHours(0, 0, 0, 0);
+      fechaFin.setHours(23, 59, 59, 999);
 
-      // Buscar el listado con join a Contenedor
+      const contenedorRecord = await db.Contenedor.findOne({
+        where: { contenedor },
+        transaction
+      });
+
+      if (!contenedorRecord) {
+        throw boom.notFound(`Contenedor ${contenedor} no encontrado`);
+      }
+
       const listado = await db.Listado.findOne({
         where: {
+          id_contenedor: contenedorRecord.id,
           fecha: {
             [Op.between]: [fechaInicio, fechaFin]
           }
         },
-        include: [{
-          model: db.Contenedor,
-          where: { contenedor },
-          required: true
-        }],
         transaction
       });
-      
+
       if (!listado) {
         throw boom.notFound(`Listado no encontrado para fecha ${fecha} y contenedor ${contenedor}`);
       }
       
-      // Buscar el Embarque por BL si se proporcionó
+      // Buscar el Embarque por BL si se proporcionÃ³
       let embarqueId = null;
       if (bl !== undefined && bl !== null) {
         const embarque = await db.Embarque.findOne({
@@ -393,7 +398,7 @@ async bulkUpdate(updatesArray) {
     
     await transaction.commit();
     return { 
-      message: 'Actualización masiva completada',
+      message: 'ActualizaciÃ³n masiva completada',
       total: results.length,
       results 
     };
@@ -479,7 +484,7 @@ async bulkUpdate(updatesArray) {
       (include) => include.model !== db.serial_de_articulos
     );
 
-    // Paginación
+    // PaginaciÃ³n
     const parsedLimit = Number(limit) || 10;
     const parsedOffset = Number(offset) ? (Number(offset) - 1) * parsedLimit : 0;
 
@@ -508,3 +513,5 @@ async bulkUpdate(updatesArray) {
 }
 
 module.exports = ListadoService;
+
+

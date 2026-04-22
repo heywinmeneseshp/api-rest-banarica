@@ -10,7 +10,14 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      this.belongsTo(models.Contenedor, {
+        as: 'contenedorViejo',
+        foreignKey: 'id_contenedor_viejo',
+      });
+      this.belongsTo(models.Contenedor, {
+        as: 'contenedorNuevo',
+        foreignKey: 'id_contenedor_nuevo',
+      });
     }
   }
   Transbordo.init({

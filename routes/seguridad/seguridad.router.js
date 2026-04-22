@@ -1,4 +1,5 @@
 const express = require("express");
+const passport = require("passport");
 
 const router = express.Router();
 const SeguridadService = require('../../services/seguridad/seguridad.service')
@@ -93,13 +94,37 @@ router.patch("/actualizar-serial",
   })
 
 
-  //Insepeccion antinarcoticos
+//Insepeccion antinarcoticos
 router.post("/inspeccion-antinarcoticos",
+  passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
     try {
       const body = req.body
-      console.log(body)
-      const result = await service.inspeccionAntinarcoticos(body)
+      const result = await service.inspeccionAntinarcoticos(body, req.user)
+      res.json(result)
+    } catch (e) {
+      next(e)
+    }
+  }
+)
+
+router.post("/aprobar-inspeccion-lleno",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const result = await service.aprobarInspeccionLleno(req.body, req.user)
+      res.json(result)
+    } catch (e) {
+      next(e)
+    }
+  }
+)
+
+router.post("/rechazar-inspeccion-lleno",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const result = await service.rechazarInspeccionLleno(req.body, req.user)
       res.json(result)
     } catch (e) {
       next(e)
@@ -115,6 +140,42 @@ router.post("/usar-seriales",
       res.json(result)
     } catch (e) {
       next(e)
+    }
+  }
+)
+
+router.post("/corregir-inspeccion-contenedor",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const result = await service.corregirInspeccionContenedor(req.body, req.user);
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  }
+)
+
+router.post("/inspeccion-vacio-masivo",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const result = await service.cargarInspeccionVacioMasivo(req.body, req.user);
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  }
+)
+
+router.post("/corregir-serial",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const result = await service.corregirAsignacionSerial(req.body, req.user);
+      res.json(result);
+    } catch (e) {
+      next(e);
     }
   }
 )

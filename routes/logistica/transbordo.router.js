@@ -18,8 +18,15 @@ router.get('/', async (req, res, next) => {
 // Ejemplo: http://localhost:3000/api/v1/transbordos/paginar?offset=1&limit=4&id_contenedor_viejo=contenedor1&id_contenedor_nuevo=contenedor2
 router.get('/paginar', async (req, res, next) => {
   try {
-    const { offset, limit, id_contenedor_viejo, id_contenedor_nuevo } = req.query;
-    const items = await service.paginate(offset, limit, id_contenedor_viejo, id_contenedor_nuevo);
+    const { offset, limit, contenedor_viejo, contenedor_nuevo, fecha_inicial, fecha_final } = req.query;
+    const items = await service.paginate(
+      offset,
+      limit,
+      contenedor_viejo,
+      contenedor_nuevo,
+      fecha_inicial,
+      fecha_final
+    );
     res.json(items);
   } catch (error) {
     next(error);
