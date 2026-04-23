@@ -168,6 +168,18 @@ router.post("/inspeccion-vacio-masivo",
   }
 )
 
+router.post("/inspeccion-vacio",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const result = await service.crearInspeccionVacio(req.body, req.user);
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  }
+)
+
 router.post("/corregir-serial",
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {

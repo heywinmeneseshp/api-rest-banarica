@@ -244,8 +244,30 @@ class SeguridadService {
     const transaction = await db.sequelize.transaction();
 
     try {
-      const { semana, fecha, contenedor, seriales, observaciones } = payload;
-      const duplicates = [...new Set(seriales.filter((item, index) => seriales.indexOf(item) !== index))];
+      const {
+        semana,
+        fecha,
+        contenedor,
+        seriales,
+        observaciones,
+        agente,
+        hora_inicio,
+        hora_fin,
+        zona
+      } = payload;
+      const normalizedSerials = (Array.isArray(seriales) ? seriales : [])
+        .map((item) => String(item || '').trim().toUpperCase())
+        .filter(Boolean);
+
+      if (!semana || !fecha || !contenedor) {
+        throw boom.badRequest('Debes indicar semana, fecha y contenedor para la inspeccion vacio.');
+      }
+
+      if (normalizedSerials.length === 0) {
+        throw boom.badRequest('Debes enviar al menos un serial para la inspeccion vacio.');
+      }
+
+      const duplicates = [...new Set(normalizedSerials.filter((item, index) => normalizedSerials.indexOf(item) !== index))];
       if (duplicates.length > 0) {
         throw boom.conflict('La fila contiene seriales repetidos: ' + duplicates.join(', '));
       }
@@ -266,14 +288,14 @@ class SeguridadService {
 
       const serialRecords = await db.serial_de_articulos.findAll({
         where: {
-          bag_pack: { [Op.in]: seriales },
+          bag_pack: { [Op.in]: normalizedSerials },
           available: true
         },
         transaction
       });
 
       const foundBagPacks = serialRecords.map((item) => String(item.bag_pack).trim());
-      const missingSerials = seriales.filter((item) => !foundBagPacks.includes(item));
+      const missingSerials = normalizedSerials.filter((item) => !foundBagPacks.includes(item));
       if (missingSerials.length > 0) {
         throw boom.badRequest('No se encontraron disponibles todos los seriales requeridos: ' + missingSerials.join(', '));
       }
@@ -341,15 +363,17 @@ class SeguridadService {
         id_lugar_de_llenado: almacen.id
       }, { transaction });
 
-      const agente = [user && user.nombre, user && user.apellido].filter(Boolean).join(' ').trim() || (user && user.username) || 'Sistema';
+      const agenteInspeccion = String(
+        agente || [user && user.nombre, user && user.apellido].filter(Boolean).join(' ').trim() || (user && user.username) || 'Sistema'
+      ).trim();
 
       const inspeccion = await db.Inspeccion.create({
         id_contenedor: contenedorRecord.id,
         fecha_inspeccion: fecha,
-        hora_inicio: '00:00:00',
-        hora_fin: '00:00:00',
-        agente,
-        zona: 'Inspeccion vacio',
+        hora_inicio: hora_inicio || '00:00:00',
+        hora_fin: hora_fin || '00:00:00',
+        agente: agenteInspeccion,
+        zona: zona || 'Inspeccion vacio',
         observaciones,
         habilitado: true
       }, { transaction });
@@ -361,6 +385,15 @@ class SeguridadService {
       await transaction.rollback();
       throw error;
     }
+  }
+
+  async crearInspeccionVacio(payload, user) {
+    const result = await this.createEmptyInspectionMassiveRow(payload, user);
+
+    return {
+      message: 'Inspeccion vacio guardada exitosamente.',
+      data: result
+    };
   }
 
   async cargarInspeccionVacioMasivo(rows, user) {
