@@ -109,7 +109,12 @@ class EmbarqueService {
       // Asegúrate de que Op esté importado: const { Op } = require('sequelize');
 
       // 1. Filtrar valores nulos y eliminar duplicados de las semanas de entrada
-      const semanasABuscar = [...new Set(data.map(item => item.id_semana).filter(Boolean))];
+      const getSemanaConsecutivo = (item) => {
+        const value = item.id_semana || item.semana;
+        return value ? String(value).trim().toUpperCase() : '';
+      };
+
+      const semanasABuscar = [...new Set(data.map(getSemanaConsecutivo).filter(Boolean))];
 
       // 2. Ejecutar la consulta con el array de semanas únicas
       const semanasValidas = await db.semanas.findAll({
@@ -134,33 +139,35 @@ class EmbarqueService {
         // 3. Preparar los cambios
         const changes = { ...item };
         delete changes.bl; // El 'bl' se usa solo para el WHERE, no debe actualizarse si es la clave de búsqueda.
+        const semanaConsecutivo = getSemanaConsecutivo(changes);
+        delete changes.semana;
 
         // Si se proporciona una nueva id_semana, realizar el proceso de findOrCreate
-        if (changes.id_semana) {
+        if (semanaConsecutivo) {
           const formatoSemana = /^S\d{2}-\d{4}$/;
-          if (!formatoSemana.test(changes.id_semana)) {
-            throw boom.badRequest(`El campo id_semana tiene un formato inválido: ${changes.id_semana}. Debe ser como 'S00-2000'.`);
+          if (!formatoSemana.test(semanaConsecutivo)) {
+            throw boom.badRequest(`El campo semana tiene un formato invalido: ${semanaConsecutivo}. Debe ser como 'S00-2000'.`);
           }
 
           // Buscar o crear la semana si no existe (lógica reutilizada de cargueMasivo)
-          if (!semanasSet.has(changes.id_semana)) {
-            const match = changes.id_semana.match(/^S(\d{2})-(\d{4})$/);
+          if (!semanasSet.has(semanaConsecutivo)) {
+            const match = semanaConsecutivo.match(/^S(\d{2})-(\d{4})$/);
             const [, semanaStr, anhoStr] = match;
 
             const [nuevaSemana] = await db.semanas.findOrCreate({
-              where: { consecutivo: changes.id_semana },
+              where: { consecutivo: semanaConsecutivo },
               defaults: {
-                consecutivo: changes.id_semana,
+                consecutivo: semanaConsecutivo,
                 semana: parseInt(semanaStr, 10),
                 anho: parseInt(anhoStr, 10)
               },
               transaction: t
             });
-            semanasSet.set(changes.id_semana, nuevaSemana.id);
+            semanasSet.set(semanaConsecutivo, nuevaSemana.id);
           }
 
           // Asignar el ID de semana correcto al objeto de cambios
-          changes.id_semana = semanasSet.get(changes.id_semana);
+          changes.id_semana = semanasSet.get(semanaConsecutivo);
         }
 
         // 4. Ejecutar la actualización (uso de update en lugar de bulkCreate)
