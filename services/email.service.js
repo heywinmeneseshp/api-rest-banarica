@@ -39,22 +39,30 @@ class emailService {
 
   async send(datosCorreo, asunto, cuerpo) {
     const payload = this.normalizePayload(datosCorreo, asunto, cuerpo);
-    const { destinatario, archivo } = payload;
+    const { destinatario, archivo, archivos } = payload;
     const adjuntos = [];
     const htmlBody = payload.cuerpo || payload.html || '';
     const subject = payload.asunto || '';
 
-    if (archivo && archivo.contenido) {
+    const archivosNormalizados = Array.isArray(archivos) && archivos.length > 0
+      ? archivos
+      : (archivo ? [archivo] : []);
+
+    for (const item of archivosNormalizados) {
+      if (!item?.contenido) {
+        continue;
+      }
+
       try {
-        const fileBuffer = Buffer.from(archivo.contenido, 'base64');
+        const fileBuffer = Buffer.from(item.contenido, 'base64');
 
         adjuntos.push({
-          filename: archivo.nombre || 'archivo_adjunto',
+          filename: item.nombre || 'archivo_adjunto',
           content: fileBuffer,
-          contentType: archivo.tipo || 'application/octet-stream'
+          contentType: item.tipo || 'application/octet-stream'
         });
       } catch (e) {
-        console.warn('Error al decodificar Base64 o preparar el adjunto. Se enviara el correo sin archivo.');
+        console.warn('Error al decodificar Base64 o preparar el adjunto. Se omitira ese archivo.');
       }
     }
 
