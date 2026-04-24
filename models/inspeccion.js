@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   Inspeccion.init({
     id_contenedor: DataTypes.INTEGER,
+    cons_movimiento: DataTypes.STRING,
     fecha_inspeccion: DataTypes.DATE,
     hora_inicio: {
       type: DataTypes.TIME,

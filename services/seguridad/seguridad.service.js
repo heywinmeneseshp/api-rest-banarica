@@ -131,6 +131,14 @@ class SeguridadService {
     return match ? match[1].trim() : null;
   }
 
+  getInspectionMovementReference(inspeccion) {
+    if (!inspeccion) {
+      return null;
+    }
+
+    return inspeccion.cons_movimiento || this.extractInspectionMovement(inspeccion.observaciones);
+  }
+
   extractVisibleObservation(observaciones = '') {
     return String(observaciones || '').replace(/\s*\[MOVIMIENTO:[^\]]+\]\s*/g, ' ').trim();
   }
@@ -933,6 +941,7 @@ class SeguridadService {
 
       await db.Inspeccion.update(
         {
+          cons_movimiento: movimiento.consecutivo,
           observaciones: this.buildInspectionObservation(formulario.observaciones, movimiento.consecutivo)
         },
         {
@@ -1022,7 +1031,7 @@ class SeguridadService {
       };
     }
 
-    let consMovimiento = this.extractInspectionMovement(inspeccion.observaciones);
+    let consMovimiento = this.getInspectionMovementReference(inspeccion);
     if (!consMovimiento) {
       const serialAsociado = await db.serial_de_articulos.findOne({
         where: {
@@ -1094,7 +1103,7 @@ class SeguridadService {
       }
     });
 
-    let consMovimiento = this.extractInspectionMovement(inspeccion.observaciones);
+    let consMovimiento = this.getInspectionMovementReference(inspeccion);
     let movimiento = consMovimiento
       ? await db.movimientos.findOne({ where: { consecutivo: consMovimiento } })
       : null;
@@ -1209,6 +1218,7 @@ class SeguridadService {
 
       await db.Inspeccion.update(
         {
+          cons_movimiento: consMovimiento || reverseMovement.consecutivo,
           habilitado: false,
           observaciones: this.buildInspectionObservation(mergedObservation, consMovimiento || reverseMovement.consecutivo)
         },
