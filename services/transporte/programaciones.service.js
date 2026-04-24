@@ -4,6 +4,42 @@ const db = require('../../models');
 
 
 class ProgramacionService {
+  normalizeText(value) {
+    return String(value || '').trim();
+  }
+
+  async validateTipoMovimiento(data, fallback = {}) {
+    const movimiento = this.normalizeText(
+      Object.prototype.hasOwnProperty.call(data || {}, 'movimiento')
+        ? data?.movimiento
+        : fallback?.movimiento
+    );
+
+    if (!movimiento) {
+      throw boom.badRequest('El movimiento es obligatorio');
+    }
+
+    const tipoMovimiento = await db.tipo_movimiento_vehiculos.findOne({
+      where: { movimiento },
+    });
+
+    if (!tipoMovimiento) {
+      throw boom.notFound(`El tipo de movimiento "${movimiento}" no existe`);
+    }
+
+    const contenedor = this.normalizeText(
+      Object.prototype.hasOwnProperty.call(data || {}, 'contenedor')
+        ? data?.contenedor
+        : fallback?.contenedor
+    );
+
+    if (tipoMovimiento.requiere_contenedor && !contenedor) {
+      throw boom.badRequest(`El movimiento ${movimiento} requiere numero de contenedor`);
+    }
+
+    return tipoMovimiento;
+  }
+
   getLiquidatedBalance(record) {
     if (!record) {
       return null;
@@ -129,6 +165,7 @@ class ProgramacionService {
 
   async create(data) {
     await this.validateBl(data?.bl);
+    await this.validateTipoMovimiento(data);
     await this.validateFechaPosteriorALiquidacion(data?.vehiculo_id, data?.fecha);
     await this.validateSaldoConsistenteConUltimaLiquidacion(data?.vehiculo_id);
     const body = { ...data, eliminado: false }
@@ -163,6 +200,7 @@ class ProgramacionService {
     if (Object.prototype.hasOwnProperty.call(changes, 'bl')) {
       await this.validateBl(changes.bl);
     }
+    await this.validateTipoMovimiento(changes, item);
     const vehiculoId = changes?.vehiculo_id || item?.vehiculo_id;
     const fecha = Object.prototype.hasOwnProperty.call(changes, 'fecha') ? changes.fecha : item?.fecha;
     await this.validateFechaPosteriorALiquidacion(vehiculoId, fecha);
