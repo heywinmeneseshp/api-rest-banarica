@@ -244,7 +244,36 @@ class record_consumosService {
       order: [['vehiculo_id', 'ASC'], ['fecha', 'ASC'], ['id', 'ASC']],
     });
 
-    if (!programaciones.length) {
+    const tanqueoWhere = {
+      [Op.or]: [
+        { record_consumo_id: null },
+        { record_consumo_id: '' },
+      ],
+    };
+    const tanqueoDateWhere = this.buildTanqueoDateWhere(fechaInicio, fechaFin);
+    if (tanqueoDateWhere) {
+      tanqueoWhere.fecha = tanqueoDateWhere;
+    }
+    if (vehiculoId) {
+      tanqueoWhere.vehiculo_id = vehiculoId;
+    }
+
+    const tanqueos = await db.tanqueos.findAll({
+      where: tanqueoWhere,
+      include: [{
+        model: db.vehiculo,
+        required: Boolean(vehiculoLike),
+        where: vehiculoLike ? { placa: { [Op.like]: `%${vehiculoLike}%` } } : undefined,
+      }],
+      order: [['vehiculo_id', 'ASC'], ['fecha', 'ASC'], ['id', 'ASC']],
+    });
+
+    const vehicleIds = [...new Set([
+      ...programaciones.map((item) => String(item.vehiculo_id)),
+      ...tanqueos.map((item) => String(item.vehiculo_id || item?.vehiculo?.id || '')),
+    ].filter(Boolean))];
+
+    if (!vehicleIds.length) {
       return {
         fechaInicio,
         fechaFin,
@@ -256,15 +285,8 @@ class record_consumosService {
       };
     }
 
-    const vehicleIds = [...new Set(programaciones.map((item) => String(item.vehiculo_id)))];
     const consumosRuta = await db.consumo_ruta_vehiculo.findAll({
       where: { vehiculo_id: { [Op.in]: vehicleIds } },
-    });
-
-    const tanqueos = await db.tanqueos.findAll({
-      where: this.buildPendingTanqueoWhere(vehicleIds, fechaInicio, fechaFin),
-      include: [{ model: db.vehiculo, required: false }],
-      order: [['vehiculo_id', 'ASC'], ['fecha', 'ASC'], ['id', 'ASC']],
     });
 
     const liquidationTag = this.buildLiquidationTag(fechaInicio, fechaFin);
@@ -292,7 +314,7 @@ class record_consumosService {
 
     const vehicles = vehicleIds.map((id) => {
       const programacionItems = programacionesByVehicle[id] || [];
-      const vehiculo = programacionItems[0]?.vehiculo;
+      const vehiculo = programacionItems[0]?.vehiculo || tanqueosByVehicle[id]?.[0]?.vehiculo;
       const record = recordsByVehicle.get(id);
       const movimientos = programacionItems.map((item) => {
         const configuracion = consumosByVehicleRoute.get(`${id}__${item.ruta_id}`);
@@ -394,7 +416,11 @@ class record_consumosService {
           where: this.buildPendingTanqueoWhere(vehiclePreview.vehiculo.id, fechaInicio, fechaFin),
           transaction,
         });
+        const firstTanqueo = pendingTanqueos[0] || vehiclePreview.tanqueos?.[0] || null;
+        const recordSemana = firstMovement?.semana || body?.semana || '';
+        const recordFecha = fechaFin || fechaInicio || firstMovement?.fecha || firstTanqueo?.fecha || null;
         const totalPendingTanqueo = pendingTanqueos.reduce((sum, item) => sum + Number(item.tanqueo || 0), 0);
+        const stockInicialCalculado = Number(vehiclePreview.saldoActual || 0) - totalPendingTanqueo;
 
         const existingRecord = vehiclePreview.record_consumo_id
           ? await db.record_consumos.findOne({
@@ -407,9 +433,10 @@ class record_consumosService {
 
         if (existingRecord) {
           await db.record_consumos.update({
-            semana: existingRecord.semana || firstMovement?.semana || '',
-            fecha: fechaFin || fechaInicio || firstMovement?.fecha,
+            semana: existingRecord.semana || recordSemana,
+            fecha: recordFecha,
             tanqueo: Number(existingRecord.tanqueo || 0) + totalPendingTanqueo,
+            stock_inicial: existingRecord.stock_inicial ?? stockInicialCalculado,
             stock_final: vehiclePreview.saldoProyectado,
             stock_real: vehiclePreview.saldoProyectado,
             liquidado: true,
@@ -420,15 +447,15 @@ class record_consumosService {
           });
         } else {
           const newRecord = await db.record_consumos.create({
-            semana: firstMovement?.semana || '',
+            semana: recordSemana,
             conductor_id: '',
             vehiculo_id: vehiclePreview.vehiculo.id,
-            fecha: fechaFin || fechaInicio || firstMovement?.fecha,
+            fecha: recordFecha,
             activo: true,
             liquidado: true,
             tanqueo: totalPendingTanqueo,
             detalle: liquidationTag,
-            stock_inicial: vehiclePreview.saldoActual,
+            stock_inicial: stockInicialCalculado,
             stock_final: vehiclePreview.saldoProyectado,
             stock_real: vehiclePreview.saldoProyectado,
             gal_por_km: 0,

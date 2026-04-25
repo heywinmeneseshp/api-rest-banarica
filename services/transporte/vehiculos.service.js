@@ -3,12 +3,24 @@ const { Op } = require('sequelize');
 const db = require('../../models');
 
 class vehiculoService {
+  normalizePayload(data = {}) {
+    return {
+      vehiculo: String(data?.vehiculo || '').trim(),
+      modelo: String(data?.modelo || '').trim(),
+      placa: String(data?.placa || '').trim().toUpperCase(),
+      conductor_id: data?.conductor_id || null,
+      categoria_id: data?.categoria_id || null,
+      combustible: data?.combustible === '' || data?.combustible == null ? 0 : Number(data.combustible),
+      gal_por_km: data?.gal_por_km === '' || data?.gal_por_km == null ? 0 : Number(data.gal_por_km),
+      activo: typeof data?.activo === 'boolean' ? data.activo : data?.activo !== 'false',
+    };
+  }
 
   async create(data) {
-    console.log(data)
-    const existe = await db.vehiculo.findOne({ where: { id: data.id } });
-    if (existe) throw boom.conflict('El item ya existe')
-    const newAlamacen = await db.vehiculo.create(data);
+    const payload = this.normalizePayload(data);
+    const existe = await db.vehiculo.findOne({ where: { placa: payload.placa } });
+    if (existe) throw boom.conflict(`Ya existe un vehiculo con la placa ${payload.placa}`);
+    const newAlamacen = await db.vehiculo.create(payload);
     return newAlamacen
   }
 
@@ -26,7 +38,12 @@ class vehiculoService {
   async update(id, changes) {
     const item = await db.vehiculo.findOne({ where: { id } });
     if (!item) throw boom.notFound('El item no existe')
-    const result = await db.vehiculo.update(changes, { where: { id } });
+    const payload = this.normalizePayload({ ...item.toJSON(), ...changes });
+    const existe = await db.vehiculo.findOne({ where: { placa: payload.placa } });
+    if (existe && String(existe.id) !== String(id)) {
+      throw boom.conflict(`Ya existe un vehiculo con la placa ${payload.placa}`);
+    }
+    const result = await db.vehiculo.update(payload, { where: { id } });
     return result;
   }
 
