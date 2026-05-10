@@ -288,11 +288,10 @@ class SeguridadService {
         transaction
       });
 
-      const [contenedorRecord] = await db.Contenedor.findOrCreate({
-        where: { contenedor },
-        defaults: { contenedor, habilitado: true },
-        transaction
-      });
+      const contenedorRecord = await db.Contenedor.create({
+        contenedor,
+        habilitado: true
+      }, { transaction });
 
       const serialRecords = await db.serial_de_articulos.findAll({
         where: {
@@ -1420,6 +1419,7 @@ class SeguridadService {
 
       const contenedorNuevo = await db.Contenedor.findOne({
         where: { contenedor: contenedorCorrectoNormalizado },
+        order: [['id', 'DESC']],
         transaction,
       });
 
@@ -1532,18 +1532,23 @@ class SeguridadService {
         transaction,
       });
 
+      const wrongSerialIsAvailable = wrongSerial?.available === true
+        || wrongSerial?.available === 1
+        || wrongSerial?.available === '1';
+
       if (!wrongSerial) {
         throw boom.notFound('El serial a corregir no existe');
       }
 
-      if (wrongSerial.available === true || !wrongSerial.id_contenedor) {
+      if (wrongSerialIsAvailable || !wrongSerial.id_contenedor) {
         throw boom.badRequest('El serial indicado no esta asignado a un contenedor');
       }
 
       let replacementSerial = null;
       if (serial_correcto) {
+        const normalizedReplacementSerial = String(serial_correcto).trim().toUpperCase();
         replacementSerial = await db.serial_de_articulos.findOne({
-          where: { serial: serial_correcto },
+          where: { serial: normalizedReplacementSerial },
           include: [
             { model: db.productos, as: 'producto' },
             { model: db.MotivoDeUso },
@@ -1551,11 +1556,15 @@ class SeguridadService {
           transaction,
         });
 
+        const replacementSerialIsAvailable = replacementSerial?.available === true
+          || replacementSerial?.available === 1
+          || replacementSerial?.available === '1';
+
         if (!replacementSerial) {
           throw boom.notFound('El serial correcto no existe');
         }
 
-        if (replacementSerial.available !== true) {
+        if (!replacementSerialIsAvailable) {
           throw boom.badRequest('El serial correcto no esta disponible');
         }
 
@@ -1645,7 +1654,7 @@ class SeguridadService {
             cons_almacen_receptor: replacementSerial.cons_almacen,
             cons_lista_movimientos: 'AJ',
             tipo_movimiento: 'Salida',
-            razon_movimiento: `Reasignacion serial correcto ${serial_correcto} al contenedor ${wrongSerial.id_contenedor}`,
+            razon_movimiento: `Reasignacion serial correcto ${replacementSerial.serial} al contenedor ${wrongSerial.id_contenedor}`,
             cantidad: 1,
             cons_pedido: null,
           },
@@ -1661,7 +1670,7 @@ class SeguridadService {
           : 'La asignacion del serial fue revertida exitosamente',
         data: {
           serial_errado,
-          serial_correcto: serial_correcto || null,
+          serial_correcto: replacementSerial?.serial || serial_correcto || null,
           id_contenedor: wrongSerial.id_contenedor,
           cons_movimiento: movement.consecutivo,
         }

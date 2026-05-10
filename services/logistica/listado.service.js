@@ -318,18 +318,30 @@ class ListadoService {
   }
 
   //Actualizacion masiva
-async bulkUpdate(updatesArray) {
+async bulkUpdate(payload) {
   const transaction = await db.sequelize.transaction();
   
   try {
+    const updatesArray = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.rows)
+        ? payload.rows
+        : [];
+    const allowPartial = Boolean(payload?.allowPartial);
+
     const results = [];
+    const missingRows = [];
     
     for (const updateData of updatesArray) {
       const { fecha, contenedor, bl, ...changes } = updateData;
       
       // Validar campos requeridos
       if (!fecha || !contenedor) {
-        throw boom.badRequest('Fecha y contenedor son requeridos para la actualizaciÃ³n');
+        missingRows.push({
+          ...updateData,
+          reason: 'Fecha y contenedor son requeridos para la actualizacion',
+        });
+        continue;
       }
       const fechaInicio = new Date(fecha);
       const fechaFin = new Date(fecha);
@@ -342,7 +354,11 @@ async bulkUpdate(updatesArray) {
       });
 
       if (!contenedorRecord) {
-        throw boom.notFound(`Contenedor ${contenedor} no encontrado`);
+        missingRows.push({
+          ...updateData,
+          reason: `Contenedor ${contenedor} no encontrado`,
+        });
+        continue;
       }
 
       const listado = await db.Listado.findOne({
@@ -356,7 +372,11 @@ async bulkUpdate(updatesArray) {
       });
 
       if (!listado) {
-        throw boom.notFound(`Listado no encontrado para fecha ${fecha} y contenedor ${contenedor}`);
+        missingRows.push({
+          ...updateData,
+          reason: `Listado no encontrado para fecha ${fecha} y contenedor ${contenedor}`,
+        });
+        continue;
       }
       
       // Buscar el Embarque por BL si se proporcionÃ³
@@ -368,7 +388,11 @@ async bulkUpdate(updatesArray) {
         });
         
         if (!embarque) {
-          throw boom.notFound(`Embarque con BL ${bl} no encontrado`);
+          missingRows.push({
+            ...updateData,
+            reason: `Embarque con BL ${bl} no encontrado`,
+          });
+          continue;
         }
         
         embarqueId = embarque.id;
@@ -395,11 +419,30 @@ async bulkUpdate(updatesArray) {
         changes
       });
     }
+
+    if (missingRows.length > 0 && !allowPartial) {
+      await transaction.rollback();
+      return {
+        message: 'Se encontraron registros sin coincidencia para actualizar.',
+        requiresConfirmation: true,
+        partial: true,
+        total: updatesArray.length,
+        processableCount: results.length,
+        missingCount: missingRows.length,
+        missingRows,
+      };
+    }
     
     await transaction.commit();
     return { 
-      message: 'ActualizaciÃ³n masiva completada',
+      message: missingRows.length > 0
+        ? 'Actualizacion masiva completada parcialmente'
+        : 'Actualizacion masiva completada',
+      partial: missingRows.length > 0,
       total: results.length,
+      requestedTotal: updatesArray.length,
+      missingCount: missingRows.length,
+      missingRows,
       results 
     };
     
