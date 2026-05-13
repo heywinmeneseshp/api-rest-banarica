@@ -80,6 +80,10 @@ class emailService {
       attachments: adjuntos
     };
 
+    if (payload.cc) {
+      infoEmail.cc = payload.cc;
+    }
+
     const transporter = this.buildTransporter(config);
 
     try {

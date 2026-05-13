@@ -333,7 +333,7 @@ async bulkUpdate(payload) {
     const missingRows = [];
     
     for (const updateData of updatesArray) {
-      const { fecha, contenedor, bl, ...changes } = updateData;
+      const { fecha, contenedor, bl, id_transportadora, ...changes } = updateData;
       
       // Validar campos requeridos
       if (!fecha || !contenedor) {
@@ -409,6 +409,21 @@ async bulkUpdate(payload) {
         transaction
       });
       
+      // Guardar en carrusel si se proporcionó id_transportadora
+      if (id_transportadora !== undefined && id_transportadora !== null && id_transportadora !== '') {
+        const transporteId = Number(id_transportadora);
+        if (!isNaN(transporteId)) {
+          const [carruselRow] = await db.carrusel.findOrCreate({
+            where: { id_contenedor: contenedorRecord.id },
+            defaults: { id_transportadora: transporteId, id_contenedor: contenedorRecord.id },
+            transaction
+          });
+          if (carruselRow.id_transportadora !== transporteId) {
+            await carruselRow.update({ id_transportadora: transporteId }, { transaction });
+          }
+        }
+      }
+      
       results.push({
         message: 'Registro actualizado',
         id: listado.id,
@@ -416,6 +431,7 @@ async bulkUpdate(payload) {
         contenedor,
         bl,
         embarqueId,
+        id_transportadora,
         changes
       });
     }

@@ -1,4 +1,4 @@
-﻿const boom = require('@hapi/boom');
+const boom = require('@hapi/boom');
 const db = require('../../models');
 const { Op, where, json } = require('sequelize');
 const serial_de_articulos = require('../../models/serial_de_articulos');
@@ -380,7 +380,7 @@ class SeguridadService {
           id_contenedor: contenedorRecord.id,
           fecha_de_uso: fecha,
           id_motivo_de_uso: motivoDeUso.id,
-          id_usuario: user && user.id ? user.id : null,
+          id_usuario: user && user.username ? user.username : null,
           ubicacion_en_contenedor: item.ubicacion_en_contenedor
         };
 
@@ -661,13 +661,13 @@ class SeguridadService {
   }
 
 
-  async actualizarSeriales(data) {
+  async actualizarSeriales(data, user = null) {
 
-    const batchSize = 100; // TamaÃƒÂ±o del lote, ajustable segÃƒÂºn tus necesidades
+    const batchSize = 100; // TamaÃ±o del lote, ajustable segÃºn tus necesidades
     const t = await db.sequelize.transaction();
 
     try {
-      const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
+      const resolvedUserId = await this.resolveUserId(user?.username, null);
 
       // Dividir los datos en lotes y procesar cada lote
       for (let i = 0; i < data.length; i += batchSize) {
@@ -856,8 +856,6 @@ class SeguridadService {
   async actualizarSerial(body, transaction = null) {
     let t;
     try {
-      const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
-
       // Usa la transacciÃƒÂ³n proporcionada o crea una nueva si no se proporciona
       if (!transaction) {
         t = await db.sequelize.transaction();
@@ -932,7 +930,7 @@ class SeguridadService {
     const requiresSuperAdminApproval = !approvedBySuperAdmin && previousFullInspectionCount >= 1;
     const inspectionApproved = approvedBySuperAdmin || !requiresSuperAdminApproval;
     const transaction = await db.sequelize.transaction();
-    const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
+    const resolvedUserId = user?.username || await this.resolveUserId(formulario?.id_usuario, transaction);
 
     try {
       const inspeccion = await db.Inspeccion.create(
@@ -1320,7 +1318,7 @@ class SeguridadService {
     const transaction = await db.sequelize.transaction();
 
     try {
-      const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
+      const resolvedUserId = user?.username || await this.resolveUserId(formulario?.id_usuario, transaction);
 
       // Ã°Å¸â€Â¹ Buscar kit de inventario
       const kitsInventario = await db.serial_de_articulos.findAll({
@@ -1703,7 +1701,7 @@ class SeguridadService {
             available: false,
             id_contenedor: wrongSerial.id_contenedor,
             fecha_de_uso: wrongSerial.fecha_de_uso,
-            id_usuario: user?.id || wrongSerial.id_usuario,
+            id_usuario: await this.resolveUserId(user?.username || wrongSerial.id_usuario, null),
             id_motivo_de_uso: wrongSerial.id_motivo_de_uso,
             cons_movimiento: wrongSerial.cons_movimiento,
             ubicacion_en_contenedor: wrongSerial.ubicacion_en_contenedor,

@@ -15,6 +15,10 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: "id",
         foreignKey: "id_contenedor"
       })
+      this.hasOne(models.carrusel, {
+        sourceKey: "id",
+        foreignKey: "id_contenedor"
+      })
     }
   }
   Contenedor.init({

@@ -57,6 +57,7 @@ const transbordoRouter = require('./logistica/transbordo.router.js');
 const MotivoDeUsoRouter = require(`./logistica/motivoDeUso.router.js`);
 
 const emailRouter = require('./email.router.js')
+const carruselRouter = require('./carrusel.router.js');
 //CONFIGURACION
 const empresaRouter = require('./configuracion/empresa.router.js');
 
@@ -119,6 +120,7 @@ function routerApi(app) {
   router.use('/motivoDeUso',MotivoDeUsoRouter);  
 
   router.use('/email', emailRouter);
+  router.use('/carrusel', carruselRouter);
   //CONFIGURACION
   router.use('/empresa', empresaRouter);
   router.use('/seguridad', seguridadRouter);

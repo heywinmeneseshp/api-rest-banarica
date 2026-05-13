@@ -40,10 +40,12 @@ router.post("/usuarios", async (req, res, next) => {
 });
 
 //ACTUALIZAR SERIALES
-router.patch("/actualizar-seriales", async (req, res, next) => {
+router.patch("/actualizar-seriales",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
   try {
     const data = req.body
-    const result = await service.actualizarSeriales(data)
+    const result = await service.actualizarSeriales(data, req.user)
     res.json(result)
   } catch (e) {
     next(e)
