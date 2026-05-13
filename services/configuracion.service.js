@@ -182,6 +182,17 @@ class ConfigService {
     };
   }
 
+  async list(prefix = '') {
+    const where = prefix
+      ? { modulo: { [db.Sequelize.Op.like]: `${prefix}%` } }
+      : {};
+
+    return await db.configuracion.findAll({
+      where,
+      order: [['modulo', 'ASC']],
+    });
+  }
+
   async find(modulo) {
     let [configuracion] = await db.configuracion.findOrCreate({
       where: { modulo },

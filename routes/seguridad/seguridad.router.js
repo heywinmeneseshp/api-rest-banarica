@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const passport = require("passport");
 
 const router = express.Router();
@@ -133,10 +133,11 @@ router.post("/rechazar-inspeccion-lleno",
 )
 
 router.post("/usar-seriales",
+  passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
     try {
       const body = req.body
-      const result = await service.usarSeriales(body)
+      const result = await service.usarSeriales(body, req.user)
       res.json(result)
     } catch (e) {
       next(e)
@@ -194,3 +195,5 @@ router.post("/corregir-serial",
 
 
 module.exports = router;
+
+

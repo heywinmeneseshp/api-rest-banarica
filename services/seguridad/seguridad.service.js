@@ -1,4 +1,4 @@
-const boom = require('@hapi/boom');
+﻿const boom = require('@hapi/boom');
 const db = require('../../models');
 const { Op, where, json } = require('sequelize');
 const serial_de_articulos = require('../../models/serial_de_articulos');
@@ -15,6 +15,60 @@ const INSPECCION_LLENO_ALERT_MODULE = 'Inspeccion_lleno_alertas';
 
 
 class SeguridadService {
+  async resolveUserId(userRef, transaction = null) {
+    if (userRef === null || userRef === undefined || userRef === '') {
+      return null;
+    }
+
+    if (typeof userRef === 'number' || /^\d+$/.test(String(userRef))) {
+      return Number(userRef);
+    }
+
+    const user = await db.usuarios.findOne({
+      where: { username: String(userRef).trim() },
+      transaction,
+    });
+
+    return user?.id || null;
+  }
+
+  async resolveMotivoDeUsoId(motivoRef, transaction = null) {
+    if (motivoRef === null || motivoRef === undefined || motivoRef === '') {
+      return null;
+    }
+
+    if (typeof motivoRef === 'number' || /^\d+$/.test(String(motivoRef))) {
+      return Number(motivoRef);
+    }
+
+    const motivo = await db.MotivoDeUso.findOne({
+      where: { consecutivo: String(motivoRef).trim() },
+      transaction,
+    });
+
+    return motivo?.id || null;
+  }
+
+  async normalizeSerialAssignmentFields(body = {}, transaction = null) {
+    const normalized = { ...body };
+
+    if (Object.prototype.hasOwnProperty.call(normalized, 'id_usuario')) {
+      normalized.id_usuario = await this.resolveUserId(normalized.id_usuario, transaction);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(normalized, 'id_motivo_de_uso')) {
+      normalized.id_motivo_de_uso = await this.resolveMotivoDeUsoId(normalized.id_motivo_de_uso, transaction);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(normalized, 'cons_movimiento')) {
+      normalized.cons_movimiento = normalized.cons_movimiento
+        ? String(normalized.cons_movimiento).trim()
+        : null;
+    }
+
+    return normalized;
+  }
+
   parseConfigDetails(detalles, fallback = {}) {
     if (!detalles) return fallback;
     if (typeof detalles === 'object') return detalles;
@@ -80,19 +134,19 @@ class SeguridadService {
     const numeroInspeccion = previousFullInspectionCount + 1;
 
     return {
-      asunto: 'Inspección lleno pendiente por aprobación',
+      asunto: 'InspecciÃ³n lleno pendiente por aprobaciÃ³n',
       cuerpo: `
-        <h3>Inspección lleno pendiente por aprobación</h3>
-        <p>Se registró una inspección lleno que requiere autorización de Super administrador.</p>
+        <h3>InspecciÃ³n lleno pendiente por aprobaciÃ³n</h3>
+        <p>Se registrÃ³ una inspecciÃ³n lleno que requiere autorizaciÃ³n de Super administrador.</p>
         <ul>
           <li><strong>Contenedor:</strong> ${contenedor || 'N/A'}</li>
-          <li><strong>Fecha de inspección:</strong> ${fecha || 'N/A'}</li>
-          <li><strong>Número de inspección:</strong> ${numeroInspeccion}</li>
+          <li><strong>Fecha de inspecciÃ³n:</strong> ${fecha || 'N/A'}</li>
+          <li><strong>NÃºmero de inspecciÃ³n:</strong> ${numeroInspeccion}</li>
           <li><strong>Agente:</strong> ${agente || 'N/A'}</li>
           <li><strong>Zona:</strong> ${zona || 'N/A'}</li>
           <li><strong>Registrada por:</strong> ${usuario}</li>
         </ul>
-        <p>Por favor revise la inspección en el módulo de Inspeccionados.</p>
+        <p>Por favor revise la inspecciÃ³n en el mÃ³dulo de Inspeccionados.</p>
       `
     };
   }
@@ -116,7 +170,7 @@ class SeguridadService {
         cuerpo: emailPayload.cuerpo
       });
     } catch (error) {
-      console.error('No fue posible enviar la alerta por correo de inspección lleno pendiente:', error);
+      console.error('No fue posible enviar la alerta por correo de inspecciÃ³n lleno pendiente:', error);
     }
   }
 
@@ -537,7 +591,7 @@ class SeguridadService {
   async cargarSeriales({ data, remision, pedido, semana, fecha, observaciones, username }) {
     const consAlmacen = this.validateSerialUploadRows(data);
 
-    const batchSize = 500; // TamaÃ±o del lote
+    const batchSize = 500; // TamaÃƒÂ±o del lote
     const t = await db.sequelize.transaction();
 
     try {
@@ -590,11 +644,11 @@ class SeguridadService {
         // Buscar todos los duplicados en los datos que intentamos insertar
         const allSerials = data.map(item => item.serial); // Asume que el campo se llama 'serial'
         const duplicateSerials = allSerials.filter(serial =>
-          serial === duplicatedValue || // El que causÃ³ el error
+          serial === duplicatedValue || // El que causÃƒÂ³ el error
           allSerials.indexOf(serial) !== allSerials.lastIndexOf(serial) // Otros duplicados en el lote
         );
 
-        // Eliminar duplicados del array para mostrar lista Ãºnica
+        // Eliminar duplicados del array para mostrar lista ÃƒÂºnica
         const uniqueDuplicates = [...new Set(duplicateSerials)];
 
 
@@ -609,10 +663,12 @@ class SeguridadService {
 
   async actualizarSeriales(data) {
 
-    const batchSize = 100; // TamaÃ±o del lote, ajustable segÃºn tus necesidades
+    const batchSize = 100; // TamaÃƒÂ±o del lote, ajustable segÃƒÂºn tus necesidades
     const t = await db.sequelize.transaction();
 
     try {
+      const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
+
       // Dividir los datos en lotes y procesar cada lote
       for (let i = 0; i < data.length; i += batchSize) {
         const batch = data.slice(i, i + batchSize);
@@ -624,7 +680,7 @@ class SeguridadService {
           transaction: t
         });
 
-        // Crear un mapa para bÃºsquedas rÃ¡pidas
+        // Crear un mapa para bÃƒÂºsquedas rÃƒÂ¡pidas
         const existingMap = new Map(existingRecords.map(record => [record.serial, record]));
 
         // Dividir los datos en actualizaciones e inserciones
@@ -657,7 +713,7 @@ class SeguridadService {
       }
 
       await t.commit();
-      return { message: "Datos cargados con Ã©xito" };
+      return { message: "Datos cargados con ÃƒÂ©xito" };
     } catch (error) {
       await t.rollback();
       throw new Error("Error al actualizar los datos: " + error.message);
@@ -685,10 +741,10 @@ class SeguridadService {
 
     const {
       cons_producto, serial, bag_pack, s_pack, m_pack, l_pack,
-      cons_almacen, available, id_contenedor, id_motivo_de_uso, cons_movimiento
+      cons_almacen, available, id_contenedor, id_motivo_de_uso, cons_movimiento, contenedor
     } = body;
 
-    // 1. ConstrucciÃ³n dinÃ¡mica de filtros para mejorar el rendimiento de la DB
+    // 1. ConstrucciÃƒÂ³n dinÃƒÂ¡mica de filtros para mejorar el rendimiento de la DB
     const filters = {};
 
     if (cons_producto) filters.cons_producto = cons_producto;
@@ -718,18 +774,29 @@ class SeguridadService {
     const includeModels = [
       { model: db.productos, as: 'producto' },
       { model: db.usuarios, as: 'usuario' },
-      { model: db.Contenedor, as: 'contenedor' },
+      {
+        model: db.Contenedor,
+        as: 'contenedor',
+        ...(contenedor
+          ? {
+              where: {
+                contenedor: { [Op.like]: `%${contenedor}%` }
+              },
+              required: true
+            }
+          : {})
+      },
       { model: db.MotivoDeUso },
     ];
 
-    // 2. LÃ³gica de PaginaciÃ³n Centralizada
+    // 2. LÃƒÂ³gica de PaginaciÃƒÂ³n Centralizada
     if (pagination) {
       const limit = parseInt(pagination.limit) || 10;
       const page = parseInt(pagination.offset) || 1;
       const offset = (page - 1) * limit;
 
 
-      // findAndCountAll ejecuta ambas consultas de forma Ã³ptima
+      // findAndCountAll ejecuta ambas consultas de forma ÃƒÂ³ptima
       const { count, rows } = await db.serial_de_articulos.findAndCountAll({
         where: filters,
         include: includeModels,
@@ -742,7 +809,7 @@ class SeguridadService {
       return { data: rows, total: count };
     }
 
-    // Retorno sin paginaciÃ³n
+    // Retorno sin paginaciÃƒÂ³n
     return await db.serial_de_articulos.findAll({
       where: filters,
       include: includeModels,
@@ -789,44 +856,48 @@ class SeguridadService {
   async actualizarSerial(body, transaction = null) {
     let t;
     try {
-      // Usa la transacciÃ³n proporcionada o crea una nueva si no se proporciona
+      const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
+
+      // Usa la transacciÃƒÂ³n proporcionada o crea una nueva si no se proporciona
       if (!transaction) {
         t = await db.sequelize.transaction();
       } else {
         t = transaction;
       }
 
-      // ObtÃ©n el registro antes de la actualizaciÃ³n
+      // ObtÃƒÂ©n el registro antes de la actualizaciÃƒÂ³n
+      const normalizedBody = await this.normalizeSerialAssignmentFields(body, t);
+
       const item = await db.serial_de_articulos.findOne({
         where: {
-          serial: body.serial
+          serial: normalizedBody.serial
         },
         transaction: t
       });
 
       if (!item) {
-        // Si no se encuentra el Ã­tem, realiza un rollback si se creÃ³ una transacciÃ³n
+        // Si no se encuentra el ÃƒÂ­tem, realiza un rollback si se creÃƒÂ³ una transacciÃƒÂ³n
         if (!transaction) {
           await t.rollback();
         }
         return { affectedRows: 0, updatedItem: null };
       }
 
-      // Realiza la actualizaciÃ³n
-      const [affectedRows] = await db.serial_de_articulos.update(body, {
+      // Realiza la actualizaciÃƒÂ³n
+      const [affectedRows] = await db.serial_de_articulos.update(normalizedBody, {
         where: {
-          serial: body.serial
+          serial: normalizedBody.serial
         },
         transaction: t
       });
 
       let updatedItem = null;
       if (affectedRows > 0) {
-        // Refresca el Ã­tem para asegurarte de obtener los datos actualizados
+        // Refresca el ÃƒÂ­tem para asegurarte de obtener los datos actualizados
         updatedItem = await item.reload({ transaction: t });
       }
 
-      // Confirma la transacciÃ³n si se creÃ³ dentro de esta funciÃ³n
+      // Confirma la transacciÃƒÂ³n si se creÃƒÂ³ dentro de esta funciÃƒÂ³n
       if (!transaction) {
         await t.commit();
       }
@@ -834,7 +905,7 @@ class SeguridadService {
       return { affectedRows, updatedItem };
 
     } catch (error) {
-      // Realiza un rollback si se creÃ³ una transacciÃ³n
+      // Realiza un rollback si se creÃƒÂ³ una transacciÃƒÂ³n
       if (t) {
         await t.rollback();
       }
@@ -848,7 +919,7 @@ class SeguridadService {
     const { formulario, rechazos } = body;
 
     if (!formulario || !formulario.consecutivo || !formulario.fecha) {
-      throw new Error("Datos insuficientes para realizar la inspección.");
+      throw new Error("Datos insuficientes para realizar la inspecciÃ³n.");
     }
 
     const approvedBySuperAdmin = await this.canApproveFullInspection(user);
@@ -861,6 +932,7 @@ class SeguridadService {
     const requiresSuperAdminApproval = !approvedBySuperAdmin && previousFullInspectionCount >= 1;
     const inspectionApproved = approvedBySuperAdmin || !requiresSuperAdminApproval;
     const transaction = await db.sequelize.transaction();
+    const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
 
     try {
       const inspeccion = await db.Inspeccion.create(
@@ -878,7 +950,7 @@ class SeguridadService {
       );
 
       const [moviRechazo] = await db.MotivoDeRechazo.findOrCreate({
-        where: { motivo_rechazo: "Inspección antinarcóticos" },
+        where: { motivo_rechazo: "Inspeccion antinarcoticos" },
         defaults: {
           habilitado: true,
         },
@@ -896,7 +968,7 @@ class SeguridadService {
                 serial_palet: item.codigoPallet,
                 cod_productor: item.cod_productor,
                 id_contenedor: formulario.consecutivo,
-                id_usuario: formulario?.id_usuario,
+                id_usuario: resolvedUserId,
                 habilitado: false,
                 observaciones: formulario.observaciones,
                 fecha_rechazo: formulario.fecha,
@@ -913,14 +985,14 @@ class SeguridadService {
       });
 
       if (kitsInventario.length === 0) {
-        throw new Error("No se encontraron artículos asociados al kit de inventario.");
+        throw new Error("No se encontraron artÃ­culos asociados al kit de inventario.");
       }
 
       const [moviUso] = await db.MotivoDeUso.findOrCreate({
         where: { consecutivo: "INSP02" },
         defaults: {
           consecutivo: "INSP02",
-          motivo_de_uso: "Inspección antinarcóticos",
+          motivo_de_uso: "Inspeccion antinarcoticos",
           habilitado: true,
         },
         transaction,
@@ -960,7 +1032,7 @@ class SeguridadService {
               id_contenedor: formulario.consecutivo,
               cons_movimiento: movimiento.consecutivo,
               ubicacion_en_contenedor: "Exterior",
-              id_usuario: formulario?.id_usuario,
+              id_usuario: resolvedUserId,
               id_motivo_de_uso: moviUso.id,
             },
             {
@@ -979,7 +1051,7 @@ class SeguridadService {
               cons_almacen_receptor: article.cons_almacen,
               cons_lista_movimientos: "EX",
               tipo_movimiento: "Salida",
-              razon_movimiento: "Inspección antinarcóticos",
+              razon_movimiento: "Inspeccion antinarcoticos",
               cantidad: "1",
             },
             transaction
@@ -994,15 +1066,15 @@ class SeguridadService {
 
       return {
         message: inspectionApproved
-          ? 'Inspección guardada y aprobada exitosamente.'
-          : 'Inspección guardada y pendiente por aprobación del Super administrador.',
+          ? 'Inspeccion guardada y aprobada exitosamente.'
+          : 'Inspeccion guardada y pendiente por aprobacion del Super administrador.',
         approved: inspectionApproved,
         pending_approval: !inspectionApproved,
         data: inspeccion
       };
     } catch (error) {
       if (transaction) await transaction.rollback();
-      console.error("Error en inspección antinarcóticos:", error);
+      console.error("Error en inspeccion antinarcoticos:", error);
       throw error;
     }
   }
@@ -1011,21 +1083,21 @@ class SeguridadService {
     const { id_inspeccion } = body || {};
 
     if (!id_inspeccion) {
-      throw boom.badRequest('Debes indicar la inspección a aprobar');
+      throw boom.badRequest('Debes indicar la inspecciÃ³n a aprobar');
     }
 
     if (!(await this.canApproveFullInspection(user))) {
-      throw boom.unauthorized('Solo el Super administrador puede aprobar la inspección lleno');
+      throw boom.unauthorized('Solo el Super administrador puede aprobar la inspecciÃ³n lleno');
     }
 
     const inspeccion = await db.Inspeccion.findByPk(id_inspeccion);
     if (!inspeccion) {
-      throw boom.notFound('La inspección indicada no existe');
+      throw boom.notFound('La inspecciÃ³n indicada no existe');
     }
 
     if (inspeccion.habilitado === true) {
       return {
-        message: 'La inspección ya estaba aprobada.',
+        message: 'La inspecciÃ³n ya estaba aprobada.',
         data: inspeccion
       };
     }
@@ -1048,13 +1120,13 @@ class SeguridadService {
       const movimiento = await db.movimientos.findOne({ where: { consecutivo: consMovimiento } });
       const respuestaMovimiento = String(movimiento?.respuesta || '').toLowerCase();
       if (respuestaMovimiento.includes('rechazada')) {
-        throw boom.badRequest('La inspección ya fue rechazada y no puede aprobarse.');
+        throw boom.badRequest('La inspecciÃ³n ya fue rechazada y no puede aprobarse.');
       }
 
       await db.movimientos.update(
         {
           pendiente: false,
-          respuesta: 'Aprobada inspección lleno',
+          respuesta: 'Aprobada inspecciÃ³n lleno',
           aprobado_por: user?.username || null
         },
         { where: { consecutivo: consMovimiento } }
@@ -1068,7 +1140,7 @@ class SeguridadService {
 
     const updatedInspection = await db.Inspeccion.findByPk(id_inspeccion);
     return {
-      message: 'La inspección fue aprobada exitosamente.',
+      message: 'La inspecciÃ³n fue aprobada exitosamente.',
       data: updatedInspection
     };
   }
@@ -1077,27 +1149,27 @@ class SeguridadService {
     const { id_inspeccion, observaciones = '' } = body || {};
 
     if (!id_inspeccion) {
-      throw boom.badRequest('Debes indicar la inspección a rechazar');
+      throw boom.badRequest('Debes indicar la inspecciÃ³n a rechazar');
     }
 
     if (!(await this.canApproveFullInspection(user))) {
-      throw boom.unauthorized('Solo el Super administrador puede rechazar la inspección lleno');
+      throw boom.unauthorized('Solo el Super administrador puede rechazar la inspecciÃ³n lleno');
     }
 
     const inspeccion = await db.Inspeccion.findByPk(id_inspeccion);
     if (!inspeccion) {
-      throw boom.notFound('La inspección indicada no existe');
+      throw boom.notFound('La inspecciÃ³n indicada no existe');
     }
 
     if (inspeccion.habilitado === true) {
-      throw boom.badRequest('No puedes rechazar una inspección ya aprobada');
+      throw boom.badRequest('No puedes rechazar una inspecciÃ³n ya aprobada');
     }
 
     const [moviUso] = await db.MotivoDeUso.findOrCreate({
       where: { consecutivo: 'INSP02' },
       defaults: {
         consecutivo: 'INSP02',
-        motivo_de_uso: 'Inspección antinarcóticos',
+        motivo_de_uso: 'Inspeccion antinarcoticos',
         habilitado: true,
       }
     });
@@ -1128,7 +1200,7 @@ class SeguridadService {
       });
 
       if (!seriales.length) {
-        throw boom.badRequest('No se encontraron seriales de inspección lleno para revertir');
+        throw boom.badRequest('No se encontraron seriales de inspecciÃ³n lleno para revertir');
       }
 
       if (!movimiento && seriales[0]?.cons_movimiento) {
@@ -1143,7 +1215,7 @@ class SeguridadService {
       if (respuestaActual.includes('rechazada')) {
         await transaction.rollback();
         return {
-          message: 'La inspección ya estaba rechazada.',
+          message: 'La inspecciÃ³n ya estaba rechazada.',
           data: inspeccion
         };
       }
@@ -1152,8 +1224,8 @@ class SeguridadService {
         {
           prefijo: 'AJ',
           pendiente: false,
-          observaciones: observaciones || `Reversión inspección lleno ${consMovimiento || id_inspeccion}`,
-          respuesta: 'Reversión por inspección lleno rechazada',
+          observaciones: observaciones || `ReversiÃ³n inspecciÃ³n lleno ${consMovimiento || id_inspeccion}`,
+          respuesta: 'ReversiÃ³n por inspecciÃ³n lleno rechazada',
           cons_semana: movimiento?.cons_semana || null,
           realizado_por: user?.username || null,
           aprobado_por: user?.username || null,
@@ -1191,7 +1263,7 @@ class SeguridadService {
             cons_almacen_receptor: item.cons_almacen,
             cons_lista_movimientos: 'AJ',
             tipo_movimiento: 'Entrada',
-            razon_movimiento: `Reversión inspección lleno no aprobada ${consMovimiento || ''}`.trim(),
+            razon_movimiento: `ReversiÃ³n inspecciÃ³n lleno no aprobada ${consMovimiento || ''}`.trim(),
             cantidad: 1,
             cons_pedido: null,
           },
@@ -1203,7 +1275,7 @@ class SeguridadService {
         await db.movimientos.update(
           {
             pendiente: false,
-            respuesta: `Rechazada: inspección lleno no aprobada${observaciones ? ` - ${observaciones}` : ''}`,
+            respuesta: `Rechazada: inspecciÃ³n lleno no aprobada${observaciones ? ` - ${observaciones}` : ''}`,
             aprobado_por: user?.username || null
           },
           { where: { consecutivo: consMovimiento }, transaction }
@@ -1226,7 +1298,7 @@ class SeguridadService {
 
       await transaction.commit();
       return {
-        message: 'La inspección fue rechazada y los seriales regresaron al inventario.',
+        message: 'La inspecciÃ³n fue rechazada y los seriales regresaron al inventario.',
         data: {
           id_inspeccion,
           movimiento_rechazado: consMovimiento || null,
@@ -1240,31 +1312,33 @@ class SeguridadService {
     }
   }
 
-  async usarSeriales(body) {
+  async usarSeriales(body, user = null) {
     const { formulario, motivo_de_uso } = body;
     console.log(body);
 
-    // Iniciar una transacciÃ³n
+    // Iniciar una transacciÃƒÂ³n
     const transaction = await db.sequelize.transaction();
 
     try {
-      // ðŸ”¹ Buscar kit de inventario
+      const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
+
+      // Ã°Å¸â€Â¹ Buscar kit de inventario
       const kitsInventario = await db.serial_de_articulos.findAll({
         where: { bag_pack: formulario.bolsa, available: true },
         transaction,
       });
 
       if (kitsInventario.length === 0) {
-        throw new Error("âŒ No se encontraron artÃ­culos asociados al kit de inventario.");
+        throw new Error("Ã¢ÂÅ’ No se encontraron artÃƒÂ­culos asociados al kit de inventario.");
       }
 
-      // ðŸ”¹ Contar cuÃ¡ntas veces aparece cada cons_producto
+      // Ã°Å¸â€Â¹ Contar cuÃƒÂ¡ntas veces aparece cada cons_producto
       const productosCantidad = {};
       kitsInventario.forEach(({ dataValues: article }) => {
         productosCantidad[article.cons_producto] = (productosCantidad[article.cons_producto] || 0) + 1;
       });
 
-      // ðŸ”¹ Asegurar motivo de uso
+      // Ã°Å¸â€Â¹ Asegurar motivo de uso
       let cons_motivo_de_uso = motivo_de_uso?.consecutivo || "PRED01";
 
       if (cons_motivo_de_uso === "PRED01") {
@@ -1281,7 +1355,7 @@ class SeguridadService {
         cons_motivo_de_uso = motivo_de_uso.id;
       }
 
-      // ðŸ”¹ Crear movimiento de salida
+      // Ã°Å¸â€Â¹ Crear movimiento de salida
       const movimiento = await movimientoService.create(
         {
           prefijo: "EX",
@@ -1292,7 +1366,7 @@ class SeguridadService {
         transaction
       );
 
-      // ðŸ”¹ 1. PRIMERO: Actualizar cada artÃ­culo individualmente
+      // Ã°Å¸â€Â¹ 1. PRIMERO: Actualizar cada artÃƒÂ­culo individualmente
       await Promise.all(
         kitsInventario.map(async ({ dataValues: article }) => {
           const updateResult = await db.serial_de_articulos.update(
@@ -1300,8 +1374,9 @@ class SeguridadService {
               available: false,
               fecha_de_uso: formulario.fecha,
               id_contenedor: formulario.contenedorId,
+              cons_movimiento: movimiento.consecutivo,
               ubicacion_en_contenedor: "Exterior",
-              id_usuario: formulario.id_usuario,
+              id_usuario: resolvedUserId,
               id_motivo_de_uso: cons_motivo_de_uso,
             },
             {
@@ -1311,39 +1386,39 @@ class SeguridadService {
           );
 
           if (updateResult[0] === 0) {
-            throw new Error(`âŒ No se pudo actualizar el artÃ­culo con ID: ${article.id}`);
+            throw new Error(`Ã¢ÂÅ’ No se pudo actualizar el artÃƒÂ­culo con ID: ${article.id}`);
           }
         })
       );
 
-      // ðŸ”¹ 2. SEGUNDO: Restar del stock (SOLO UNA VEZ POR PRODUCTO)
-      // Obtener productos Ãºnicos
+      // Ã°Å¸â€Â¹ 2. SEGUNDO: Restar del stock (SOLO UNA VEZ POR PRODUCTO)
+      // Obtener productos ÃƒÂºnicos
       const productosUnicos = [...new Set(kitsInventario.map(item => item.dataValues.cons_producto))];
 
       await Promise.all(
         productosUnicos.map(async (cons_producto) => {
-          // Encontrar el primer artÃ­culo de este producto para obtener su almacÃ©n
+          // Encontrar el primer artÃƒÂ­culo de este producto para obtener su almacÃƒÂ©n
           const primerArticulo = kitsInventario.find(
             item => item.dataValues.cons_producto === cons_producto
           );
 
           if (!primerArticulo) return;
           console.log(
-            primerArticulo.dataValues.cons_almacen,  // primer parÃ¡metro: cons_almacen
-            cons_producto,                          // segundo parÃ¡metro: cons_producto
+            primerArticulo.dataValues.cons_almacen,  // primer parÃƒÂ¡metro: cons_almacen
+            cons_producto,                          // segundo parÃƒÂ¡metro: cons_producto
             { cantidad: productosCantidad[cons_producto] }, "heywin")
-          // Llamar a subtractAmounts con los parÃ¡metros correctos
+          // Llamar a subtractAmounts con los parÃƒÂ¡metros correctos
           await stockService.subtractAmounts(
-            primerArticulo.dataValues.cons_almacen,  // primer parÃ¡metro: cons_almacen
-            cons_producto,                          // segundo parÃ¡metro: cons_producto
-            { cantidad: productosCantidad[cons_producto] }  // tercer parÃ¡metro: body con cantidad
+            primerArticulo.dataValues.cons_almacen,  // primer parÃƒÂ¡metro: cons_almacen
+            cons_producto,                          // segundo parÃƒÂ¡metro: cons_producto
+            { cantidad: productosCantidad[cons_producto] }  // tercer parÃƒÂ¡metro: body con cantidad
           );
 
-          console.log(`âœ… Restado stock: ${cons_producto}, cantidad: ${productosCantidad[cons_producto]}, almacÃ©n: ${primerArticulo.dataValues.cons_almacen}`);
+          console.log(`Ã¢Å“â€¦ Restado stock: ${cons_producto}, cantidad: ${productosCantidad[cons_producto]}, almacÃƒÂ©n: ${primerArticulo.dataValues.cons_almacen}`);
         })
       );
 
-      // ðŸ”¹ 3. Registrar movimientos en historial
+      // Ã°Å¸â€Â¹ 3. Registrar movimientos en historial
       await Promise.all(
         Object.entries(productosCantidad).map(async ([cons_producto, cantidad]) => {
           const primerArticulo = kitsInventario.find(
@@ -1358,7 +1433,7 @@ class SeguridadService {
               cons_almacen_receptor: primerArticulo.dataValues.cons_almacen,
               cons_lista_movimientos: "EX",
               tipo_movimiento: "Salida",
-              razon_movimiento: "InspecciÃ³n antinarcÃ³ticos",
+              razon_movimiento: "Inspeccion antinarcoticos",
               cantidad: cantidad.toString(),
             },
             transaction
@@ -1366,15 +1441,15 @@ class SeguridadService {
         })
       );
 
-      // ðŸ”¹ Confirmar transacciÃ³n
+      // Ã°Å¸â€Â¹ Confirmar transacciÃƒÂ³n
       await transaction.commit();
-      console.log("âœ… InspecciÃ³n antinarcÃ³ticos completada con Ã©xito.");
+      console.log("Inspeccion antinarcoticos completada con exito.");
       return true;
 
     } catch (error) {
-      // ðŸ”¹ Revertir transacciÃ³n en caso de error
+      // Ã°Å¸â€Â¹ Revertir transacciÃƒÂ³n en caso de error
       if (transaction) await transaction.rollback();
-      console.error("ðŸš¨ Error en inspecciÃ³n antinarcÃ³ticos:", error.message);
+      console.error("Error en inspeccion antinarcoticos:", error.message);
       throw error;
     }
   }
@@ -1447,7 +1522,7 @@ class SeguridadService {
       });
 
       const motivoRechazoInspeccion = await db.MotivoDeRechazo.findOne({
-        where: { motivo_rechazo: 'Inspecci?n antinarc?ticos' },
+        where: { motivo_rechazo: 'Inspeccion antinarcoticos' },
         transaction,
       });
 
@@ -1687,4 +1762,7 @@ class SeguridadService {
 }
 
 module.exports = SeguridadService;
+
+
+
 

@@ -1,4 +1,4 @@
-const boom = require('@hapi/boom');
+﻿const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../../models');
 const MovimientoService = require('../movimientos.service');
@@ -23,12 +23,16 @@ class TransbordoService {
         id_contenedor_viejo,
         fecha_transbordo,
         observaciones,
-        usuario
+        usuario,
+        inspeccionado,
+        rechazos
       } = data;
 
       const serialesNormalizados = Array.isArray(seriales) ? seriales.filter(Boolean) : [];
       const lineasNormalizadas = Array.isArray(lineas_listado) ? lineas_listado.filter(Boolean) : [];
       const nuevoContenedorNormalizado = String(nuevo_contenedor || '').trim().toUpperCase();
+      const marcarComoInspeccionado = Boolean(inspeccionado);
+      const rechazosNormalizados = Array.isArray(rechazos) ? rechazos.filter(Boolean) : [];
 
       if (!id_contenedor_viejo) {
         throw boom.badRequest('Debe indicar el contenedor de origen.');
@@ -58,6 +62,10 @@ class TransbordoService {
         throw boom.badRequest('Los seriales del kit no tienen la informacion completa para registrar el transbordo.');
       }
 
+
+      if (rechazosNormalizados.some(item => !item || !item.producto || !item.cod_productor || !item.codigoPallet || !item.totalCajas)) {
+        throw boom.badRequest('Todos los rechazos del transbordo deben tener productor, pallet, producto y cajas.');
+      }
       // CREAR NUEVO CONTENEDOR
       const contenedorNuevo = await db.Contenedor.create({
         contenedor: nuevoContenedorNormalizado,
@@ -84,16 +92,34 @@ class TransbordoService {
         )
       );
 
+      const motivoConsecutivo = marcarComoInspeccionado ? "INSP02" : "TRANS01";
+      const motivoDescripcion = marcarComoInspeccionado ? "Inspeccion antinarcoticos" : "transbordo";
+
       // ENCONTRAR O CREAR MOTIVO DE USO
       const [moviUso] = await db.MotivoDeUso.findOrCreate({
-        where: { consecutivo: "TRANS01" },
+        where: { consecutivo: motivoConsecutivo },
         defaults: {
-          consecutivo: "TRANS01",
-          motivo_de_uso: "transbordo",
+          consecutivo: motivoConsecutivo,
+          motivo_de_uso: motivoDescripcion,
           habilitado: true
         },
         transaction
       });
+
+      let inspeccion = null;
+      if (marcarComoInspeccionado) {
+        const horaInspeccion = new Date().toISOString().slice(11, 19);
+        inspeccion = await db.Inspeccion.create({
+          id_contenedor: id_contenedor_nuevo,
+          fecha_inspeccion: fecha_transbordo,
+          hora_inicio: horaInspeccion,
+          hora_fin: horaInspeccion,
+          agente: usuario.username,
+          zona: "Inspeccion antinarcoticos",
+          observaciones: observaciones || "Contenedor marcado como inspeccionado durante transbordo.",
+          habilitado: true
+        }, { transaction });
+      }
 
       // CREAR MOVIMIENTO
       const dataMovimiento = {
@@ -110,6 +136,49 @@ class TransbordoService {
       const cons_movimiento = movimiento.dataValues.consecutivo;
       const id_motivo_de_uso = moviUso.dataValues.id;
       const id_usuario = usuario.id;
+
+      const [motivoRechazo] = await db.MotivoDeRechazo.findOrCreate({
+        where: { motivo_rechazo: 'Transbordo' },
+        defaults: {
+          habilitado: true
+        },
+        transaction
+      });
+
+      if (inspeccion) {
+        await db.Inspeccion.update(
+          {
+            cons_movimiento,
+            observaciones: observaciones || "Contenedor marcado como inspeccionado durante transbordo."
+          },
+          {
+            where: { id: inspeccion.id },
+            transaction
+          }
+        );
+      }
+
+      if (rechazosNormalizados.length) {
+        await Promise.all(
+          rechazosNormalizados.map((item) =>
+            db.Rechazo.create(
+              {
+                id_motivo_de_rechazo: motivoRechazo.id,
+                id_producto: item.producto,
+                cantidad: item.totalCajas,
+                serial_palet: item.codigoPallet,
+                cod_productor: item.cod_productor,
+                id_contenedor: id_contenedor_nuevo,
+                id_usuario,
+                habilitado: false,
+                observaciones: observaciones || null,
+                fecha_rechazo: fecha_transbordo,
+              },
+              { transaction }
+            )
+          )
+        );
+      }
 
       // ACTUALIZAR SERIALES
       await Promise.all(serialesNormalizados.map(item => {
@@ -147,7 +216,7 @@ class TransbordoService {
           cons_almacen_receptor: cons_almacen,
           cons_lista_movimientos: "EX",
           tipo_movimiento: "Salida",
-          razon_movimiento: "Transbordo",
+          razon_movimiento: marcarComoInspeccionado ? "Inspeccion antinarcoticos por transbordo" : "Transbordo",
           cantidad,
           cons_pedido: null
         };
@@ -262,3 +331,5 @@ class TransbordoService {
 }
 
 module.exports = TransbordoService;
+
+

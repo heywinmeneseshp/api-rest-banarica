@@ -10,6 +10,19 @@ const router = express.Router();
 
 // Endpoints usados por el modal de configuracion del frontend.
 
+router.get('/listar',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const { prefix = '' } = req.query;
+      const result = await service.list(prefix);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+
 router.get('/encontrar/:modulo',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
