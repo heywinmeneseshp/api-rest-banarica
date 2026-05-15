@@ -313,7 +313,38 @@ class ListadoService {
     if (!listado) {
       throw boom.notFound('El listado no existe');
     }
-    await db.Listado.update(changes, { where: { id } });
+
+    const { id_transportadora, ...listadoChanges } = changes || {};
+
+    if (Object.keys(listadoChanges).length > 0) {
+      await db.Listado.update(listadoChanges, { where: { id } });
+    }
+
+    if (Object.prototype.hasOwnProperty.call(changes || {}, 'id_transportadora')) {
+      const contenedorId = listado.id_contenedor;
+      const normalizedTransportadoraId = (
+        id_transportadora === undefined
+        || id_transportadora === null
+        || id_transportadora === ''
+      ) ? null : Number(id_transportadora);
+
+      if (normalizedTransportadoraId === null || Number.isNaN(normalizedTransportadoraId)) {
+        await db.carrusel.destroy({ where: { id_contenedor: contenedorId } });
+      } else {
+        const [carruselRow] = await db.carrusel.findOrCreate({
+          where: { id_contenedor: contenedorId },
+          defaults: {
+            id_contenedor: contenedorId,
+            id_transportadora: normalizedTransportadoraId
+          }
+        });
+
+        if (carruselRow.id_transportadora !== normalizedTransportadoraId) {
+          await carruselRow.update({ id_transportadora: normalizedTransportadoraId });
+        }
+      }
+    }
+
     return { message: 'El listado fue actualizado', id, changes };
   }
 
@@ -348,28 +379,34 @@ async bulkUpdate(payload) {
       fechaInicio.setHours(0, 0, 0, 0);
       fechaFin.setHours(23, 59, 59, 999);
 
-      const contenedorRecord = await db.Contenedor.findOne({
-        where: { contenedor },
-        transaction
-      });
-
-      if (!contenedorRecord) {
-        missingRows.push({
-          ...updateData,
-          reason: `Contenedor ${contenedor} no encontrado`,
-        });
-        continue;
-      }
-
-      const listado = await db.Listado.findOne({
+      const listadosCandidatos = await db.Listado.findAll({
         where: {
-          id_contenedor: contenedorRecord.id,
           fecha: {
             [Op.between]: [fechaInicio, fechaFin]
           }
         },
+        include: [
+          {
+            model: db.Contenedor,
+            where: { contenedor },
+            required: true
+          },
+          {
+            model: db.Embarque,
+            required: false
+          }
+        ],
+        order: [['id', 'DESC']],
         transaction
       });
+
+      const listado = listadosCandidatos.find((item) => (
+        bl !== undefined
+        && bl !== null
+        && String(bl).trim() !== ''
+        && item?.Embarque?.bl
+        && String(item.Embarque.bl).trim() === String(bl).trim()
+      )) || listadosCandidatos[0] || null;
 
       if (!listado) {
         missingRows.push({
@@ -414,8 +451,8 @@ async bulkUpdate(payload) {
         const transporteId = Number(id_transportadora);
         if (!isNaN(transporteId)) {
           const [carruselRow] = await db.carrusel.findOrCreate({
-            where: { id_contenedor: contenedorRecord.id },
-            defaults: { id_transportadora: transporteId, id_contenedor: contenedorRecord.id },
+            where: { id_contenedor: listado.id_contenedor },
+            defaults: { id_transportadora: transporteId, id_contenedor: listado.id_contenedor },
             transaction
           });
           if (carruselRow.id_transportadora !== transporteId) {
@@ -513,7 +550,20 @@ async bulkUpdate(payload) {
       value ? { [field]: { [Op.like]: `%${value}%` } } : undefined;
 
     const includeOptions = [
-      { model: db.Contenedor, where: createFilter("contenedor", body.contenedor), required: !!body.contenedor },
+      {
+        model: db.Contenedor,
+        where: createFilter("contenedor", body.contenedor),
+        required: !!body.contenedor,
+        include: [{
+          model: db.carrusel,
+          required: false,
+          include: [{
+            model: db.transportadoras,
+            as: 'transportadora',
+            required: false
+          }]
+        }]
+      },
       {
         model: db.Embarque,
         required: !!(body.booking || body.bl || body.destino || body.naviera || body.cliente || body.buque || body.semana),

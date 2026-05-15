@@ -142,7 +142,9 @@ class InspeccionService {
     const containerIds = [...new Set(rows.map((item) => item.id_contenedor).filter(Boolean))];
     const movementIds = [...new Set(rows.map((item) => this.getInspectionMovementReference(item)).filter(Boolean))];
 
-    const [contenedores, serialesPorMovimiento, serialesFallbackContenedor, movimientos, listados] = await Promise.all([
+    const inspectionUserIds = [...new Set(rows.map((item) => item.id_usuario).filter(Boolean))];
+
+    const [contenedores, serialesPorMovimiento, serialesFallbackContenedor, movimientos, listados, inspectionUsers] = await Promise.all([
       db.Contenedor.findAll({
         where: { id: { [Op.in]: containerIds } },
         raw: true
@@ -214,11 +216,18 @@ class InspeccionService {
           }]
         }],
         order: [['updatedAt', 'DESC'], ['id', 'DESC']]
-      })
+      }),
+      inspectionUserIds.length > 0
+        ? db.usuarios.findAll({
+            where: { id: { [Op.in]: inspectionUserIds } },
+            raw: true
+          })
+        : []
     ]);
 
     const contenedorMap = new Map(contenedores.map((item) => [item.id, item]));
     const movimientoMap = new Map(movimientos.map((item) => [item.consecutivo, item]));
+    const inspectionUserMap = new Map(inspectionUsers.map((item) => [item.id, item]));
 
     const serialesPorMovimientoMap = new Map();
     for (const serial of serialesPorMovimiento) {
@@ -254,7 +263,7 @@ class InspeccionService {
         || [];
       const serialReferencia = serialesInspeccion[0] || null;
       const movimiento = consMovimiento ? (movimientoMap.get(consMovimiento) || serialReferencia?.movimiento?.toJSON?.() || null) : (serialReferencia?.movimiento?.toJSON?.() || null);
-      const usuario = serialReferencia?.usuario?.toJSON?.() || null;
+      const usuario = inspectionUserMap.get(item.id_usuario) || serialReferencia?.usuario?.toJSON?.() || null;
       const contenedor = contenedorMap.get(item.id_contenedor) || null;
       const motivoDeUso = {
         consecutivo: 'INSP02',

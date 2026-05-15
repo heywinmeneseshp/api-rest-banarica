@@ -334,6 +334,8 @@ class SeguridadService {
         throw boom.conflict('La fila contiene seriales repetidos: ' + duplicates.join(', '));
       }
 
+      const resolvedUserId = user?.id || await this.resolveUserId(user?.username, transaction);
+
       const { embarque, combo, almacen } = await this.ensureEmptyInspectionDefaults(transaction);
 
       const [motivoDeUso] = await db.MotivoDeUso.findOrCreate({
@@ -380,7 +382,7 @@ class SeguridadService {
           id_contenedor: contenedorRecord.id,
           fecha_de_uso: fecha,
           id_motivo_de_uso: motivoDeUso.id,
-          id_usuario: user && user.username ? user.username : null,
+          id_usuario: resolvedUserId,
           ubicacion_en_contenedor: item.ubicacion_en_contenedor
         };
 
@@ -430,6 +432,7 @@ class SeguridadService {
 
       const inspeccion = await db.Inspeccion.create({
         id_contenedor: contenedorRecord.id,
+        id_usuario: resolvedUserId,
         fecha_inspeccion: fecha,
         hora_inicio: hora_inicio || '00:00:00',
         hora_fin: hora_fin || '00:00:00',
@@ -930,12 +933,13 @@ class SeguridadService {
     const requiresSuperAdminApproval = !approvedBySuperAdmin && previousFullInspectionCount >= 1;
     const inspectionApproved = approvedBySuperAdmin || !requiresSuperAdminApproval;
     const transaction = await db.sequelize.transaction();
-    const resolvedUserId = user?.username || await this.resolveUserId(formulario?.id_usuario, transaction);
+    const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
 
     try {
       const inspeccion = await db.Inspeccion.create(
         {
           id_contenedor: formulario.consecutivo,
+          id_usuario: resolvedUserId,
           fecha_inspeccion: formulario.fecha,
           hora_inicio: formulario.hora_inicio,
           hora_fin: formulario.hora_fin,
@@ -1318,7 +1322,7 @@ class SeguridadService {
     const transaction = await db.sequelize.transaction();
 
     try {
-      const resolvedUserId = user?.username || await this.resolveUserId(formulario?.id_usuario, transaction);
+      const resolvedUserId = user?.id || await this.resolveUserId(formulario?.id_usuario, transaction);
 
       // Ã°Å¸â€Â¹ Buscar kit de inventario
       const kitsInventario = await db.serial_de_articulos.findAll({

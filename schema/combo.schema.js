@@ -4,6 +4,7 @@ const Joi = require('joi');
 const texto = Joi.string().min(1).max(100);
 const numeroEntero = Joi.number().integer().min(0);
 const numeroDecimal = Joi.number().precision(2).min(0);
+const clienteRef = Joi.alternatives().try(numeroEntero, texto).allow(null, '');
 
 // Esquema común (usado en ambos)
 const esquemaCombo = {
@@ -11,7 +12,7 @@ const esquemaCombo = {
   consecutivo: texto,
   nombre: texto,
   isBlock: Joi.boolean(),
-  id_cliente: texto,
+  id_cliente: clienteRef,
   cajas_por_palet: numeroEntero,
   cajas_por_mini_palet: numeroEntero,
   palets_por_contenedor: numeroEntero,
@@ -24,10 +25,7 @@ const esquemaCombo = {
 // ✅ Crear combo: todos los campos requeridos
 const crearCombo = Joi.object({
   ...esquemaCombo,
-  id: esquemaCombo.id.required(),
-  consecutivo: esquemaCombo.consecutivo.required(),
   nombre: esquemaCombo.nombre.required(),
-  isBlock: esquemaCombo.isBlock.required(),
   id_cliente: esquemaCombo.id_cliente.required(),
   cajas_por_palet: esquemaCombo.cajas_por_palet.required(),
   precio_de_venta: esquemaCombo.precio_de_venta.required(),

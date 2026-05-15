@@ -111,6 +111,7 @@ class TransbordoService {
         const horaInspeccion = new Date().toISOString().slice(11, 19);
         inspeccion = await db.Inspeccion.create({
           id_contenedor: id_contenedor_nuevo,
+          id_usuario: usuario.id,
           fecha_inspeccion: fecha_transbordo,
           hora_inicio: horaInspeccion,
           hora_fin: horaInspeccion,

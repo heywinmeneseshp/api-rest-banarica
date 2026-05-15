@@ -10,11 +10,16 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      this.belongsTo(models.usuarios, {
+        as: 'usuario',
+        foreignKey: 'id_usuario',
+        targetKey: 'id'
+      });
     }
   }
   Inspeccion.init({
     id_contenedor: DataTypes.INTEGER,
+    id_usuario: DataTypes.INTEGER,
     cons_movimiento: DataTypes.STRING,
     fecha_inspeccion: DataTypes.DATE,
     hora_inicio: {
