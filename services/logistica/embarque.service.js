@@ -237,6 +237,24 @@ class EmbarqueService {
     const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
     const whereClause = { ...filters };
     const { semana, cliente, booking, naviera, destino, bl, anuncio, viaje, buque, sae } = whereClause;
+    const buildIncludeFilter = (field, value) => {
+      const normalizedValue = String(value || '').trim();
+      if (!normalizedValue) {
+        return undefined;
+      }
+
+      return { [field]: { [Op.like]: `%${normalizedValue}%` } };
+    };
+
+    const buildInclude = (model, field, value) => {
+      const includeWhere = buildIncludeFilter(field, value);
+      return {
+        model,
+        required: Boolean(includeWhere),
+        ...(includeWhere ? { where: includeWhere } : {}),
+      };
+    };
+
     const { rows: result, count: total } = await db.Embarque.findAndCountAll({
       where: {
         booking: { [Op.like]: `%${booking || ''}%` },
@@ -249,26 +267,11 @@ class EmbarqueService {
       offset: parsedOffset,
       order: [['id', 'DESC']],
       include: [
-        {
-          model: db.Destino,
-          where: { destino: { [Op.like]: `%${destino || ''}%` } }
-        },
-        {
-          model: db.Naviera,
-          where: { navieras: { [Op.like]: `%${naviera || ''}%` } }
-        },
-        {
-          model: db.clientes,
-          where: { cod: { [Op.like]: `%${cliente || ''}%` } }
-        },
-        {
-          model: db.Buque,
-          where: { buque: { [Op.like]: `%${buque || ''}%` } }
-        },
-        {
-          model: db.semanas,
-          where: { consecutivo: { [Op.like]: `%${semana || ''}%` } }
-        }
+        buildInclude(db.Destino, 'destino', destino),
+        buildInclude(db.Naviera, 'navieras', naviera),
+        buildInclude(db.clientes, 'cod', cliente),
+        buildInclude(db.Buque, 'buque', buque),
+        buildInclude(db.semanas, 'consecutivo', semana)
       ],
       distinct: true // Asegura que el conteo sea correcto y no se dupliquen los registros.
     });
