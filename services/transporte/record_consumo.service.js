@@ -3,6 +3,26 @@ const { Op } = require('sequelize');
 const db = require('../../models');
 
 class record_consumosService {
+  parseVehiculosSinCombustible(configRows) {
+    try {
+      const [config = {}] = configRows || [];
+      const parsed = JSON.parse(config?.detalles || '{}');
+      return Array.isArray(parsed?.vehiculosSinCombustible)
+        ? parsed.vehiculosSinCombustible.map((item) => String(item))
+        : [];
+    } catch (error) {
+      console.warn('No se pudo leer la configuracion de Programador_combustible:', error);
+      return [];
+    }
+  }
+
+  async getVehiculosSinCombustibleSet() {
+    const configRows = await db.configuracion.findAll({
+      where: { modulo: 'Programador_combustible' },
+    });
+    return new Set(this.parseVehiculosSinCombustible(configRows));
+  }
+
   getLiquidatedBalance(record) {
     if (!record) {
       return null;
@@ -56,6 +76,11 @@ class record_consumosService {
   }
 
   async validateVehicleLiquidationDate(vehiclePreview, fechaInicio, fechaFin) {
+    const vehiculosSinCombustible = await this.getVehiculosSinCombustibleSet();
+    if (vehiculosSinCombustible.has(String(vehiclePreview?.vehiculo?.id || ''))) {
+      return;
+    }
+
     const lastLiquidatedRecord = await this.getLastLiquidatedRecordByVehicle(vehiclePreview?.vehiculo?.id);
     const lastLiquidatedDate = this.normalizeDate(lastLiquidatedRecord?.fecha);
     if (!lastLiquidatedDate) {
@@ -74,7 +99,11 @@ class record_consumosService {
   }
 
   async validateVehicleBalanceConsistency(vehiclePreview) {
+    const vehiculosSinCombustible = await this.getVehiculosSinCombustibleSet();
     const vehiculoId = String(vehiclePreview?.vehiculo?.id || '');
+    if (vehiculosSinCombustible.has(vehiculoId)) {
+      return;
+    }
     if (!vehiculoId) {
       return;
     }
@@ -124,13 +153,16 @@ class record_consumosService {
 
   async sinLiquidar() {
     try {
+      const vehiculosSinCombustible = await this.getVehiculosSinCombustibleSet();
       const fechasUnicas = await db.programacion.findAll({
         where: { activo: true },
         attributes: ['fecha', 'vehiculo_id', 'semana', 'conductor_id'],
         group: ['fecha', 'vehiculo_id']
       });
 
-      const resultados = await Promise.all(fechasUnicas.map(async (item) => {
+      const resultados = await Promise.all(fechasUnicas
+        .filter((item) => !vehiculosSinCombustible.has(String(item?.vehiculo_id || '')))
+        .map(async (item) => {
         const [record_consumo] = await db.record_consumos.findOrCreate({
           where: { vehiculo_id: item.vehiculo_id, fecha: item.fecha },
           defaults: {
@@ -268,10 +300,11 @@ class record_consumosService {
       order: [['vehiculo_id', 'ASC'], ['fecha', 'ASC'], ['id', 'ASC']],
     });
 
+    const vehiculosSinCombustible = await this.getVehiculosSinCombustibleSet();
     const vehicleIds = [...new Set([
       ...programaciones.map((item) => String(item.vehiculo_id)),
       ...tanqueos.map((item) => String(item.vehiculo_id || item?.vehiculo?.id || '')),
-    ].filter(Boolean))];
+    ].filter((vehiculoId) => Boolean(vehiculoId) && !vehiculosSinCombustible.has(String(vehiculoId))))];
 
     if (!vehicleIds.length) {
       return {

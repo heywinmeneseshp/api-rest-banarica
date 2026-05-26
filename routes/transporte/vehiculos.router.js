@@ -13,8 +13,6 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-// Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
-//Paginar
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit, item } = req.query;
@@ -35,43 +33,67 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
-router.post("/",
-  async (req, res, next) => {
-    try {
-      const body = req.body;
-      const itemNuevo = await service.create(body);
-      res.json({
-        message: "item creado",
-        data: itemNuevo
-      })
-    } catch (error) {
-      next(error);
-    }
-  });
+router.post("/", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const itemNuevo = await service.create(body);
+    res.json({
+      message: "item creado",
+      data: itemNuevo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-router.patch("/:id",
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const body = req.body;
-      await service.update(id, body)
-      res.json({
-        message: "item actualizado",
-        data: body
-      })
-    } catch (error) {
-      next(error)
-    }
-  });
+router.post("/masivo", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const result = await service.bulkCreate(body);
+    res.json({
+      message: "vehiculos creados",
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/actualizar-masivo", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const result = await service.bulkUpdate(body);
+    res.json({
+      message: "vehiculos actualizados",
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    await service.update(id, body);
+    res.json({
+      message: "item actualizado",
+      data: body
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
-    const result = await service.delete(id)
-    res.json(result)
+    const result = await service.delete(id);
+    res.json(result);
   } catch (error) {
     next(error);
   }
-})
+});
 
 module.exports = router;

@@ -4,6 +4,34 @@ const db = require('../../models');
 
 
 class ProgramacionService {
+  parseVehiculosSinCombustible(configRows) {
+    try {
+      const [config = {}] = configRows || [];
+      const parsed = JSON.parse(config?.detalles || '{}');
+      return Array.isArray(parsed?.vehiculosSinCombustible)
+        ? parsed.vehiculosSinCombustible.map((item) => String(item))
+        : [];
+    } catch (error) {
+      console.warn('No se pudo leer la configuracion de Programador_combustible:', error);
+      return [];
+    }
+  }
+
+  async getVehiculosSinCombustibleSet() {
+    const configRows = await db.configuracion.findAll({
+      where: { modulo: 'Programador_combustible' },
+    });
+    return new Set(this.parseVehiculosSinCombustible(configRows));
+  }
+
+  async isVehiculoSinCombustible(vehiculoId) {
+    if (!vehiculoId) {
+      return false;
+    }
+    const vehiculosSinCombustible = await this.getVehiculosSinCombustibleSet();
+    return vehiculosSinCombustible.has(String(vehiculoId));
+  }
+
   normalizeText(value) {
     return String(value || '').trim();
   }
@@ -166,8 +194,11 @@ class ProgramacionService {
   async create(data) {
     await this.validateBl(data?.bl);
     await this.validateTipoMovimiento(data);
-    await this.validateFechaPosteriorALiquidacion(data?.vehiculo_id, data?.fecha);
-    await this.validateSaldoConsistenteConUltimaLiquidacion(data?.vehiculo_id);
+    const vehiculoSinCombustible = await this.isVehiculoSinCombustible(data?.vehiculo_id);
+    if (!vehiculoSinCombustible) {
+      await this.validateFechaPosteriorALiquidacion(data?.vehiculo_id, data?.fecha);
+      await this.validateSaldoConsistenteConUltimaLiquidacion(data?.vehiculo_id);
+    }
     const body = { ...data, eliminado: false }
     return await db.programacion.create(body);
   }
@@ -203,8 +234,11 @@ class ProgramacionService {
     await this.validateTipoMovimiento(changes, item);
     const vehiculoId = changes?.vehiculo_id || item?.vehiculo_id;
     const fecha = Object.prototype.hasOwnProperty.call(changes, 'fecha') ? changes.fecha : item?.fecha;
-    await this.validateFechaPosteriorALiquidacion(vehiculoId, fecha);
-    await this.validateSaldoConsistenteConUltimaLiquidacion(vehiculoId);
+    const vehiculoSinCombustible = await this.isVehiculoSinCombustible(vehiculoId);
+    if (!vehiculoSinCombustible) {
+      await this.validateFechaPosteriorALiquidacion(vehiculoId, fecha);
+      await this.validateSaldoConsistenteConUltimaLiquidacion(vehiculoId);
+    }
     await db.programacion.update(changes, { where: { id } });
     return { message: "El item fue actualizado", id };
   }
@@ -290,3 +324,4 @@ class ProgramacionService {
 }
 
 module.exports = ProgramacionService;
+
