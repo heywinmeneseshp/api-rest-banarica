@@ -1,4 +1,4 @@
-const boom = require('@hapi/boom');
+﻿const boom = require('@hapi/boom');
 const { Op, where } = require('sequelize');
 const db = require('../../models');
 
@@ -17,13 +17,13 @@ class EmbarqueService {
     try {
       const t = await db.sequelize.transaction();
 
-      // Obtener todas las semanas válidas en la base de datos
+      // Obtener todas las semanas vÃ¡lidas en la base de datos
       const semanasValidas = await db.semanas.findAll({ attributes: ["consecutivo", "id"] });
 
       // Crear un mapa con las semanas existentes
       const semanasSet = new Map(semanasValidas.map(s => [s.consecutivo, s.id]));
 
-      // Arrays para datos válidos e inválidos
+      // Arrays para datos vÃ¡lidos e invÃ¡lidos
       const datosValidos = [];
       const datosInvalidos = [];
 
@@ -39,15 +39,15 @@ class EmbarqueService {
         // Validar formato de id_semana: debe ser como "S00-2000"
         const formatoSemana = /^S\d{2}-\d{4}$/;
         if (!formatoSemana.test(item.id_semana)) {
-          throw boom.badRequest(`El campo id_semana tiene un formato inválido: ${item.id_semana}. Debe ser como 'S00-2000'.`);
+          throw boom.badRequest(`El campo id_semana tiene un formato invÃ¡lido: ${item.id_semana}. Debe ser como 'S00-2000'.`);
         }
 
         // Buscar o crear la semana si no existe
         if (!semanasSet.has(item.id_semana)) {
-          // Extraer semana y año del formato S00-2000
+          // Extraer semana y aÃ±o del formato S00-2000
           const match = item.id_semana.match(/^S(\d{2})-(\d{4})$/);
           if (!match) {
-            throw new Error(`Formato inválido de id_semana: ${item.id_semana}`);
+            throw new Error(`Formato invÃ¡lido de id_semana: ${item.id_semana}`);
           }
 
           const [, semanaStr, anhoStr] = match;
@@ -84,7 +84,7 @@ class EmbarqueService {
 
 
       if (datosValidos.length === 0) {
-        throw new Error("Ningún registro tiene una semana válida.");
+        throw new Error("NingÃºn registro tiene una semana vÃ¡lida.");
       }
 
       // Insertar los datos transformados
@@ -106,7 +106,7 @@ class EmbarqueService {
       const t = await db.sequelize.transaction();
 
       // 1. Obtener y mapear semanas
-      // Asegúrate de que Op esté importado: const { Op } = require('sequelize');
+      // AsegÃºrate de que Op estÃ© importado: const { Op } = require('sequelize');
 
       // 1. Filtrar valores nulos y eliminar duplicados de las semanas de entrada
       const getSemanaConsecutivo = (item) => {
@@ -116,7 +116,7 @@ class EmbarqueService {
 
       const semanasABuscar = [...new Set(data.map(getSemanaConsecutivo).filter(Boolean))];
 
-      // 2. Ejecutar la consulta con el array de semanas únicas
+      // 2. Ejecutar la consulta con el array de semanas Ãºnicas
       const semanasValidas = await db.semanas.findAll({
         attributes: ["consecutivo", "id"],
         where: {
@@ -129,16 +129,16 @@ class EmbarqueService {
       const updatesRealizados = [];
 
       for (const item of data) {
-        // 2. Validación: Asegurar que el identificador (bl) esté presente.
+        // 2. ValidaciÃ³n: Asegurar que el identificador (bl) estÃ© presente.
         if (!item.bl) {
-          // Se puede optar por lanzar un error o simplemente saltar el registro inválido.
-          // Aquí, lanzamos un error para detener la transacción si falta un identificador.
-          throw boom.badRequest('Falta el campo identificador "bl" en uno de los registros de actualización.');
+          // Se puede optar por lanzar un error o simplemente saltar el registro invÃ¡lido.
+          // AquÃ­, lanzamos un error para detener la transacciÃ³n si falta un identificador.
+          throw boom.badRequest('Falta el campo identificador "bl" en uno de los registros de actualizaciÃ³n.');
         }
 
         // 3. Preparar los cambios
         const changes = { ...item };
-        delete changes.bl; // El 'bl' se usa solo para el WHERE, no debe actualizarse si es la clave de búsqueda.
+        delete changes.bl; // El 'bl' se usa solo para el WHERE, no debe actualizarse si es la clave de bÃºsqueda.
         const semanaConsecutivo = getSemanaConsecutivo(changes);
         delete changes.semana;
 
@@ -149,7 +149,7 @@ class EmbarqueService {
             throw boom.badRequest(`El campo semana tiene un formato invalido: ${semanaConsecutivo}. Debe ser como 'S00-2000'.`);
           }
 
-          // Buscar o crear la semana si no existe (lógica reutilizada de cargueMasivo)
+          // Buscar o crear la semana si no existe (lÃ³gica reutilizada de cargueMasivo)
           if (!semanasSet.has(semanaConsecutivo)) {
             const match = semanaConsecutivo.match(/^S(\d{2})-(\d{4})$/);
             const [, semanaStr, anhoStr] = match;
@@ -170,7 +170,7 @@ class EmbarqueService {
           changes.id_semana = semanasSet.get(semanaConsecutivo);
         }
 
-        // 4. Ejecutar la actualización (uso de update en lugar de bulkCreate)
+        // 4. Ejecutar la actualizaciÃ³n (uso de update en lugar de bulkCreate)
         const [affectedRows] = await db.Embarque.update(changes, {
           where: { bl: item.bl },
           transaction: t
@@ -179,12 +179,12 @@ class EmbarqueService {
         if (affectedRows > 0) {
           updatesRealizados.push(item.bl);
         }
-        // Si affectedRows es 0, significa que el registro con ese BL no se encontró.
+        // Si affectedRows es 0, significa que el registro con ese BL no se encontrÃ³.
       }
 
       if (updatesRealizados.length === 0) {
-        await t.rollback(); // Si no se actualizó nada, revertimos la transacción
-        throw new Error("Ningún registro fue actualizado. Verifique que los 'bl' sean correctos.");
+        await t.rollback(); // Si no se actualizÃ³ nada, revertimos la transacciÃ³n
+        throw new Error("NingÃºn registro fue actualizado. Verifique que los 'bl' sean correctos.");
       }
 
       await t.commit();
@@ -194,20 +194,37 @@ class EmbarqueService {
         blsActualizados: updatesRealizados
       };
     } catch (error) {
-      // En caso de error, aseguramos que la transacción sea revertida si no se ha confirmado.
-      // Nota: Sequelize maneja esto implícitamente, pero es buena práctica tenerlo en cuenta.
-      throw boom.badRequest(error.message || "Error al realizar la actualización masiva.");
+      // En caso de error, aseguramos que la transacciÃ³n sea revertida si no se ha confirmado.
+      // Nota: Sequelize maneja esto implÃ­citamente, pero es buena prÃ¡ctica tenerlo en cuenta.
+      throw boom.badRequest(error.message || "Error al realizar la actualizaciÃ³n masiva.");
     }
   }
 
 
 
   async find() {
-    return db.Embarque.findAll();
+    return db.Embarque.findAll({
+      order: [['id', 'DESC']],
+      include: [
+        { model: db.Destino, required: false },
+        { model: db.Naviera, required: false },
+        { model: db.clientes, required: false },
+        { model: db.Buque, required: false },
+        { model: db.semanas, required: false }
+      ]
+    });
   }
 
   async findOne(id) {
-    const embarque = await db.Embarque.findByPk(id);
+    const embarque = await db.Embarque.findByPk(id, {
+      include: [
+        { model: db.Destino, required: false },
+        { model: db.Naviera, required: false },
+        { model: db.clientes, required: false },
+        { model: db.Buque, required: false },
+        { model: db.semanas, required: false }
+      ]
+    });
     if (!embarque) {
       throw boom.notFound('El embarque no existe');
     }
@@ -281,3 +298,4 @@ class EmbarqueService {
 }
 
 module.exports = EmbarqueService;
+

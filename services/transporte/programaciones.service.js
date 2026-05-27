@@ -267,7 +267,7 @@ class ProgramacionService {
         movimiento: { [Op.like]: `%${body?.movimiento || ''}%` },
         fecha: fecha
       },
-      order: [['fecha', 'DESC'], ['vehiculo_id', 'DESC'], ['id', 'DESC']],
+      order: [['fecha', 'DESC'], ['bl', 'ASC'], ['contenedor', 'ASC'], ['id', 'ASC']],
       include: [
         {
           model: db.rutas,
@@ -324,4 +324,5 @@ class ProgramacionService {
 }
 
 module.exports = ProgramacionService;
+
 

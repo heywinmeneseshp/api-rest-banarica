@@ -325,9 +325,6 @@ class SeguridadService {
         throw boom.badRequest('Debes indicar semana, fecha y contenedor para la inspeccion vacio.');
       }
 
-      if (normalizedSerials.length === 0) {
-        throw boom.badRequest('Debes enviar al menos un serial para la inspeccion vacio.');
-      }
 
       const duplicates = [...new Set(normalizedSerials.filter((item, index) => normalizedSerials.indexOf(item) !== index))];
       if (duplicates.length > 0) {
@@ -349,18 +346,22 @@ class SeguridadService {
         habilitado: true
       }, { transaction });
 
-      const serialRecords = await db.serial_de_articulos.findAll({
-        where: {
-          bag_pack: { [Op.in]: normalizedSerials },
-          available: true
-        },
-        transaction
-      });
+      const serialRecords = normalizedSerials.length > 0
+        ? await db.serial_de_articulos.findAll({
+          where: {
+            bag_pack: { [Op.in]: normalizedSerials },
+            available: true
+          },
+          transaction
+        })
+        : [];
 
-      const foundBagPacks = serialRecords.map((item) => String(item.bag_pack).trim());
-      const missingSerials = normalizedSerials.filter((item) => !foundBagPacks.includes(item));
-      if (missingSerials.length > 0) {
-        throw boom.badRequest('No se encontraron disponibles todos los seriales requeridos: ' + missingSerials.join(', '));
+      if (normalizedSerials.length > 0) {
+        const foundBagPacks = serialRecords.map((item) => String(item.bag_pack).trim());
+        const missingSerials = normalizedSerials.filter((item) => !foundBagPacks.includes(item));
+        if (missingSerials.length > 0) {
+          throw boom.badRequest('No se encontraron disponibles todos los seriales requeridos: ' + missingSerials.join(', '));
+        }
       }
 
       const movimiento = await movimientoService.create({
@@ -1764,6 +1765,7 @@ class SeguridadService {
 }
 
 module.exports = SeguridadService;
+
 
 
 

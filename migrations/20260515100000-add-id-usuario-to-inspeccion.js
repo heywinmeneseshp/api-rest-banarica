@@ -2,10 +2,14 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('Inspeccions', 'id_usuario', {
-      type: Sequelize.INTEGER,
-      allowNull: true
-    });
+    const table = await queryInterface.describeTable('Inspeccions');
+
+    if (!table.id_usuario) {
+      await queryInterface.addColumn('Inspeccions', 'id_usuario', {
+        type: Sequelize.INTEGER,
+        allowNull: true
+      });
+    }
 
     await queryInterface.sequelize.query(`
       UPDATE Inspeccions i
@@ -35,6 +39,10 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.removeColumn('Inspeccions', 'id_usuario');
+    const table = await queryInterface.describeTable('Inspeccions');
+
+    if (table.id_usuario) {
+      await queryInterface.removeColumn('Inspeccions', 'id_usuario');
+    }
   }
 };
