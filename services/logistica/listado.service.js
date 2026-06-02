@@ -1,4 +1,4 @@
-﻿const boom = require('@hapi/boom');
+const boom = require('@hapi/boom');
 const { Op, where } = require('sequelize');
 const db = require('../../models');
 
@@ -16,8 +16,8 @@ const historialMovimientoService = new HistorialMovimientoService()
 class ListadoService {
 
   async create(data) {
-    const transaction = await db.sequelize.transaction(); // Inicia una nueva transacciÃ³n
-    // Datos predeterminados para la creaciÃ³n de registros
+    const transaction = await db.sequelize.transaction(); // Inicia una nueva transacción
+    // Datos predeterminados para la creación de registros
     const defaults = {
       destino: { pais: "Predeterminado", cod: "PRE", habilitado: true },
       naviera: { cod: "PRE", habilitado: true },
@@ -76,7 +76,7 @@ class ListadoService {
       // Asegurar existencia del motivo de uso
       const [moviUso] = await db.MotivoDeUso.findOrCreate({
         where: { consecutivo: "INSP01" },
-        defaults: { consecutivo: "INSP01", motivo_de_uso: "InspecciÃ³n vacÃ­o", habilitado: true },
+        defaults: { consecutivo: "INSP01", motivo_de_uso: "Inspección vacío", habilitado: true },
         transaction
       });
 
@@ -118,7 +118,7 @@ class ListadoService {
           cons_almacen_receptor: cons_almacen,
           cons_lista_movimientos: "EX",
           tipo_movimiento: "Salida",
-          razon_movimiento: "InspecciÃ³n vacÃ­o",
+          razon_movimiento: "Inspección vacío",
           cantidad,
           cons_pedido: null
         };
@@ -140,12 +140,12 @@ class ListadoService {
 
       const itemListado = await db.Listado.create(listado, { transaction });
 
-      // Confirmar la transacciÃ³n
+      // Confirmar la transacción
       await transaction.commit();
       return itemListado;
 
     } catch (error) {
-      // Revertir transacciÃ³n en caso de error
+      // Revertir transacción en caso de error
       await transaction.rollback();
       throw boom.badRequest(error.message || "Error al crear el listado");
     }
@@ -157,13 +157,13 @@ class ListadoService {
     const transaction = await db.sequelize.transaction();
     try {
       if (!Array.isArray(dataArray) || dataArray.length === 0) {
-        throw boom.badRequest("El formato de los datos es incorrecto o estÃ¡ vacÃ­o.");
+        throw boom.badRequest("El formato de los datos es incorrecto o está vacío.");
       }
 
-      // Validar que ningÃºn campo en los objetos de dataArray sea null o undefined
+      // Validar que ningún campo en los objetos de dataArray sea null o undefined
       for (const item of dataArray) {
         if (Object.values(item).some(value => value === null || value === undefined)) {
-          throw boom.badRequest("Todos los campos deben contener valores vÃ¡lidos, no se permiten valores nulos.");
+          throw boom.badRequest("Todos los campos deben contener valores válidos, no se permiten valores nulos.");
         }
       }
 
@@ -176,7 +176,7 @@ class ListadoService {
         }
       }
 
-      // Obtener todos los embarques vÃ¡lidos
+      // Obtener todos los embarques válidos
       const blList = [...new Set(dataArray.map(item => String(item.bl)))]; // Convertir a string
       const embarques = await db.Embarque.findAll({ where: { bl: blList } });
       const embarqueMap = new Map(embarques.map(e => [String(e.bl), e.id])); // Convertir claves a string
@@ -184,7 +184,7 @@ class ListadoService {
       // Validar existencia de embarques
       for (const item of dataArray) {
         if (!embarqueMap.has(String(item.bl))) {
-          throw boom.notFound(`No se encontrÃ³ un embarque con BL: ${item.bl}`);
+          throw boom.notFound(`No se encontró un embarque con BL: ${item.bl}`);
         }
       }
 
@@ -241,7 +241,7 @@ class ListadoService {
       });
 
       // Insertar datos en Listado
-      // AsegÃºrate de agregar habilitado: true en todos los objetos
+      // Asegúrate de agregar habilitado: true en todos los objetos
       const datosConHabilitado = datosValidos.map(item => ({
         ...item,
         habilitado: item.habilitado !== undefined ? item.habilitado : true
@@ -258,12 +258,12 @@ class ListadoService {
 
       if (error.name === "SequelizeUniqueConstraintError") {
         const codExistente = error.errors?.[0]?.value || "desconocido";
-        throw boom.conflict(`El cÃ³digo '${codExistente}' ya existe. Debe ser Ãºnico.`);
+        throw boom.conflict(`El código '${codExistente}' ya existe. Debe ser único.`);
       }
 
       if (error.name === "SequelizeValidationError") {
         const detalles = error.errors.map(err => err.message);
-        throw boom.badRequest("Error de validaciÃ³n en los datos.", { detalles });
+        throw boom.badRequest("Error de validación en los datos.", { detalles });
       }
 
       throw boom.internal("Error interno del servidor al crear el item.");
@@ -286,7 +286,7 @@ class ListadoService {
     delete listadoData.id;  // Eliminar la propiedad 'id'
 
     try {
-      // Crear un nuevo listado en la base de datos usando la transacciÃ³n
+      // Crear un nuevo listado en la base de datos usando la transacción
       const itemListado = await db.Listado.create(listadoData, { transaction });
       return itemListado;
     } catch (error) {
@@ -351,7 +351,7 @@ class ListadoService {
   //Actualizacion masiva
 async bulkUpdate(payload) {
   const transaction = await db.sequelize.transaction();
-  
+
   try {
     const updatesArray = Array.isArray(payload)
       ? payload
@@ -362,11 +362,11 @@ async bulkUpdate(payload) {
 
     const results = [];
     const missingRows = [];
-    
+    const usedListadoIds = new Map();
+
     for (const updateData of updatesArray) {
-      const { fecha, contenedor, bl, id_transportadora, ...changes } = updateData;
-      
-      // Validar campos requeridos
+      const { fecha, contenedor, bl, booking, id_transportadora, ...changes } = updateData;
+
       if (!fecha || !contenedor) {
         missingRows.push({
           ...updateData,
@@ -374,10 +374,36 @@ async bulkUpdate(payload) {
         });
         continue;
       }
+
       const fechaInicio = new Date(fecha);
       const fechaFin = new Date(fecha);
       fechaInicio.setHours(0, 0, 0, 0);
       fechaFin.setHours(23, 59, 59, 999);
+
+      const reference = String(bl || booking || '').trim();
+      let embarqueId = null;
+      if (reference) {
+        const embarque = await db.Embarque.findOne({
+          where: {
+            [Op.or]: [
+              { bl: reference },
+              { booking: reference },
+            ],
+          },
+          transaction,
+        });
+
+        if (!embarque) {
+          missingRows.push({
+            ...updateData,
+            reason: `Embarque con referencia ${reference} no encontrado`,
+          });
+          continue;
+        }
+
+        embarqueId = embarque.id;
+        changes.id_embarque = embarqueId;
+      }
 
       const listadosCandidatos = await db.Listado.findAll({
         where: {
@@ -396,57 +422,81 @@ async bulkUpdate(payload) {
             required: false
           }
         ],
-        order: [['id', 'DESC']],
+        order: [['id', 'ASC']],
         transaction
       });
 
-      const listado = listadosCandidatos.find((item) => (
-        bl !== undefined
-        && bl !== null
-        && String(bl).trim() !== ''
-        && item?.Embarque?.bl
-        && String(item.Embarque.bl).trim() === String(bl).trim()
-      )) || listadosCandidatos[0] || null;
-
-      if (!listado) {
+      if (!listadosCandidatos.length) {
         missingRows.push({
           ...updateData,
           reason: `Listado no encontrado para fecha ${fecha} y contenedor ${contenedor}`,
         });
         continue;
       }
-      
-      // Buscar el Embarque por BL si se proporcionÃ³
-      let embarqueId = null;
-      if (bl !== undefined && bl !== null) {
-        const embarque = await db.Embarque.findOne({
-          where: { bl },
-          transaction
-        });
-        
-        if (!embarque) {
+
+      const candidatePool = embarqueId
+        ? (listadosCandidatos.filter((item) => Number(item?.id_embarque) === Number(embarqueId)).length
+          ? listadosCandidatos.filter((item) => Number(item?.id_embarque) === Number(embarqueId))
+          : listadosCandidatos)
+        : listadosCandidatos;
+
+      const usageKey = `${fecha}__${contenedor}__${embarqueId || reference || 'sin-embarque'}`;
+      if (!usedListadoIds.has(usageKey)) {
+        usedListadoIds.set(usageKey, new Set());
+      }
+      const usedIds = usedListadoIds.get(usageKey);
+
+      const expectedAlmacenId = changes.id_lugar_de_llenado != null && changes.id_lugar_de_llenado !== ''
+        ? Number(changes.id_lugar_de_llenado)
+        : null;
+      const expectedProductoId = changes.id_producto != null && changes.id_producto !== ''
+        ? Number(changes.id_producto)
+        : null;
+
+      let listado = candidatePool.find((item) => (
+        !usedIds.has(item.id)
+        && (expectedAlmacenId == null || Number(item?.id_lugar_de_llenado) === expectedAlmacenId)
+        && (expectedProductoId == null || Number(item?.id_producto) === expectedProductoId)
+      )) || null;
+
+      if (!listado) {
+        listado = candidatePool.find((item) => !usedIds.has(item.id)) || null;
+      }
+
+      let duplicated = false;
+      if (!listado) {
+        const baseListado = candidatePool[candidatePool.length - 1] || null;
+        if (!baseListado) {
           missingRows.push({
             ...updateData,
-            reason: `Embarque con BL ${bl} no encontrado`,
+            reason: `No se encontro una linea base para duplicar en fecha ${fecha}, contenedor ${contenedor}`,
           });
           continue;
         }
-        
-        embarqueId = embarque.id;
-        
-        // Agregar el id_embarque a los cambios
-        changes.id_embarque = embarqueId;
+
+        listado = await db.Listado.create({
+          fecha: baseListado.fecha,
+          id_embarque: embarqueId || baseListado.id_embarque,
+          id_contenedor: baseListado.id_contenedor,
+          id_lugar_de_llenado: baseListado.id_lugar_de_llenado,
+          id_producto: baseListado.id_producto,
+          cajas_unidades: baseListado.cajas_unidades,
+          id_sae: baseListado.id_sae,
+          transbordado: baseListado.transbordado,
+          habilitado: baseListado.habilitado,
+        }, { transaction });
+        duplicated = true;
       }
-      
-      // Actualizar usando el ID del listado encontrado
+
       await db.Listado.update(changes, {
-        where: { 
-          id: listado.id 
+        where: {
+          id: listado.id
         },
         transaction
       });
-      
-      // Guardar en carrusel si se proporcionó id_transportadora
+
+      usedIds.add(listado.id);
+
       if (id_transportadora !== undefined && id_transportadora !== null && id_transportadora !== '') {
         const transporteId = Number(id_transportadora);
         if (!isNaN(transporteId)) {
@@ -460,13 +510,14 @@ async bulkUpdate(payload) {
           }
         }
       }
-      
+
       results.push({
-        message: 'Registro actualizado',
+        message: duplicated ? 'Registro duplicado y actualizado' : 'Registro actualizado',
+        duplicated,
         id: listado.id,
         fecha,
         contenedor,
-        bl,
+        bl: reference,
         embarqueId,
         id_transportadora,
         changes
@@ -485,9 +536,9 @@ async bulkUpdate(payload) {
         missingRows,
       };
     }
-    
+
     await transaction.commit();
-    return { 
+    return {
       message: missingRows.length > 0
         ? 'Actualizacion masiva completada parcialmente'
         : 'Actualizacion masiva completada',
@@ -496,16 +547,14 @@ async bulkUpdate(payload) {
       requestedTotal: updatesArray.length,
       missingCount: missingRows.length,
       missingRows,
-      results 
+      results
     };
-    
+
   } catch (error) {
     await transaction.rollback();
     throw error;
   }
 }
-
-
   async delete(id) {
     const listado = await db.Listado.findByPk(id);
     if (!listado) {
@@ -594,7 +643,7 @@ async bulkUpdate(payload) {
       (include) => include.model !== db.serial_de_articulos
     );
 
-    // PaginaciÃ³n
+    // Paginación
     const parsedLimit = Number(limit) || 10;
     const parsedOffset = Number(offset) ? (Number(offset) - 1) * parsedLimit : 0;
 
@@ -623,5 +672,6 @@ async bulkUpdate(payload) {
 }
 
 module.exports = ListadoService;
+
 
 

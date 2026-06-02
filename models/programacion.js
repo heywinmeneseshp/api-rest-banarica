@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const {
   Model
 } = require('sequelize');
@@ -59,6 +59,7 @@ module.exports = (sequelize, DataTypes) => {
     llegada_destino: DataTypes.STRING,
     cierre: DataTypes.STRING,
     salida_destino: DataTypes.STRING,
+    estado_listado: DataTypes.STRING,
     eliminado: DataTypes.BOOLEAN
   }, {
     sequelize,
@@ -66,4 +67,5 @@ module.exports = (sequelize, DataTypes) => {
   });
   return programacion;
 };
+
 

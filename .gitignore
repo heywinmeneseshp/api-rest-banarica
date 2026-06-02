@@ -87,6 +87,8 @@ web_modules/
 .cache
 .parcel-cache
 
+authGoogleDrive.json
+
 # Next.js build output
 .next
 out

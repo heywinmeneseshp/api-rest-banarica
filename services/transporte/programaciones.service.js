@@ -1,6 +1,9 @@
-const boom = require('@hapi/boom');
+﻿const boom = require('@hapi/boom');
 const { Op, Sequelize } = require('sequelize');
 const db = require('../../models');
+
+const ESTADO_LISTADO_PENDIENTE = 'pendiente';
+const ESTADO_LISTADO_ACTUALIZADO = 'actualizado';
 
 
 class ProgramacionService {
@@ -199,7 +202,7 @@ class ProgramacionService {
       await this.validateFechaPosteriorALiquidacion(data?.vehiculo_id, data?.fecha);
       await this.validateSaldoConsistenteConUltimaLiquidacion(data?.vehiculo_id);
     }
-    const body = { ...data, eliminado: false }
+    const body = { ...data, eliminado: false, estado_listado: data?.estado_listado || ESTADO_LISTADO_PENDIENTE }
     return await db.programacion.create(body);
   }
 
@@ -239,7 +242,11 @@ class ProgramacionService {
       await this.validateFechaPosteriorALiquidacion(vehiculoId, fecha);
       await this.validateSaldoConsistenteConUltimaLiquidacion(vehiculoId);
     }
-    await db.programacion.update(changes, { where: { id } });
+    const nextChanges = { ...changes };
+    if (!Object.prototype.hasOwnProperty.call(nextChanges, 'estado_listado')) {
+      nextChanges.estado_listado = ESTADO_LISTADO_PENDIENTE;
+    }
+    await db.programacion.update(nextChanges, { where: { id } });
     return { message: "El item fue actualizado", id };
   }
 
@@ -310,6 +317,10 @@ class ProgramacionService {
       whereClause.where.eliminado = body.eliminado;
     }
 
+    if (body?.estado_listado) {
+      whereClause.where.estado_listado = body.estado_listado;
+    }
+
     if (body?.bl) {
       whereClause.where.bl = { [Op.like]: `%${body.bl}%` };
     }
@@ -324,5 +335,8 @@ class ProgramacionService {
 }
 
 module.exports = ProgramacionService;
+
+
+
 
 

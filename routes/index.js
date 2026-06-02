@@ -60,6 +60,8 @@ const emailRouter = require('./email.router.js')
 const carruselRouter = require('./carrusel.router.js');
 //CONFIGURACION
 const empresaRouter = require('./configuracion/empresa.router.js');
+//GOOGLE DRIVE
+const googleDriveRouter = require('./googleDrive/cargueFotos.router.js');
 
 
 function routerApi(app) {
@@ -125,6 +127,8 @@ function routerApi(app) {
   router.use('/empresa', empresaRouter);
   router.use('/seguridad', seguridadRouter);
   router.use('/confi', confiRouter);
+   //GOOGLEDRIVE
+  router.use('/googleDrive', googleDriveRouter);
 
 }
 
