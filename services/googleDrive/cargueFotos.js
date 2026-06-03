@@ -176,6 +176,7 @@ async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
             exito: true,
             nombreCarpeta: nombreSubcarpeta,
             carpetaId: subcarpetaId,
+            carpetaUrl: `https://drive.google.com/drive/folders/${subcarpetaId}`,
             totalFotos: enlacesFotosSubidas.length,
             fotos: enlacesFotosSubidas
         };

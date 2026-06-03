@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 const {
   Model
 } = require('sequelize');
@@ -60,6 +60,11 @@ module.exports = (sequelize, DataTypes) => {
     cierre: DataTypes.STRING,
     salida_destino: DataTypes.STRING,
     estado_listado: DataTypes.STRING,
+    evidencia_cargada: DataTypes.BOOLEAN,
+    evidencia_carpeta_id: DataTypes.STRING,
+    evidencia_carpeta_url: DataTypes.STRING,
+    evidencia_fecha: DataTypes.DATE,
+    evidencia_total_fotos: DataTypes.INTEGER,
     eliminado: DataTypes.BOOLEAN
   }, {
     sequelize,
