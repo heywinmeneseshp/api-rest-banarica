@@ -2,28 +2,10 @@ const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../../models');
 
-const DEFAULT_ITEMS = [
-  { movimiento: 'Local', requiere_contenedor: false, activo: true },
-  { movimiento: 'Puerto', requiere_contenedor: false, activo: true },
-  { movimiento: 'Contenedor', requiere_contenedor: true, activo: true },
-  { movimiento: 'Transitorio', requiere_contenedor: false, activo: true },
-  { movimiento: 'Otro', requiere_contenedor: false, activo: true },
-];
-
 class tipoMovimientoVehiculosService {
   normalizeMovimiento(value) {
     return String(value || '').trim();
   }
-
-  async ensureDefaults() {
-    await Promise.all(DEFAULT_ITEMS.map((item) => (
-      db.tipo_movimiento_vehiculos.findOrCreate({
-        where: { movimiento: item.movimiento },
-        defaults: item,
-      })
-    )));
-  }
-
   async create(data) {
     const movimiento = this.normalizeMovimiento(data?.movimiento);
     if (!movimiento) {
@@ -43,9 +25,7 @@ class tipoMovimientoVehiculosService {
       activo: typeof data?.activo === 'boolean' ? data.activo : true,
     });
   }
-
   async find() {
-    await this.ensureDefaults();
     return db.tipo_movimiento_vehiculos.findAll({
       order: [['movimiento', 'ASC']],
     });
@@ -94,9 +74,7 @@ class tipoMovimientoVehiculosService {
     return { message: 'El item fue eliminado', id };
   }
 
-  async paginate(offset, limit, item) {
-    await this.ensureDefaults();
-    const newLimit = parseInt(limit, 10);
+  async paginate(offset, limit, item) {    const newLimit = parseInt(limit, 10);
     const newOffset = (parseInt(offset, 10) - 1) * newLimit;
     const where = {
       movimiento: { [Op.like]: `%${item || ''}%` },
