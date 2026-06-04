@@ -12,9 +12,17 @@ class ConductoresService {
     const heywin = await this.find();
     let consecutivo = "CO-0"
     if (heywin.length > 0) consecutivo = generarID("CO", heywin[heywin.length - 1].consecutivo);
-    const conductor = { consecutivo, ...data };
-    await db.conductores.create(conductor);
-    return conductor;
+    const conductor = {
+      consecutivo,
+      conductor: String(data?.conductor || '').trim().toUpperCase(),
+      cons_transportadora: String(data?.cons_transportadora || '').trim(),
+      email: String(data?.email || '').trim(),
+      tel: String(data?.tel || data?.telefono || '').trim(),
+      licencia: String(data?.licencia || '').trim(),
+      isBlock: Boolean(data?.isBlock),
+    };
+    const created = await db.conductores.create(conductor);
+    return created;
   }
 
   async find() {
@@ -31,7 +39,14 @@ class ConductoresService {
     try {
       const item = await db.conductores.findOne({ where: { consecutivo } });
       if (!item) throw boom.notFound('El item no existe');
-      await db.conductores.update(changes, { where: { consecutivo } });
+      const payload = {
+        ...changes,
+        conductor: changes?.conductor ? String(changes.conductor).trim().toUpperCase() : changes?.conductor,
+        cons_transportadora: String(changes?.cons_transportadora || '').trim(),
+        email: String(changes?.email || '').trim(),
+        tel: String(changes?.tel || changes?.telefono || '').trim(),
+      };
+      await db.conductores.update(payload, { where: { consecutivo } });
       return { message: "El item fue actualizado", consecutivo, changes }
     } catch (error) {
       throw boom.badRequest(error);

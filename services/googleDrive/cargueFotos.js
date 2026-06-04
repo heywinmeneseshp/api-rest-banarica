@@ -44,6 +44,32 @@ const limpiarFotosTemporales = (arreglosFotos = []) => {
     }
 };
 
+const normalizarTexto = (value) => (
+    String(value || '')
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_\-]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '')
+);
+
+const formatearFechaNombre = (fecha) => {
+    const texto = String(fecha || '').trim();
+    if (!texto) {
+        return 'sin_fecha';
+    }
+
+    const date = new Date(texto);
+    if (Number.isNaN(date.getTime())) {
+        return normalizarTexto(texto) || 'sin_fecha';
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+};
+
 const normalizarErrorGoogleDrive = (error) => {
     const message = error?.message || '';
 
@@ -61,7 +87,7 @@ const normalizarErrorGoogleDrive = (error) => {
  * @returns {Promise<Object>} - Resultado con enlaces de las fotos subidas
  */
 async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
-    const { semana, fecha, item, carpetaID } = datosFormulario;
+    const { semana, fecha, item, vehiculo, finca_destino, destino, carpetaID } = datosFormulario;
 
     // VALIDAR que carpetaID existe
     if (!carpetaID) {
@@ -75,6 +101,10 @@ async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
 
     const ID_CARPETA_PRINCIPAL = carpetaID;
     const nombreSubcarpeta = `${semana} - ${fecha} - ${item}`;
+    const fechaNormalizada = formatearFechaNombre(fecha);
+    const semanaNormalizada = normalizarTexto(semana) || 'sin_semana';
+    const vehiculoNormalizado = normalizarTexto(vehiculo || item) || 'sin_vehiculo';
+    const destinoNormalizado = normalizarTexto(finca_destino || destino) || 'sin_destino';
 
     console.log(`📁 Carpeta principal ID: ${ID_CARPETA_PRINCIPAL}`);
     console.log(`📂 Nombre de subcarpeta: ${nombreSubcarpeta}`);
@@ -126,9 +156,10 @@ async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
             }
 
             // Generar nombre único para la foto
-            const timestamp = Date.now();
-            const random = Math.floor(Math.random() * 10000);
-            const nombreArchivo = `evidencia_${fecha}_${timestamp}_${random}_${contador}.jpg`;
+            const extensionOriginal = path.extname(foto.originalname || '').toLowerCase() || '.jpg';
+            const numero = String(contador).padStart(2, '0');
+            const identificadorUnico = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+            const nombreArchivo = `${fechaNormalizada}_${semanaNormalizada}__${vehiculoNormalizado}__${destinoNormalizado}__${identificadorUnico}${extensionOriginal}`;
 
             const metadatosArchivo = {
                 name: nombreArchivo,

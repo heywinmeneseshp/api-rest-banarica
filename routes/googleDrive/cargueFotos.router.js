@@ -99,6 +99,8 @@ router.post('/subir-evidencias', upload.array('fotos', 20), async (req, res, nex
             semana,
             fecha,
             item,
+            vehiculo: req.body.vehiculo,
+            finca_destino: req.body.finca_destino,
             carpetaID
         }, archivos);
 
@@ -128,6 +130,8 @@ router.post('/subir-evidencia', upload.single('foto'), async (req, res, next) =>
             semana,
             fecha,
             item,
+            vehiculo: req.body.vehiculo,
+            finca_destino: req.body.finca_destino,
             carpetaID
         }, archivos);
 

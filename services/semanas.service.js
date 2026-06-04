@@ -85,6 +85,67 @@ class SemanasService {
     });
   }
 
+  parseWeekValue(value) {
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  getWeekRecordKey(item) {
+    const week = this.parseWeekValue(item?.semana);
+    const year = this.parseWeekValue(item?.anho);
+    if (!week || !year) {
+      return null;
+    }
+    return `${year}-${String(week).padStart(2, '0')}`;
+  }
+
+  buildAllowedWeekKeys({ anho_actual, semana_actual, semana_previa, semana_siguiente, total_semanas_anho }) {
+    const year = this.parseWeekValue(anho_actual);
+    const currentWeek = this.parseWeekValue(semana_actual);
+    const prev = Math.max(this.parseWeekValue(semana_previa) || 0, 0);
+    const next = Math.max(this.parseWeekValue(semana_siguiente) || 0, 0);
+    const totalWeeks = Math.max(this.parseWeekValue(total_semanas_anho) || 52, 1);
+
+    if (!year || !currentWeek) {
+      return [];
+    }
+
+    const result = new Set();
+
+    for (let offset = -prev; offset <= next; offset += 1) {
+      let week = currentWeek + offset;
+      let targetYear = year;
+
+      while (week < 1) {
+        targetYear -= 1;
+        const previousYearWeeks = Math.max(totalWeeks, 1);
+        week += previousYearWeeks;
+      }
+
+      while (week > totalWeeks) {
+        week -= totalWeeks;
+        targetYear += 1;
+      }
+
+      result.add(`${targetYear}-${String(week).padStart(2, '0')}`);
+    }
+
+    return Array.from(result);
+  }
+
+  async rangoSemana(body = {}) {
+    const allowedKeys = this.buildAllowedWeekKeys(body);
+    if (!allowedKeys.length) {
+      return [];
+    }
+
+    const rows = await db.semanas.findAll({
+      order: [['anho', 'ASC'], ['semana', 'ASC']],
+    });
+
+    return rows.filter((item) => allowedKeys.includes(this.getWeekRecordKey(item)));
+  }
+
 
 }
 

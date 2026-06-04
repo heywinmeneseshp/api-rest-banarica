@@ -37,6 +37,15 @@ router.post("/filter", async (req, res, next) => {
   }
 });
 
+router.post("/rango", async (req, res, next) => {
+  try {
+    const items = await service.rangoSemana(req.body);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Ejemplo: http://localhost:3000/api/v1/semanas/paginar?offset=1&limit=4
 router.post('/paginar', async (req, res, next) => {
   try {
