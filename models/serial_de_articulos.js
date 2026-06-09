@@ -49,6 +49,11 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: 'cons_movimiento'
       });
 
+      this.hasMany(models.programacion_serial, {
+        foreignKey: 'serial_articulo_id',
+        as: 'programacion_seriales'
+      });
+
       // Define additional associations if needed
     }
   }

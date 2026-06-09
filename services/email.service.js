@@ -37,6 +37,26 @@ class emailService {
     return `"${fromName}" <${config.email_correo}>`;
   }
 
+  getSafeErrorMessage(error) {
+    if (error?.code === 'EAUTH') {
+      return 'Autenticacion SMTP fallida. Revisa el correo remitente y la contrasena/app password.';
+    }
+
+    if (error?.code === 'ECONNECTION' || error?.code === 'ETIMEDOUT' || error?.code === 'ESOCKET') {
+      return 'No fue posible conectar con el servidor SMTP. Revisa host, puerto, SSL/TLS o la red del servidor.';
+    }
+
+    if (error?.responseCode === 535) {
+      return 'El servidor SMTP rechazo las credenciales. Usa una app password si el correo tiene doble factor.';
+    }
+
+    if (error?.responseCode === 550 || error?.responseCode === 553) {
+      return 'El servidor SMTP rechazo el destinatario o el remitente.';
+    }
+
+    return error?.message || 'Error al enviar el correo.';
+  }
+
   async send(datosCorreo, asunto, cuerpo) {
     const payload = this.normalizePayload(datosCorreo, asunto, cuerpo);
     const { destinatario, archivo, archivos } = payload;
@@ -72,6 +92,14 @@ class emailService {
       throw boom.internal('El servicio de correo no esta configurado');
     }
 
+    if (!destinatario || !String(destinatario).trim()) {
+      throw boom.badRequest('Debes indicar al menos un destinatario para enviar el correo');
+    }
+
+    if (!subject || !String(subject).trim()) {
+      throw boom.badRequest('Debes indicar el asunto del correo');
+    }
+
     const infoEmail = {
       from: this.buildFrom(config),
       to: destinatario,
@@ -87,11 +115,21 @@ class emailService {
     const transporter = this.buildTransporter(config);
 
     try {
-      await transporter.sendMail(infoEmail);
-      return { success: true, message: 'Se ha enviado el correo exitosamente.' };
+      const info = await transporter.sendMail(infoEmail);
+      return {
+        success: true,
+        message: 'Se ha enviado el correo exitosamente.',
+        accepted: info.accepted || [],
+        rejected: info.rejected || []
+      };
     } catch (error) {
       console.error('Error al enviar el correo:', error);
-      return { success: false, message: 'Error al enviar el correo.' };
+      return {
+        success: false,
+        message: this.getSafeErrorMessage(error),
+        code: error?.code,
+        responseCode: error?.responseCode
+      };
     }
   }
 }

@@ -1,22 +1,23 @@
 const express = require("express");
+const passport = require("passport");
 
 const itemService = require("../../services/transporte/vehiculos.service");
 const router = express.Router();
 const service = new itemService();
 
-router.get("/", async (req, res, next) => {
+router.get("/", passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
-    const result = await service.find();
+    const result = await service.find(req.user, req.query);
     res.json(result);
   } catch (error) {
     next(error);
   }
 });
 
-router.get("/paginar", async (req, res, next) => {
+router.get("/paginar", passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
-    const { page, limit, item } = req.query;
-    const items = await service.paginate(page, limit, item);
+    const { page, limit, item, transportadoraId } = req.query;
+    const items = await service.paginate(page, limit, item, req.user, { transportadoraId });
     res.json(items);
   } catch (error) {
     next(error);

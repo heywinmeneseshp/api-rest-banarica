@@ -34,6 +34,7 @@ const clientesRouter = require('./transporte/clientes.router.js');
 const galonesPorRutaRouter = require('./transporte/galonesPorRuta.router.js');
 const recordConsumoRouter = require('./transporte/record_consumo.router.js');
 const programacionesRouter = require('./transporte/programaciones.router.js');
+const programacionSerialesRouter = require('./transporte/programacionSeriales.router.js');
 const rutasRouter = require('./transporte/rutas.router.js');
 const tipoMovimientoVehiculosRouter = require('./transporte/tipoMovimientoVehiculos.router.js');
 const ubicacionesRouter = require('./transporte/ubicaciones.router.js');
@@ -99,6 +100,7 @@ function routerApi(app) {
   router.use('/galonesPorRuta', galonesPorRutaRouter);
   router.use('/record_consumo', recordConsumoRouter);
   router.use('/programaciones', programacionesRouter);
+  router.use('/programacion-seriales', programacionSerialesRouter);
   router.use('/rutas', rutasRouter);
   router.use('/tipoMovimientoVehiculos', tipoMovimientoVehiculosRouter);
   router.use('/ubicaciones', ubicacionesRouter);

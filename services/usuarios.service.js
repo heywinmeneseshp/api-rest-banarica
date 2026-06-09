@@ -93,6 +93,14 @@ class UsuariosService {
     }
   }
 
+  async updateTransportadoraFromUser(username, id_transportadora, changes) {
+    const asignacion = await db.transportadoras_por_usuario.findAll({ where: { username, id_transportadora } });
+    if (asignacion.length == 0) {
+      return await db.transportadoras_por_usuario.create({ username, id_transportadora, habilitado: changes });
+    }
+    return await db.transportadoras_por_usuario.update({ habilitado: changes }, { where: { username, id_transportadora } });
+  }
+
   async delete(username) {
     const result = await db.usuarios.destroy({ where: { username } });
     if (!result) throw boom.notFound('El usuario no existe');
@@ -106,8 +114,22 @@ class UsuariosService {
     return newUser;
   }
 
+  async addTransportadoraToUser(data) {
+    const existe = await db.transportadoras_por_usuario.findOne({
+      where: { username: data.username, id_transportadora: data.id_transportadora }
+    });
+    if (existe) throw boom.conflict('El item ya existe')
+    return await db.transportadoras_por_usuario.create(data);
+  }
+
   async findAllAlmacenesassigned() {
     return await db.almacenes_por_usuario.findAll();
+  }
+
+  async findAllTransportadorasAssigned() {
+    return await db.transportadoras_por_usuario.findAll({
+      include: [{ model: db.transportadoras, as: 'transportadora' }]
+    });
   }
 
   async findByUser(username) {
@@ -118,6 +140,13 @@ class UsuariosService {
     return almacenes;
   }
 
+  async findTransportadorasByUser(username) {
+    return await db.transportadoras_por_usuario.findAll({
+      where: { username },
+      include: [{ model: db.transportadoras, as: 'transportadora' }]
+    });
+  }
+
   async findUsersByAlmacen(id_almacen) {
     const almacenes = await db.almacenes_por_usuario.findAll({
       where: { id_almacen }
@@ -125,11 +154,28 @@ class UsuariosService {
     return almacenes;
   }
 
+  async findUsersByTransportadora(id_transportadora) {
+    return await db.transportadoras_por_usuario.findAll({
+      where: { id_transportadora }
+    });
+  }
+
   async deleteAlmacenFromUser(username, id_almacen) {
     const deletedRows = await db.almacenes_por_usuario.destroy({
       where: { username, id_almacen }
     });
   
+    if (deletedRows === 0) {
+      throw boom.notFound('El item no existe');
+    }
+    return { message: "El item fue eliminado", index: deletedRows };
+  }
+
+  async deleteTransportadoraFromUser(username, id_transportadora) {
+    const deletedRows = await db.transportadoras_por_usuario.destroy({
+      where: { username, id_transportadora }
+    });
+
     if (deletedRows === 0) {
       throw boom.notFound('El item no existe');
     }

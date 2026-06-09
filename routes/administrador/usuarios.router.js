@@ -1,7 +1,14 @@
 const express = require("express");
 const UsuariosService = require('../../services/usuarios.service');
 const validatorHandler = require('../../middlewares/validator.handler');
-const { crearUsuario, actualizarUsuario, agregarAlmacenParaUsuario, actualizarUsuarioPorAlmacen } = require('../../schema/usuario.schema');
+const {
+  crearUsuario,
+  actualizarUsuario,
+  agregarAlmacenParaUsuario,
+  actualizarUsuarioPorAlmacen,
+  agregarTransportadoraParaUsuario,
+  actualizarUsuarioPorTransportadora
+} = require('../../schema/usuario.schema');
 
 const passport = require("passport");
 const { checkSuperAdminRole } = require('../../middlewares/auth.handler');
@@ -88,6 +95,65 @@ router.delete("/almacen/:username/:id_almacen", async (req, res, next) => {
   const { username, id_almacen } = req.params;
   try {
     const item = await service.deleteAlmacenFromUser(username, id_almacen);
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/transportadora", async (req, res, next) => {
+  try {
+    const items = await service.findAllTransportadorasAssigned();
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/transportadora/actualizar", validatorHandler(actualizarUsuarioPorTransportadora, "body"), async (req, res, next) => {
+  const { username, id_transportadora, habilitado } = req.body;
+  try {
+    const item = await service.updateTransportadoraFromUser(username, id_transportadora, habilitado);
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/transportadora", validatorHandler(agregarTransportadoraParaUsuario, "body"), async (req, res, next) => {
+  const body = req.body;
+  try {
+    const item = await service.addTransportadoraToUser(body);
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/transportadora/cons/:id_transportadora", async (req, res, next) => {
+  const { id_transportadora } = req.params;
+  try {
+    const items = await service.findUsersByTransportadora(id_transportadora);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/transportadora/:username", async (req, res, next) => {
+  const { username } = req.params;
+  try {
+    const items = await service.findTransportadorasByUser(username);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/transportadora/:username/:id_transportadora", async (req, res, next) => {
+  const { username, id_transportadora } = req.params;
+  try {
+    const item = await service.deleteTransportadoraFromUser(username, id_transportadora);
     res.json(item);
   } catch (error) {
     next(error);

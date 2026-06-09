@@ -36,8 +36,17 @@ class AuthService {
       where: { username, habilitado: true },
       include: [{ model: db.almacenes, as: 'almacen' }]
     });
+
+    const transportadoras = await db.transportadoras_por_usuario.findAll({
+      where: { username, habilitado: true },
+      include: [{ model: db.transportadoras, as: 'transportadora' }]
+    });
   
-    return { usuario: user, almacenes: almacenes.map(item => item.almacen) };
+    return {
+      usuario: user,
+      almacenes: almacenes.map(item => item.almacen),
+      transportadoras: transportadoras.map(item => item.transportadora).filter(Boolean)
+    };
   }
   
   

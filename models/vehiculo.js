@@ -23,6 +23,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'vehiculo_id',
         sourceKey: 'id'
       });
+
+      this.belongsTo(models.transportadoras, {
+        foreignKey: 'transportadoraId',
+        as: 'transportadora'
+      });
     }
   }
   vehiculo.init({
@@ -31,6 +36,7 @@ module.exports = (sequelize, DataTypes) => {
     placa: DataTypes.STRING,
     conductor_id: DataTypes.STRING,
     categoria_id: DataTypes.STRING,
+    transportadoraId: DataTypes.INTEGER,
     combustible: DataTypes.FLOAT,
     gal_por_km: DataTypes.FLOAT,
     activo: DataTypes.BOOLEAN

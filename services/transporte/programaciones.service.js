@@ -1,6 +1,7 @@
 ﻿const boom = require('@hapi/boom');
 const { Op, Sequelize } = require('sequelize');
 const db = require('../../models');
+const { normalizeRole, ROLES } = require('../../middlewares/auth.handler');
 
 const ESTADO_LISTADO_PENDIENTE = 'pendiente';
 const ESTADO_LISTADO_ACTUALIZADO = 'actualizado';
@@ -33,6 +34,52 @@ class ProgramacionService {
     }
     const vehiculosSinCombustible = await this.getVehiculosSinCombustibleSet();
     return vehiculosSinCombustible.has(String(vehiculoId));
+  }
+
+  async getAllowedTransportadoras(user) {
+    if (!user?.username || normalizeRole(user.id_rol) === ROLES.SUPER_ADMIN) {
+      return null;
+    }
+
+    const asignaciones = await db.transportadoras_por_usuario.findAll({
+      where: { username: user.username, habilitado: true },
+    });
+
+    return asignaciones.map((item) => item.id_transportadora);
+  }
+
+  async getTransportadoraWhere(body = {}, user = null) {
+    const allowed = await this.getAllowedTransportadoras(user);
+    const requestedIds = [];
+
+    if (body.transportadoraId) {
+      requestedIds.push(body.transportadoraId);
+    }
+
+    if (Array.isArray(body.transportadoraIds)) {
+      requestedIds.push(...body.transportadoraIds);
+    }
+
+    const normalizedRequested = [...new Set(
+      requestedIds
+        .map((item) => Number(item))
+        .filter((item) => Number.isFinite(item))
+    )];
+
+    if (Array.isArray(allowed)) {
+      const allowedIds = allowed.map((item) => Number(item)).filter((item) => Number.isFinite(item));
+      const finalIds = normalizedRequested.length
+        ? normalizedRequested.filter((item) => allowedIds.includes(item))
+        : allowedIds;
+
+      return { transportadoraId: { [Op.in]: finalIds.length ? finalIds : [-1] } };
+    }
+
+    if (normalizedRequested.length) {
+      return { transportadoraId: { [Op.in]: normalizedRequested } };
+    }
+
+    return {};
   }
 
   normalizeText(value) {
@@ -194,6 +241,26 @@ class ProgramacionService {
     return embarque;
   }
 
+  getProgramacionSerialesInclude() {
+    return {
+      model: db.programacion_serial,
+      as: 'seriales_programador',
+      separate: true,
+      include: [
+        {
+          model: db.serial_de_articulos,
+          as: 'serial_articulo',
+          include: [
+            { model: db.productos, as: 'producto' },
+            { model: db.Contenedor, as: 'contenedor' }
+          ]
+        },
+        { model: db.Contenedor, as: 'contenedor' },
+        { model: db.MotivoDeUso, as: 'motivo_de_uso' }
+      ]
+    };
+  }
+
   async create(data) {
     await this.validateBl(data?.bl);
     await this.validateTipoMovimiento(data);
@@ -211,6 +278,7 @@ class ProgramacionService {
     return await db.programacion.findAll({
       include: [
         { model: db.productos_viajes },
+        this.getProgramacionSerialesInclude(),
         { model: db.conductores, as: 'conductor' },
         { model: db.rutas, include: [{ model: db.ubicaciones, as: 'ubicacion_1' }, { model: db.ubicaciones, as: 'ubicacion_2' }] },
         { model: db.clientes },
@@ -219,7 +287,13 @@ class ProgramacionService {
   }
 
   async findOne(id) {
-    const item = await db.programacion.findOne({ where: { id } });
+    const item = await db.programacion.findOne({
+      where: { id },
+      include: [
+        { model: db.productos_viajes },
+        this.getProgramacionSerialesInclude(),
+      ]
+    });
     if (!item) {
       throw boom.notFound('El item no existe');
     }
@@ -259,7 +333,7 @@ class ProgramacionService {
     return { message: "El item fue eliminado", id };
   }
 
-  async paginate(offset, limit, body) {
+  async paginate(offset, limit, body, user = null) {
 
     let fecha = { [Op.like]: `%${body?.fecha || ''}%` };
     if (body?.fechaFin) {
@@ -268,6 +342,7 @@ class ProgramacionService {
       fecha = { [Op.between]: [inicio, fin] }
     }
     delete body.fechaFin;
+    const vehiculoTransportadoraWhere = await this.getTransportadoraWhere(body, user);
     const whereClause = {
       where: {
         semana: { [Op.like]: `%${body?.semana || ''}%` },
@@ -275,6 +350,7 @@ class ProgramacionService {
         fecha: fecha
       },
       order: [['fecha', 'DESC'], ['bl', 'ASC'], ['contenedor', 'ASC'], ['id', 'ASC']],
+      distinct: true,
       include: [
         {
           model: db.rutas,
@@ -289,6 +365,7 @@ class ProgramacionService {
           },
         },
         { model: db.productos_viajes },
+        this.getProgramacionSerialesInclude(),
         {
           model: db.conductores,
           as: 'conductor',
@@ -299,8 +376,10 @@ class ProgramacionService {
         { model: db.clientes },
         {
           model: db.vehiculo,
+          include: [{ model: db.transportadoras, as: 'transportadora' }],
           where: {
             placa: { [Op.like]: `%${body.vehiculo || ''}%` },
+            ...vehiculoTransportadoraWhere,
           },
         },
       ],

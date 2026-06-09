@@ -15,6 +15,14 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "id_transportadora",
         as: "carrusel"
       })
+      this.hasMany(models.vehiculo, {
+        foreignKey: 'transportadoraId',
+        as: 'vehiculos'
+      })
+      this.hasMany(models.transportadoras_por_usuario, {
+        foreignKey: 'id_transportadora',
+        as: 'usuarios_asignados'
+      })
     }
   }
   transportadoras.init({

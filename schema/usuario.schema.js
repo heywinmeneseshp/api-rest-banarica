@@ -11,6 +11,7 @@ const id_rol = Joi.string().valid(ROLES.SUPER_ADMIN, ROLES.OPERADOR);
 const isBlock = Joi.boolean();
 
 const id_almacen = Joi.string();
+const id_transportadora = Joi.number().integer();
 const habilitado = Joi.boolean();
 
 const crearUsuario = Joi.object({
@@ -47,4 +48,23 @@ const actualizarUsuarioPorAlmacen = Joi.object({
   habilitado: habilitado
 })
 
-module.exports = { crearUsuario, actualizarUsuario, agregarAlmacenParaUsuario, actualizarUsuarioPorAlmacen  };
+const agregarTransportadoraParaUsuario = Joi.object({
+  id_transportadora: id_transportadora.required(),
+  username: username.required(),
+  habilitado: habilitado.required(),
+})
+
+const actualizarUsuarioPorTransportadora = Joi.object({
+  id_transportadora: id_transportadora.required(),
+  username: username.required(),
+  habilitado: habilitado
+})
+
+module.exports = {
+  crearUsuario,
+  actualizarUsuario,
+  agregarAlmacenParaUsuario,
+  actualizarUsuarioPorAlmacen,
+  agregarTransportadoraParaUsuario,
+  actualizarUsuarioPorTransportadora
+};

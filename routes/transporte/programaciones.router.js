@@ -1,4 +1,5 @@
 const express = require("express");
+const passport = require("passport");
 
 const itemService = require("../../services/transporte/programaciones.service");
 const router = express.Router();
@@ -15,11 +16,11 @@ router.get("/", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
-router.post("/paginar", async (req, res, next) => {
+router.post("/paginar", passport.authenticate("jwt", { session: false }), async (req, res, next) => {
   try {
     const { page, limit } = req.query;
     const body = req.body;
-    const items = await service.paginate(page, limit, body);
+    const items = await service.paginate(page, limit, body, req.user);
     res.json(items);
   } catch (error) {
     next(error);
