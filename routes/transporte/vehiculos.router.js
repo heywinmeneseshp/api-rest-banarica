@@ -16,8 +16,8 @@ router.get("/", passport.authenticate('jwt', { session: false }), async (req, re
 
 router.get("/paginar", passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
-    const { page, limit, item, transportadoraId } = req.query;
-    const items = await service.paginate(page, limit, item, req.user, { transportadoraId });
+    const { page, limit, item, transportadoraId, includeUnassigned } = req.query;
+    const items = await service.paginate(page, limit, item, req.user, { transportadoraId, includeUnassigned });
     res.json(items);
   } catch (error) {
     next(error);

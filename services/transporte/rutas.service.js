@@ -64,6 +64,7 @@ class rutasService {
   async paginate(offset, limit, item) {
     const newLimit = parseInt(limit);
     const newOffset = (parseInt(offset) - 1) * newLimit;
+    const search = item || '';
   
     const { count, rows } = await db.rutas.findAndCountAll({
       include: [
@@ -72,7 +73,7 @@ class rutasService {
           as: 'ubicacion_1',
           where: {
             [Op.or]: [
-              { ubicacion: { [Op.like]: `%${item}%` } }
+              { ubicacion: { [Op.like]: `%${search}%` } }
             ]
           }
         },
@@ -81,6 +82,7 @@ class rutasService {
           as: 'ubicacion_2',
         }
       ],
+      order: [['id', 'DESC']],
       limit: newLimit,
       offset: newOffset
     });

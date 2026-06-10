@@ -78,11 +78,13 @@ class ubicacionesService {
     });
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
+    const search = item || '';
     const total = await db.ubicaciones.count({
-      where: { ubicacion: { [Op.like]: `%${item}%` } }
+      where: { ubicacion: { [Op.like]: `%${search}%` } }
     });
     const result = await db.ubicaciones.findAll({
-      where: { ubicacion: { [Op.like]: `%${item}%` } },
+      where: { ubicacion: { [Op.like]: `%${search}%` } },
+      order: [['id', 'DESC']],
       limit: newlimit,
       offset: newoffset
     });

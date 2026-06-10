@@ -9,9 +9,12 @@ class ConductoresService {
   constructor() { }
 
   async create(data) {
-    const heywin = await this.find();
-    let consecutivo = "CO-0"
-    if (heywin.length > 0) consecutivo = generarID("CO", heywin[heywin.length - 1].consecutivo);
+    const heywin = await db.conductores.findOne({
+      order: [['id', 'DESC']]
+    });
+    let consecutivo = "CO-1"
+    if (heywin) consecutivo = "CO-"+(heywin.id*1);
+    console.log(consecutivo)
     const conductor = {
       consecutivo,
       conductor: String(data?.conductor || '').trim().toUpperCase(),
@@ -26,7 +29,9 @@ class ConductoresService {
   }
 
   async find() {
-    return await db.conductores.findAll();
+    return await db.conductores.findAll({
+      order: [['id', 'DESC']]
+    });
   }
 
   async findOne(consecutivo) {
@@ -70,6 +75,7 @@ class ConductoresService {
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.conductores.findAll({
       where: { conductor: { [Op.like]: `%${nombre}%` } },
+      order: [['id', 'DESC']],
       limit: newlimit,
       offset: newoffset
     });

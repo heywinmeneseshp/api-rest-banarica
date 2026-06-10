@@ -30,7 +30,8 @@ class vehiculoService {
     return asignaciones.map((item) => item.id_transportadora);
   }
 
-  async buildWhereWithTransportadora(baseWhere = {}, user = null, transportadoraId = null) {
+  async buildWhereWithTransportadora(baseWhere = {}, user = null, transportadoraId = null, options = {}) {
+    const { includeUnassigned = false } = options;
     const where = { ...baseWhere };
     const allowed = await this.getAllowedTransportadoras(user);
 
@@ -40,7 +41,7 @@ class vehiculoService {
 
     if (Array.isArray(allowed)) {
       if (!allowed.length) {
-        where.transportadoraId = { [Op.in]: [] };
+        where.transportadoraId = includeUnassigned ? null : { [Op.in]: [] };
         return where;
       }
 
@@ -51,7 +52,19 @@ class vehiculoService {
         return where;
       }
 
-      where.transportadoraId = { [Op.in]: allowed };
+      if (includeUnassigned) {
+        where[Op.and] = [
+          ...(where[Op.and] || []),
+          {
+            [Op.or]: [
+              { transportadoraId: { [Op.in]: allowed } },
+              { transportadoraId: null },
+            ],
+          },
+        ];
+      } else {
+        where.transportadoraId = { [Op.in]: allowed };
+      }
     }
 
     return where;
@@ -138,10 +151,13 @@ class vehiculoService {
   }
 
   async find(user = null, filters = {}) {
-    const where = await this.buildWhereWithTransportadora({}, user, filters.transportadoraId);
+    const where = await this.buildWhereWithTransportadora({}, user, filters.transportadoraId, {
+      includeUnassigned: filters.includeUnassigned === true || filters.includeUnassigned === 'true',
+    });
     const vehiculo = await db.vehiculo.findAll({
       where,
-      include: [{ model: db.transportadoras, as: 'transportadora' }]
+      include: [{ model: db.transportadoras, as: 'transportadora' }],
+      order: [['id', 'DESC']]
     });
     return vehiculo;
   }
@@ -181,7 +197,8 @@ class vehiculoService {
     const where = await this.buildWhereWithTransportadora(
       { placa: { [Op.like]: `%${item || ''}%` } },
       user,
-      filters.transportadoraId
+      filters.transportadoraId,
+      { includeUnassigned: filters.includeUnassigned === true || filters.includeUnassigned === 'true' }
     );
     const total = await db.vehiculo.count({
       where
@@ -189,6 +206,7 @@ class vehiculoService {
     const result = await db.vehiculo.findAll({
       where,
       include: [{ model: db.transportadoras, as: 'transportadora' }],
+      order: [['id', 'DESC']],
       limit: newlimit,
       offset: newoffset
     });

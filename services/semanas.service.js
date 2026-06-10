@@ -139,11 +139,23 @@ class SemanasService {
       return [];
     }
 
-    const rows = await db.semanas.findAll({
+    const allowedPairs = allowedKeys
+      .map((key) => {
+        const [year, week] = String(key).split('-');
+        return { anho: year, semana: week };
+      })
+      .filter((item) => item.anho && item.semana);
+
+    if (!allowedPairs.length) {
+      return [];
+    }
+
+    return await db.semanas.findAll({
+      where: {
+        [Op.or]: allowedPairs,
+      },
       order: [['anho', 'ASC'], ['semana', 'ASC']],
     });
-
-    return rows.filter((item) => allowedKeys.includes(this.getWeekRecordKey(item)));
   }
 
 

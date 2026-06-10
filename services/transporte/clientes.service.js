@@ -89,11 +89,13 @@ class clientesService {
   async paginate(offset, limit, item) {
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;
+    const search = item || '';
     const total = await db.clientes.count({
-      where: { razon_social: { [Op.like]: `%${item}%` } }
+      where: { razon_social: { [Op.like]: `%${search}%` } }
     });
     const result = await db.clientes.findAll({
-      where: { razon_social: { [Op.like]: `%${item}%` } },
+      where: { razon_social: { [Op.like]: `%${search}%` } },
+      order: [['id', 'DESC']],
       limit: newlimit,
       offset: newoffset
     });

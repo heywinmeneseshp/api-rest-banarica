@@ -28,7 +28,9 @@ router.get('/encontrar/:modulo',
   async (req, res, next) => {
     try {
       const { modulo } = req.params;
-      const result = await service.find(modulo)
+      const result = await service.find(modulo, {
+        syncWeeks: req.query.syncWeeks !== 'false',
+      })
       res.json(result);
     } catch (err) {
       next(err);

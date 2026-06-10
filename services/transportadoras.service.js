@@ -17,7 +17,9 @@ class TransportadorasService {
   }
 
   async find() {
-    return await db.transportadoras.findAll();
+    return await db.transportadoras.findAll({
+      order: [['id', 'DESC']]
+    });
   }
 
   async findOne(consecutivo) {
@@ -46,6 +48,7 @@ class TransportadorasService {
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.transportadoras.findAll({
       where: {razon_social: {[Op.like]: `%${nombre}%`}},
+      order: [['id', 'DESC']],
       limit: newlimit,
       offset: newoffset
     });

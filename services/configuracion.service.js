@@ -193,7 +193,8 @@ class ConfigService {
     });
   }
 
-  async find(modulo) {
+  async find(modulo, options = {}) {
+    const { syncWeeks = true } = options;
     let [configuracion] = await db.configuracion.findOrCreate({
       where: { modulo },
       defaults: {
@@ -212,7 +213,7 @@ class ConfigService {
 
     let moduloData = configuracion.dataValues;
 
-    if (modulo === 'Semana') {
+    if (modulo === 'Semana' && syncWeeks) {
       const synced = await this.syncWeeksCalendar(moduloData);
 
       if (
