@@ -2,6 +2,7 @@ const Joi = require('joi');
 
 const consecutivo = Joi.string().min(4);
 const conductor = Joi.string().max(100);
+const licencia = Joi.string().max(20).allow('').default('');
 const cons_transportadora = Joi.string().allow('').default('');
 const email = Joi.string().email().allow('').default('');
 const tel = Joi.string().allow('').default('');
@@ -13,6 +14,7 @@ const crearConductor = Joi.object({
   cons_transportadora: cons_transportadora,
   email: email,
   tel: tel,
+  licencia: licencia,
   isBlock: isBlock
 });
 
@@ -22,6 +24,7 @@ const actualizarConductor = Joi.object({
   cons_transportadora: cons_transportadora,
   email: email,
   tel: tel,
+  licencia: licencia,  // ← Agrega esta línea
   isBlock: isBlock
 });
 

@@ -26,7 +26,8 @@ module.exports = {
         type: Sequelize.STRING
       },
       licencia: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        unique: true,
       },
       isBlock: {
         type: Sequelize.STRING

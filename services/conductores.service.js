@@ -13,7 +13,7 @@ class ConductoresService {
       order: [['id', 'DESC']]
     });
     let consecutivo = "CO-1"
-    if (heywin) consecutivo = "CO-"+(heywin.id*1);
+    if (heywin) consecutivo = "CO-" + (heywin.id);
     console.log(consecutivo)
     const conductor = {
       consecutivo,
@@ -75,6 +75,13 @@ class ConductoresService {
     let newoffset = (parseInt(offset) - 1) * newlimit;
     const result = await db.conductores.findAll({
       where: { conductor: { [Op.like]: `%${nombre}%` } },
+      include: [
+        {
+          model: db.transportadoras, 
+          as: "transportadora",
+          attributes: ['id', 'razon_social']
+        }
+      ],
       order: [['id', 'DESC']],
       limit: newlimit,
       offset: newoffset

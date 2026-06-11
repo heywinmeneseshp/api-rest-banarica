@@ -15,13 +15,19 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'conductor_id'
       });
 
-      
+
       this.hasMany(models.record_consumos, {
         foreignKey: "conductor_id",
         sourceKey: "id"
       })
 
-      
+      this.belongsTo(models.transportadoras, {
+        foreignKey: 'cons_transportadora',  // campo en conductor
+        targetKey: 'id',                    // campo en transportadora
+        as: 'transportadora'               // alias para incluir
+      })
+
+
     }
 
   }

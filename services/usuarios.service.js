@@ -191,6 +191,7 @@ class UsuariosService {
         username: { [Op.like]: `%${username}%` },
         id_rol: { [Op.in]: [ROLES.SUPER_ADMIN, ROLES.OPERADOR, 'Administrador', 'Seguridad', 'Super seguridad'] }
       },
+       order: [['id', 'DESC']],
       limit: newlimit,
       offset: newoffset
     });
