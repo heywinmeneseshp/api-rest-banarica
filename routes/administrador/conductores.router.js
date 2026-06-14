@@ -21,8 +21,8 @@ router.get("/", async (req, res) => {
 //Paginar
 router.get("/paginar", async (req, res, next) => {
   try {
-    const { page, limit, nombre } = req.query;
-    const items = await service.paginate(page, limit, nombre);
+    const { page, limit, nombre, transportadoraId } = req.query;
+    const items = await service.paginate(page, limit, nombre, transportadoraId);
     res.json(items);
   } catch (error) {
     next(error);
