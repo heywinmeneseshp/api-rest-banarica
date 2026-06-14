@@ -631,7 +631,12 @@ async bulkUpdate(payload) {
       },
       { model: db.almacenes, as: "almacen", where: createFilter("nombre", body.llenado), required: !!body.llenado },
       { model: db.combos, where: createFilter("nombre", body.producto), required: !!body.producto },
-      ...(shouldIncludeSeriales ? [{ model: db.serial_de_articulos, required: false }] : [])
+      ...(shouldIncludeSeriales ? [{
+        model: db.serial_de_articulos,
+        required: false,
+        where: body.serialProductos ? { cons_producto: { [Op.in]: body.serialProductos } } : undefined,
+        order: body.serialProductos ? [['updatedAt', 'DESC']] : undefined
+      }] : [])
     ];
 
     return { bodyFilter, includeOptions };
