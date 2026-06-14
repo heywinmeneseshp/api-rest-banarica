@@ -32,7 +32,7 @@ const TXN_COMMIT_RE   = /^\s*COMMIT\s*;?\s*$/i;
 const TXN_ROLLBACK_RE = /^\s*ROLLBACK\s*;?\s*$/i;
 
 // ─── HTTP POST vía fetch ───
-async function httpPost(url, body, apiKey, timeoutMs = 30000) {
+async function httpPost(url, body, apiKey, timeoutMs = 120000) {
     const headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers['X-API-Key'] = apiKey;
 

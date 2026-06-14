@@ -631,12 +631,7 @@ async bulkUpdate(payload) {
       },
       { model: db.almacenes, as: "almacen", where: createFilter("nombre", body.llenado), required: !!body.llenado },
       { model: db.combos, where: createFilter("nombre", body.producto), required: !!body.producto },
-      ...(shouldIncludeSeriales ? [{
-        model: db.serial_de_articulos,
-        required: false,
-        where: body.serialProductos ? { cons_producto: { [Op.in]: body.serialProductos } } : undefined,
-        order: body.serialProductos ? [['updatedAt', 'DESC']] : undefined
-      }] : [])
+      ...(shouldIncludeSeriales ? [{ model: db.serial_de_articulos, required: false }] : [])
     ];
 
     return { bodyFilter, includeOptions };
@@ -674,6 +669,122 @@ async bulkUpdate(payload) {
 
 
 
+  async exportExcel(offset, limit, body = {}) {
+    const sequelize = db.sequelize;
+    const pLimit = Number(limit) || 500;
+    const pOffset = Number(offset) ? (Number(offset) - 1) * pLimit : 0;
+    const serialProductos = Array.isArray(body.serialProductos) ? body.serialProductos : ['TER9', 'BOT2'];
+
+    const where = ['1=1'];
+    const params = [];
+
+    if (body.fecha_inicial) {
+      where.push('l.fecha >= ?');
+      params.push(body.fecha_inicial);
+    }
+    if (body.fecha_final) {
+      where.push('l.fecha <= ?');
+      params.push(body.fecha_final + ' 23:59:59');
+    }
+    if (body.habilitado !== undefined) {
+      where.push('l.habilitado = ?');
+      params.push(body.habilitado ? 1 : 0);
+    }
+    if (body.contenedor) {
+      where.push('ct.contenedor LIKE ?');
+      params.push(`%${body.contenedor}%`);
+    }
+    if (body.booking) {
+      where.push('e.booking LIKE ?');
+      params.push(`%${body.booking}%`);
+    }
+    if (body.bl) {
+      where.push('e.bl LIKE ?');
+      params.push(`%${body.bl}%`);
+    }
+    if (body.destino) {
+      where.push('d.cod LIKE ?');
+      params.push(`%${body.destino}%`);
+    }
+    if (body.naviera) {
+      where.push('n.cod LIKE ?');
+      params.push(`%${body.naviera}%`);
+    }
+    if (body.cliente) {
+      where.push('c.cod LIKE ?');
+      params.push(`%${body.cliente}%`);
+    }
+    if (body.buque) {
+      where.push('b.buque LIKE ?');
+      params.push(`%${body.buque}%`);
+    }
+    if (body.semana) {
+      where.push('s.consecutivo LIKE ?');
+      params.push(`%${body.semana}%`);
+    }
+    if (body.llenado) {
+      where.push('a.nombre LIKE ?');
+      params.push(`%${body.llenado}%`);
+    }
+    if (body.producto) {
+      where.push('cp.nombre LIKE ?');
+      params.push(`%${body.producto}%`);
+    }
+
+    const serialColumns = serialProductos.map(code => {
+      const alias = `serial_${code.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+      return `(SELECT serial FROM serial_de_articulos WHERE id_contenedor = l.id_contenedor AND cons_producto = '${code}' ORDER BY updatedAt DESC LIMIT 1) AS ${alias}`;
+    });
+    const serialColsStr = serialColumns.length ? ',' + serialColumns.join(',') : '';
+
+    const sql = `
+      SELECT
+        l.id, l.fecha, l.cajas_unidades, l.transbordado,
+        e.booking, e.bl, e.fecha_zarpe, e.fecha_arribo,
+        s.consecutivo AS sem,
+        n.cod AS naviera,
+        c.cod AS cliente,
+        b.buque,
+        d.destino AS destino,
+        a.nombre AS llenado,
+        ct.contenedor,
+        cp.nombre AS producto, cp.peso_neto, cp.peso_bruto,
+        insp.fecha_inspeccion AS inspeccion_antinarcoticos,
+        insp.veces AS veces_inspeccionado${serialColsStr}
+      FROM Listados l
+      LEFT JOIN Embarques e ON l.id_embarque = e.id
+      LEFT JOIN semanas s ON e.id_semana = s.id
+      LEFT JOIN Navieras n ON e.id_naviera = n.id
+      LEFT JOIN clientes c ON e.id_cliente = c.id
+      LEFT JOIN Buques b ON e.id_buque = b.id
+      LEFT JOIN Destinos d ON e.id_destino = d.id
+      LEFT JOIN almacenes a ON l.id_lugar_de_llenado = a.id
+      LEFT JOIN Contenedors ct ON l.id_contenedor = ct.id
+      LEFT JOIN combos cp ON l.id_producto = cp.id
+      LEFT JOIN (
+        SELECT s.id_contenedor,
+          MAX(s.fecha_de_uso) AS fecha_inspeccion,
+          COUNT(DISTINCT s.cons_movimiento) AS veces
+        FROM serial_de_articulos s
+        INNER JOIN MotivoDeUsos m ON s.id_motivo_de_uso = m.id
+        WHERE m.consecutivo = 'INSP02'
+        GROUP BY s.id_contenedor
+      ) insp ON l.id_contenedor = insp.id_contenedor
+      WHERE ${where.join(' AND ')}
+      ORDER BY l.id_contenedor DESC, l.fecha DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const [rows, countRows] = await Promise.all([
+      sequelize.query(sql + ';', { replacements: [...params, pLimit, pOffset], type: sequelize.QueryTypes.SELECT }),
+      sequelize.query(
+        `SELECT COUNT(*) AS total FROM Listados l WHERE ${where.join(' AND ')}`,
+        { replacements: params, type: sequelize.QueryTypes.SELECT }
+      )
+    ]);
+
+    return { data: rows, total: countRows[0]?.total || 0 };
+  }
 }
 
 module.exports = ListadoService;
