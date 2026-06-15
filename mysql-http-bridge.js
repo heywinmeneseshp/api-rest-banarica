@@ -31,32 +31,44 @@ const TXN_BEGIN_RE    = /^\s*(?:BEGIN|START\s+TRANSACTION)\s*;?\s*$/i;
 const TXN_COMMIT_RE   = /^\s*COMMIT\s*;?\s*$/i;
 const TXN_ROLLBACK_RE = /^\s*ROLLBACK\s*;?\s*$/i;
 
-// ─── HTTP POST vía fetch ───
-async function httpPost(url, body, apiKey, timeoutMs = 120000) {
+// ─── HTTP POST vía fetch con reintentos ───
+async function httpPost(url, body, apiKey, timeoutMs = 120000, retries = 2) {
     const headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers['X-API-Key'] = apiKey;
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-            signal: controller.signal,
-        });
-        const text = await res.text();
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
-            return { status: res.status, body: JSON.parse(text) };
-        } catch (_) {
-            throw Object.assign(
-                new Error(`Bridge non-JSON (HTTP ${res.statusCode})`),
-                { statusCode: res.statusCode, raw: text.slice(0, 500) }
-            );
+            const res = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body),
+                signal: controller.signal,
+            });
+            const text = await res.text();
+            try {
+                return { status: res.status, body: JSON.parse(text) };
+            } catch (_) {
+                // Non-JSON response (Cloudflare 520, etc.) — reintentar si quedan intentos
+                if (attempt < retries && (res.status === 520 || res.status >= 500 || res.status === 0)) {
+                    await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                    continue;
+                }
+                throw Object.assign(
+                    new Error(`Bridge non-JSON (HTTP ${res.status})`),
+                    { statusCode: res.status, raw: text.slice(0, 500) }
+                );
+            }
+        } catch (err) {
+            if (attempt < retries && (err.name === 'AbortError' || err.message?.includes('non-JSON'))) {
+                await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                continue;
+            }
+            throw err;
+        } finally {
+            clearTimeout(timer);
         }
-    } finally {
-        clearTimeout(timer);
     }
 }
 

@@ -103,4 +103,16 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
+// Exporte plano para Excel
+router.post('/exportar', async (req, res, next) => {
+  try {
+    const { offset, limit } = req.query;
+    const body = req.body;
+    const items = await service.exportExcel(offset, limit, body);
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

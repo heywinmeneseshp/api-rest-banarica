@@ -125,7 +125,88 @@ async paginate(offset, limit, body) {
     console.error("Error en la paginación de Rechazos:", error.message);
     throw error;
   }
-}
+  }
+
+  async exportExcel(offset, limit, body = {}) {
+    const sequelize = db.sequelize;
+    const pLimit = Number(limit) || 500;
+    const pOffset = Number(offset) ? (Number(offset) - 1) * pLimit : 0;
+
+    const where = ['1=1'];
+    const params = [];
+
+    if (body.fecha_inicial) {
+      where.push('r.fecha_rechazo >= ?');
+      params.push(body.fecha_inicial);
+    }
+    if (body.fecha_final) {
+      where.push('r.fecha_rechazo <= ?');
+      params.push(body.fecha_final + ' 23:59:59');
+    }
+    if (body.habilitado !== undefined) {
+      where.push('r.habilitado = ?');
+      params.push(body.habilitado ? 1 : 0);
+    }
+    if (body.contenedor) {
+      where.push('ct.contenedor LIKE ?');
+      params.push(`%${body.contenedor}%`);
+    }
+    if (body.producto) {
+      where.push('cp.nombre LIKE ?');
+      params.push(`%${body.producto}%`);
+    }
+    if (body.productor) {
+      where.push('a.nombre LIKE ?');
+      params.push(`%${body.productor}%`);
+    }
+    if (body.motivo) {
+      where.push('mdr.motivo_rechazo LIKE ?');
+      params.push(`%${body.motivo}%`);
+    }
+    if (body.semana) {
+      where.push('s.consecutivo LIKE ?');
+      params.push(`%${body.semana}%`);
+    }
+    if (body.booking) {
+      where.push('e.booking LIKE ?');
+      params.push(`%${body.booking}%`);
+    }
+
+    const sql = `
+      SELECT
+        r.id, r.fecha_rechazo, r.cantidad, r.serial_palet, r.observaciones,
+        ct.contenedor,
+        cp.nombre AS producto,
+        mdr.motivo_rechazo,
+        a.nombre AS productor,
+        u.nombre AS usuario,
+        l.fecha AS fecha_listado,
+        e.booking,
+        s.consecutivo AS sem
+      FROM Rechazos r
+      LEFT JOIN Contenedors ct ON r.id_contenedor = ct.id
+      LEFT JOIN Listados l ON ct.id = l.id_contenedor
+      LEFT JOIN Embarques e ON l.id_embarque = e.id
+      LEFT JOIN semanas s ON e.id_semana = s.id
+      LEFT JOIN combos cp ON r.id_producto = cp.id
+      LEFT JOIN MotivoDeRechazos mdr ON r.id_motivo_de_rechazo = mdr.id
+      LEFT JOIN almacenes a ON r.cod_productor = a.consecutivo
+      LEFT JOIN usuarios u ON r.id_usuario = u.id
+      WHERE ${where.join(' AND ')}
+      ORDER BY r.id DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const [rows, countRows] = await Promise.all([
+      sequelize.query(sql + ';', { replacements: [...params, pLimit, pOffset], type: sequelize.QueryTypes.SELECT }),
+      sequelize.query(
+        `SELECT COUNT(*) AS total FROM Rechazos r WHERE ${where.join(' AND ')}`,
+        { replacements: params, type: sequelize.QueryTypes.SELECT }
+      )
+    ]);
+
+    return { data: rows, total: countRows[0]?.total || 0 };
+  }
 }
 
 module.exports = RechazoService;

@@ -295,6 +295,95 @@ class EmbarqueService {
     return { data: result, total };
   }
 
+  async exportExcel(offset, limit, body = {}) {
+    const sequelize = db.sequelize;
+    const pLimit = Number(limit) || 500;
+    const pOffset = Number(offset) ? (Number(offset) - 1) * pLimit : 0;
+
+    const where = ['1=1'];
+    const params = [];
+
+    if (body.semana) {
+      where.push('s.consecutivo LIKE ?');
+      params.push(`%${body.semana}%`);
+    }
+    if (body.cliente) {
+      where.push('c.cod LIKE ?');
+      params.push(`%${body.cliente}%`);
+    }
+    if (body.booking) {
+      where.push('e.booking LIKE ?');
+      params.push(`%${body.booking}%`);
+    }
+    if (body.bl) {
+      where.push('e.bl LIKE ?');
+      params.push(`%${body.bl}%`);
+    }
+    if (body.naviera) {
+      where.push('n.navieras LIKE ?');
+      params.push(`%${body.naviera}%`);
+    }
+    if (body.destino) {
+      where.push('d.cod LIKE ?');
+      params.push(`%${body.destino}%`);
+    }
+    if (body.anuncio) {
+      where.push('e.anuncio LIKE ?');
+      params.push(`%${body.anuncio}%`);
+    }
+    if (body.viaje) {
+      where.push('e.viaje LIKE ?');
+      params.push(`%${body.viaje}%`);
+    }
+    if (body.buque) {
+      where.push('b.buque LIKE ?');
+      params.push(`%${body.buque}%`);
+    }
+    if (body.sae) {
+      where.push('e.sae LIKE ?');
+      params.push(`%${body.sae}%`);
+    }
+    if (body.habilitado !== undefined) {
+      where.push('e.habilitado = ?');
+      params.push(body.habilitado ? 1 : 0);
+    }
+
+    const sql = `
+      SELECT
+        e.id, e.booking, e.bl, e.viaje, e.anuncio, e.sae,
+        e.fecha_zarpe, e.fecha_arribo,
+        s.consecutivo AS sem,
+        c.cod AS cliente,
+        n.navieras AS naviera,
+        d.cod AS destino,
+        b.buque
+      FROM Embarques e
+      LEFT JOIN semanas s ON e.id_semana = s.id
+      LEFT JOIN clientes c ON e.id_cliente = c.id
+      LEFT JOIN Navieras n ON e.id_naviera = n.id
+      LEFT JOIN Destinos d ON e.id_destino = d.id
+      LEFT JOIN Buques b ON e.id_buque = b.id
+      WHERE ${where.join(' AND ')}
+      ORDER BY e.id DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const [rows, countRows] = await Promise.all([
+      sequelize.query(sql + ';', { replacements: [...params, pLimit, pOffset], type: sequelize.QueryTypes.SELECT }),
+      sequelize.query(
+        `SELECT COUNT(*) AS total FROM Embarques e
+         LEFT JOIN semanas s ON e.id_semana = s.id
+         LEFT JOIN clientes c ON e.id_cliente = c.id
+         LEFT JOIN Navieras n ON e.id_naviera = n.id
+         LEFT JOIN Destinos d ON e.id_destino = d.id
+         LEFT JOIN Buques b ON e.id_buque = b.id
+         WHERE ${where.join(' AND ')}`,
+        { replacements: params, type: sequelize.QueryTypes.SELECT }
+      )
+    ]);
+
+    return { data: rows, total: countRows[0]?.total || 0 };
+  }
 }
 
 module.exports = EmbarqueService;
