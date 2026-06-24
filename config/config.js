@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 const mysqlHttpBridge = require('../mysql-http-bridge');
 
@@ -28,9 +29,9 @@ const config = {
   }
 }
 module.exports = config;
+/*
 
-
-/*require('dotenv').config();
+require('dotenv').config();
 const mysql2 = require('mysql2');
 
 const config = {
@@ -56,5 +57,5 @@ const config = {
   }
 }
 
-module.exports = config;*/
-
+module.exports = config;
+*/

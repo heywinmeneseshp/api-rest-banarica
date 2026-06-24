@@ -138,36 +138,17 @@ class ConfigService {
   }
 
   async upsertWeeksCalendar(weeks) {
-    const persistedWeeks = [];
+    await db.semanas.bulkCreate(weeks, {
+      updateOnDuplicate: ['semana', 'anho', 'fecha_inicio', 'fecha_fin', 'dias_semana'],
+    });
 
-    for (const week of weeks) {
-      const [weekRecord] = await db.semanas.findOrCreate({
-        where: { consecutivo: week.consecutivo },
-        defaults: week,
-      });
-
-      const needsUpdate =
-        weekRecord.semana !== week.semana ||
-        weekRecord.anho !== week.anho ||
-        weekRecord.fecha_inicio !== week.fecha_inicio ||
-        weekRecord.fecha_fin !== week.fecha_fin ||
-        weekRecord.dias_semana !== week.dias_semana;
-
-      if (needsUpdate) {
-        await weekRecord.update(week);
-      }
-
-      persistedWeeks.push({
-        id: weekRecord.id,
-        consecutivo: week.consecutivo,
-        semana: week.semana,
-        anho: week.anho,
-        fecha_inicio: week.fecha_inicio,
-        fecha_fin: week.fecha_fin,
-      });
-    }
-
-    return persistedWeeks;
+    return weeks.map((week) => ({
+      consecutivo: week.consecutivo,
+      semana: week.semana,
+      anho: week.anho,
+      fecha_inicio: week.fecha_inicio,
+      fecha_fin: week.fecha_fin,
+    }));
   }
 
   async syncWeeksCalendar(moduloData) {

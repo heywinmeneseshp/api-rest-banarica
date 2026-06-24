@@ -38,11 +38,7 @@ class SemanasService {
       // Realizamos la búsqueda con los filtros
       console.log(filtros);
       const semana = await db.semanas.findAll({ where: filtros });
-      // Si no se encuentran resultados, lanzamos un error
-      if (!semana || semana.length === 0) {
-        throw boom.notFound('El item no existe');
-      }
-      return semana;
+      return semana || [];
     } catch (error) {
       // Manejamos cualquier otro error que ocurra durante la operación
       throw boom.badImplementation('Error al filtrar los datos', { error });

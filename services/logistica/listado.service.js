@@ -636,7 +636,7 @@ async bulkUpdate(payload) {
 
     return { bodyFilter, includeOptions };
   }
-
+npom
   async paginate(offset, limit, body = {}) {
     const { bodyFilter, includeOptions } = this.buildPaginateQuery(body);
     const countIncludeOptions = includeOptions.filter(

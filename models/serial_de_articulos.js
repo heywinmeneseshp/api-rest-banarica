@@ -54,7 +54,10 @@ module.exports = (sequelize, DataTypes) => {
         as: 'programacion_seriales'
       });
 
-      // Define additional associations if needed
+      this.hasMany(models.RegistroTemperatura, {
+        foreignKey: 'id_serial_articulo',
+        as: 'registros_temperatura'
+      });
     }
   }
 
