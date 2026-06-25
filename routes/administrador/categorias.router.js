@@ -39,6 +39,14 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+router.post("/masivo", async (req, res, next) => {
+  try { res.json(await service.bulkCreate(req.body)); } catch (e) { next(e); }
+});
+
+router.post("/masivo-actualizar", async (req, res, next) => {
+  try { res.json(await service.bulkUpdate(req.body)); } catch (e) { next(e); }
+});
+
 //Crear
 router.post("/",
 validatorHandler(crearcategoria, "body"),

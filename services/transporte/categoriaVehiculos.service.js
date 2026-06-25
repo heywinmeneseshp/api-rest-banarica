@@ -51,6 +51,47 @@ class categoria_vehiculosService {
     return { message: "El item fue eliminado", id }
   }
 
+  async bulkCreate(dataArray) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0)
+      throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+    const results = [], errors = [];
+    for (let i = 0; i < dataArray.length; i++) {
+      const row = dataArray[i];
+      const categoria = String(row.categoria || '').trim();
+      if (!categoria) { errors.push({ fila: i + 1, message: 'categoria requerida' }); continue; }
+      const existe = await db.categoria_vehiculos.findOne({ where: { categoria } });
+      if (existe) { errors.push({ fila: i + 1, categoria, message: 'Ya existe' }); continue; }
+      try {
+        await db.categoria_vehiculos.create({
+          categoria,
+          galones_por_kilometro: row.galones_por_kilometro == null ? 0 : Number(row.galones_por_kilometro),
+          activo: row.activo !== false && row.activo !== 'false',
+        });
+        results.push({ fila: i + 1, categoria, status: 'ok' });
+      } catch (e) { errors.push({ fila: i + 1, categoria, message: e.message }); }
+    }
+    return { message: `Carga completada. ${results.length} exitosos, ${errors.length} errores.`, total: results.length, errors: errors.length, errorDetails: errors };
+  }
+
+  async bulkUpdate(dataArray) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0)
+      throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+    const results = [], errors = [];
+    for (let i = 0; i < dataArray.length; i++) {
+      const { categoria, ...rest } = dataArray[i];
+      if (!categoria) { errors.push({ fila: i + 1, message: 'categoria requerida' }); continue; }
+      const item = await db.categoria_vehiculos.findOne({ where: { categoria } });
+      if (!item) { errors.push({ fila: i + 1, categoria, message: `Categoría "${categoria}" no encontrada` }); continue; }
+      const changes = {};
+      if (rest.galones_por_kilometro !== undefined) changes.galones_por_kilometro = Number(rest.galones_por_kilometro);
+      if (rest.activo !== undefined) changes.activo = rest.activo !== false && rest.activo !== 'false';
+      if (!Object.keys(changes).length) { errors.push({ fila: i + 1, categoria, message: 'Sin campos válidos' }); continue; }
+      await db.categoria_vehiculos.update(changes, { where: { categoria } });
+      results.push({ fila: i + 1, categoria, status: 'ok' });
+    }
+    return { message: `Actualización completada. ${results.length} exitosos, ${errors.length} errores.`, total: results.length, errors: errors.length, errorDetails: errors };
+  }
+
   async paginate(offset, limit, item) {
     let newlimit = parseInt(limit);
     let newoffset = (parseInt(offset) - 1) * newlimit;

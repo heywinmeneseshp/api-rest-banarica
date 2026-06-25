@@ -47,6 +47,27 @@ class clientesService {
     }
   }
   
+  async bulkUpdate(dataArray) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0)
+      throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+    const results = [], errors = [];
+    for (let i = 0; i < dataArray.length; i++) {
+      const { nit, ...rest } = dataArray[i];
+      if (!nit) { errors.push({ fila: i + 1, message: 'nit requerido' }); continue; }
+      const item = await db.clientes.findOne({ where: { nit } });
+      if (!item) { errors.push({ fila: i + 1, nit, message: `Cliente "${nit}" no encontrado` }); continue; }
+      const allowed = ['razon_social', 'cod', 'activo'];
+      const changes = {};
+      for (const campo of allowed) {
+        if (rest[campo] !== undefined) changes[campo] = rest[campo];
+      }
+      if (!Object.keys(changes).length) { errors.push({ fila: i + 1, nit, message: 'Sin campos válidos' }); continue; }
+      await db.clientes.update(changes, { where: { nit } });
+      results.push({ fila: i + 1, nit, status: 'ok' });
+    }
+    return { message: `Actualización completada. ${results.length} exitosos, ${errors.length} errores.`, total: results.length, errors: errors.length, errorDetails: errors };
+  }
+
   async find() {
     try {
       const res = await db.clientes.findAll();

@@ -49,6 +49,52 @@ class AlmacenesService {
 }
 
 
+  async bulkUpdate(dataArray) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0) {
+      throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+    }
+
+    const results = [];
+    const errors = [];
+    const CAMPOS_PERMITIDOS = ['nombre', 'razon_social', 'direccion', 'telefono', 'email', 'isBlock'];
+
+    for (let i = 0; i < dataArray.length; i++) {
+      const row = dataArray[i];
+      const { consecutivo, ...rest } = row;
+
+      if (!consecutivo) {
+        errors.push({ fila: i + 1, message: 'El campo consecutivo es requerido', ...row });
+        continue;
+      }
+
+      const almacen = await db.almacenes.findOne({ where: { consecutivo } });
+      if (!almacen) {
+        errors.push({ fila: i + 1, consecutivo, message: `Almacén "${consecutivo}" no encontrado` });
+        continue;
+      }
+
+      const changes = {};
+      for (const campo of CAMPOS_PERMITIDOS) {
+        if (rest[campo] !== undefined) changes[campo] = rest[campo];
+      }
+
+      if (Object.keys(changes).length === 0) {
+        errors.push({ fila: i + 1, consecutivo, message: 'Sin campos válidos para actualizar' });
+        continue;
+      }
+
+      await db.almacenes.update(changes, { where: { consecutivo } });
+      results.push({ fila: i + 1, consecutivo, status: 'ok' });
+    }
+
+    return {
+      message: `Actualización completada. ${results.length} exitosos, ${errors.length} errores.`,
+      total: results.length,
+      errors: errors.length,
+      errorDetails: errors,
+    };
+  }
+
   async find() {
     const almacenes = await db.almacenes.findAll({
       order: [['id', 'DESC']], // Ordenar directamente en la consulta

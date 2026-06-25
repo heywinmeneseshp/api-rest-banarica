@@ -54,6 +54,27 @@ class combosService {
     }
   }
 
+  async bulkUpdate(dataArray) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0)
+      throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+    const results = [], errors = [];
+    for (let i = 0; i < dataArray.length; i++) {
+      const { consecutivo, ...rest } = dataArray[i];
+      if (!consecutivo) { errors.push({ fila: i + 1, message: 'consecutivo requerido' }); continue; }
+      const item = await db.combos.findOne({ where: { consecutivo } });
+      if (!item) { errors.push({ fila: i + 1, consecutivo, message: `Combo "${consecutivo}" no encontrado` }); continue; }
+      const allowed = ['nombre', 'id_cliente', 'cajas_por_palet', 'cajas_por_mini_palet', 'palets_por_contenedor', 'peso_neto', 'peso_bruto', 'precio_de_venta', 'isBlock'];
+      const changes = {};
+      for (const campo of allowed) {
+        if (rest[campo] !== undefined) changes[campo] = rest[campo];
+      }
+      if (!Object.keys(changes).length) { errors.push({ fila: i + 1, consecutivo, message: 'Sin campos válidos' }); continue; }
+      await db.combos.update(changes, { where: { consecutivo } });
+      results.push({ fila: i + 1, consecutivo, status: 'ok' });
+    }
+    return { message: `Actualización completada. ${results.length} exitosos, ${errors.length} errores.`, total: results.length, errors: errors.length, errorDetails: errors };
+  }
+
   async armarCombo(body) {
     try {
       await db.tabla_combos.create(body);

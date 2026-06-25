@@ -46,6 +46,44 @@ class CategoriasService {
     return { message: 'La categoría fue eliminada', consecutivo };
   }
   
+  async bulkCreate(dataArray) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0)
+      throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+    const transaction = await db.sequelize.transaction();
+    try {
+      const results = await db.categorias.bulkCreate(dataArray, { validate: true, transaction });
+      await transaction.commit();
+      return { message: 'Carga masiva exitosa', count: results.length };
+    } catch (error) {
+      await transaction.rollback();
+      if (error.name === 'SequelizeUniqueConstraintError')
+        throw boom.conflict(`El código '${error.errors?.[0]?.value}' ya existe.`);
+      if (error.name === 'SequelizeValidationError')
+        throw boom.badRequest('Error de validación.', { detalles: error.errors.map(e => e.message) });
+      throw boom.internal('Error interno del servidor.');
+    }
+  }
+
+  async bulkUpdate(dataArray) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0)
+      throw boom.badRequest('El formato de los datos es incorrecto o está vacío.');
+    const results = [], errors = [];
+    for (let i = 0; i < dataArray.length; i++) {
+      const { consecutivo, ...rest } = dataArray[i];
+      if (!consecutivo) { errors.push({ fila: i + 1, message: 'consecutivo requerido' }); continue; }
+      const item = await db.categorias.findOne({ where: { consecutivo } });
+      if (!item) { errors.push({ fila: i + 1, consecutivo, message: `Categoría "${consecutivo}" no encontrada` }); continue; }
+      const changes = {};
+      for (const campo of ['nombre', 'isBlock']) {
+        if (rest[campo] !== undefined) changes[campo] = rest[campo];
+      }
+      if (!Object.keys(changes).length) { errors.push({ fila: i + 1, consecutivo, message: 'Sin campos válidos' }); continue; }
+      await db.categorias.update(changes, { where: { consecutivo } });
+      results.push({ fila: i + 1, consecutivo, status: 'ok' });
+    }
+    return { message: `Actualización completada. ${results.length} exitosos, ${errors.length} errores.`, total: results.length, errors: errors.length, errorDetails: errors };
+  }
+
   async paginate(offset, limit, nombre = '') {
     const parsedOffset = (parseInt(offset) - 1) * parseInt(limit);
     const whereClause = nombre ? { nombre: { [Op.like]: `%${nombre}%` } } : {};

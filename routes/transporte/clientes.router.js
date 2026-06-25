@@ -50,6 +50,10 @@ router.post("/",
   });
 
 
+  router.post("/masivo-actualizar", async (req, res, next) => {
+    try { res.json(await service.bulkUpdate(req.body)); } catch (e) { next(e); }
+  });
+
   router.post("/masivo",
     async (req, res, next) => {
       try {

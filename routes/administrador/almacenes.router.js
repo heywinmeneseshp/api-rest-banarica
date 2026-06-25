@@ -69,6 +69,15 @@ router.post("/",
       }
     });
 
+router.post("/masivo-actualizar", async (req, res, next) => {
+  try {
+    const result = await service.bulkUpdate(req.body);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.patch("/:consecutivo",
   validatorHandler(actualizarAlmacen, "body"),
   async (req, res, next) => {
