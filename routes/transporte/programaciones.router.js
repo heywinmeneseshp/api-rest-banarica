@@ -74,6 +74,19 @@ router.delete("/:id", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-})
+});
+
+router.post("/actualizar-masivo", async (req, res, next) => {
+  try {
+    const rows = req.body;
+    if (!Array.isArray(rows) || !rows.length) {
+      return res.status(400).json({ message: 'Se requiere un array de programaciones' });
+    }
+    const result = await service.bulkUpdate(rows);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;

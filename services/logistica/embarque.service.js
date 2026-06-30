@@ -215,6 +215,21 @@ class EmbarqueService {
     });
   }
 
+  // Endpoint liviano para catálogos de selección (datalist, dropdowns)
+  async getCatalogo() {
+    return db.Embarque.findAll({
+      attributes: ['id', 'bl', 'booking', 'id_cliente'],
+      order: [['id', 'DESC']],
+      include: [
+        { model: db.semanas, attributes: ['consecutivo'], required: false },
+        { model: db.clientes, attributes: ['id', 'cod'], required: false },
+        { model: db.Naviera, attributes: ['cod', 'navieras'], required: false },
+        { model: db.Buque, attributes: ['buque'], required: false },
+        { model: db.Destino, attributes: ['cod', 'destino'], required: false },
+      ],
+    });
+  }
+
   async findOne(id) {
     const embarque = await db.Embarque.findByPk(id, {
       include: [

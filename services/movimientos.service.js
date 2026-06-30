@@ -20,11 +20,14 @@ class MovimientosService {
         t = transaction;
       }
 
-      // Obtén el conteo actual de movimientos
-      const { count } = await db.movimientos.findAndCountAll({ transaction: t });
-
-      // Genera el consecutivo
-      const consecutivo = `${data.prefijo}-${count}`;
+      // Genera el consecutivo usando el MAX del id para evitar colisiones en concurrencia
+      const maxResult = await db.movimientos.findOne({
+        attributes: [[db.sequelize.fn('MAX', db.sequelize.col('id')), 'maxId']],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      const nextNum = (Number(maxResult?.dataValues?.maxId) || 0) + 1;
+      const consecutivo = `${data.prefijo}-${nextNum}`;
       const itemNuevo = { consecutivo, ...data };
 console.log(itemNuevo)
       // Crea un nuevo movimiento dentro de la transacción

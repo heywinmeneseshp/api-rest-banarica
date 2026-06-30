@@ -305,23 +305,52 @@ class ProgramacionService {
     if (!item) {
       throw boom.notFound('El item no existe');
     }
-    if (Object.prototype.hasOwnProperty.call(changes, 'bl')) {
+
+    // Solo validar BL si el campo viene en el patch y tiene valor
+    if ('bl' in changes && changes.bl) {
       await this.validateBl(changes.bl);
     }
-    await this.validateTipoMovimiento(changes, item);
-    const vehiculoId = changes?.vehiculo_id || item?.vehiculo_id;
-    const fecha = Object.prototype.hasOwnProperty.call(changes, 'fecha') ? changes.fecha : item?.fecha;
-    const vehiculoSinCombustible = await this.isVehiculoSinCombustible(vehiculoId);
-    if (!vehiculoSinCombustible) {
-      await this.validateFechaPosteriorALiquidacion(vehiculoId, fecha);
-      await this.validateSaldoConsistenteConUltimaLiquidacion(vehiculoId);
+
+    // Solo validar tipo de movimiento si se está cambiando movimiento o contenedor
+    const movimientoOContenedorCambian = 'movimiento' in changes || 'contenedor' in changes;
+    if (movimientoOContenedorCambian) {
+      await this.validateTipoMovimiento(changes, item);
     }
+
+    // Solo validar fecha/combustible si cambia el vehículo o la fecha
+    const vehiculoOFechaCambian = 'vehiculo_id' in changes || 'fecha' in changes;
+    if (vehiculoOFechaCambian) {
+      const vehiculoId = changes?.vehiculo_id || item?.vehiculo_id;
+      const fecha = 'fecha' in changes ? changes.fecha : item?.fecha;
+      const vehiculoSinCombustible = await this.isVehiculoSinCombustible(vehiculoId);
+      if (!vehiculoSinCombustible) {
+        await this.validateFechaPosteriorALiquidacion(vehiculoId, fecha);
+        await this.validateSaldoConsistenteConUltimaLiquidacion(vehiculoId);
+      }
+    }
+
     const nextChanges = { ...changes };
     if (!Object.prototype.hasOwnProperty.call(nextChanges, 'estado_listado')) {
       nextChanges.estado_listado = ESTADO_LISTADO_PENDIENTE;
     }
     await db.programacion.update(nextChanges, { where: { id } });
     return { message: "El item fue actualizado", id };
+  }
+
+  async bulkUpdate(rows = []) {
+    const errors = [];
+    let processed = 0;
+    for (const row of rows) {
+      try {
+        const { id, ...changes } = row;
+        if (!id) throw new Error('Falta el campo id');
+        await this.update(id, changes);
+        processed += 1;
+      } catch (e) {
+        errors.push({ id: row?.id, error: e?.message || 'Error desconocido' });
+      }
+    }
+    return { processed, total: rows.length, errors };
   }
 
   async delete(id) {
@@ -334,23 +363,46 @@ class ProgramacionService {
   }
 
   async paginate(offset, limit, body, user = null) {
+    // Desectructurar para no mutar el objeto recibido
+    const { fechaFin, ...restBody } = body || {};
 
-    let fecha = { [Op.like]: `%${body?.fecha || ''}%` };
-    if (body?.fechaFin) {
-      const inicio = new Date(body?.fecha);
-      const fin = new Date(body?.fechaFin);
-      fecha = { [Op.between]: [inicio, fin] }
+    let fecha;
+    if (fechaFin) {
+      fecha = { [Op.between]: [new Date(restBody?.fecha), new Date(fechaFin)] };
+    } else if (restBody?.fecha) {
+      fecha = { [Op.like]: `%${restBody.fecha}%` };
     }
-    delete body.fechaFin;
-    const vehiculoTransportadoraWhere = await this.getTransportadoraWhere(body, user);
-    const whereClause = {
-      where: {
-        semana: { [Op.like]: `%${body?.semana || ''}%` },
-        movimiento: { [Op.like]: `%${body?.movimiento || ''}%` },
-        fecha: fecha
-      },
+
+    const vehiculoTransportadoraWhere = await this.getTransportadoraWhere(restBody, user);
+
+    const whereCondition = {};
+
+    // Usar igualdad exacta cuando hay valor; omitir el filtro si está vacío
+    if (restBody?.semana) whereCondition.semana = restBody.semana;
+    if (restBody?.movimiento) whereCondition.movimiento = restBody.movimiento;
+    if (fecha) whereCondition.fecha = fecha;
+    if (restBody?.bl) whereCondition.bl = { [Op.like]: `%${restBody.bl}%` };
+    if (restBody?.estado_listado) whereCondition.estado_listado = restBody.estado_listado;
+    if (restBody?.eliminado) whereCondition.eliminado = restBody.eliminado;
+
+    const conductorWhere = restBody?.conductor
+      ? { conductor: { [Op.like]: `%${restBody.conductor}%` } }
+      : {};
+
+    const vehiculoWhere = {
+      ...(restBody?.vehiculo ? { placa: { [Op.like]: `%${restBody.vehiculo}%` } } : {}),
+      ...vehiculoTransportadoraWhere,
+    };
+
+    const rutaWhere = {};
+    if (restBody?.ubicacion1) rutaWhere.ubicacion1 = restBody.ubicacion1;
+    if (restBody?.ubicacion2) rutaWhere.ubicacion2 = restBody.ubicacion2;
+
+    const baseClause = {
+      where: whereCondition,
       order: [['fecha', 'DESC'], ['bl', 'ASC'], ['contenedor', 'ASC'], ['id', 'ASC']],
       distinct: true,
+      subQuery: false,
       include: [
         {
           model: db.rutas,
@@ -359,54 +411,37 @@ class ProgramacionService {
             { model: db.ubicaciones, as: 'ubicacion_2' },
             { model: db.galones_por_ruta },
           ],
-          where: {
-            ubicacion1: { [Op.like]: `%${body.ubicacion1 || ''}%` },
-            ubicacion2: { [Op.like]: `%${body.ubicacion2 || ''}%` },
-          },
+          ...(Object.keys(rutaWhere).length ? { where: rutaWhere } : {}),
         },
         { model: db.productos_viajes },
         this.getProgramacionSerialesInclude(),
         {
           model: db.conductores,
           as: 'conductor',
-          where: {
-            conductor: { [Op.like]: `%${body.conductor || ''}%` },
-          },
+          ...(Object.keys(conductorWhere).length ? { where: conductorWhere } : {}),
         },
         { model: db.clientes },
         {
           model: db.vehiculo,
           include: [{ model: db.transportadoras, as: 'transportadora' }],
-          where: {
-            placa: { [Op.like]: `%${body.vehiculo || ''}%` },
-            ...vehiculoTransportadoraWhere,
-          },
+          ...(Object.keys(vehiculoWhere).length ? { where: vehiculoWhere } : {}),
         },
       ],
     };
 
-    if (offset || limit) {
-      const newLimit = parseInt(limit);
-      const newOffset = (parseInt(offset) - 1) * newLimit;
-      whereClause.limit = newLimit;
-      whereClause.offset = newOffset;
+    const pageClause = { ...baseClause };
+    if (offset && limit) {
+      const newLimit = parseInt(limit, 10);
+      const newOffset = (parseInt(offset, 10) - 1) * newLimit;
+      pageClause.limit = newLimit;
+      pageClause.offset = newOffset;
     }
 
-    if (body.eliminado) {
-      whereClause.where.eliminado = body.eliminado;
-    }
-
-    if (body?.estado_listado) {
-      whereClause.where.estado_listado = body.estado_listado;
-    }
-
-    if (body?.bl) {
-      whereClause.where.bl = { [Op.like]: `%${body.bl}%` };
-    }
-
-    const result = await db.programacion.findAll(whereClause);
-    const count = await db.programacion.count(whereClause);
- 
+    // count usa baseClause sin limit/offset para obtener el total real
+    const [result, count] = await Promise.all([
+      db.programacion.findAll(pageClause),
+      db.programacion.count(baseClause),
+    ]);
 
     return { data: result, total: count };
   }

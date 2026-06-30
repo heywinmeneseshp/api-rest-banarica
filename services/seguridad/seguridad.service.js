@@ -447,7 +447,7 @@ class SeguridadService {
 
       return { listado, inspeccion, movimiento: movimiento.dataValues.consecutivo, contenedor: contenedorRecord.contenedor };
     } catch (error) {
-      await transaction.rollback();
+      try { await transaction.rollback(); } catch {}
       throw error;
     }
   }

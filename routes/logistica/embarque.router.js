@@ -4,6 +4,16 @@ const EmbarqueService = require('../../services/logistica/embarque.service.js');
 const router = express.Router();
 const service = new EmbarqueService();
 
+// Catálogo liviano para dropdowns y datalists (solo campos esenciales)
+router.get('/catalogo', async (req, res, next) => {
+  try {
+    const items = await service.getCatalogo();
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Obtener todos los embarques
 router.get('/', async (req, res, next) => {
   try {
