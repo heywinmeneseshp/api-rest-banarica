@@ -1,5 +1,5 @@
 const { google } = require('googleapis');
-const fs = require('fs');
+const { Readable } = require('stream');
 const path = require('path');
 require('dotenv').config();
 
@@ -32,17 +32,6 @@ const SHARED_DRIVE_OPTIONS = {
     includeItemsFromAllDrives: true,
 };
 
-const limpiarFotosTemporales = (arreglosFotos = []) => {
-    for (const foto of arreglosFotos) {
-        if (foto?.path && fs.existsSync(foto.path)) {
-            try {
-                fs.unlinkSync(foto.path);
-            } catch (error) {
-                console.warn('No se pudo eliminar archivo temporal:', foto.path, error.message);
-            }
-        }
-    }
-};
 
 const normalizarTexto = (value) => (
     String(value || '')
@@ -146,18 +135,13 @@ async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
         let contador = 1;
 
         for (const foto of arreglosFotos) {
-            // 'foto.path' es la ruta temporal donde Multer guarda el archivo en tu servidor
-            const rutaFotoLocal = foto.path;
-
-            // Validar que el archivo existe
-            if (!fs.existsSync(rutaFotoLocal)) {
-                console.warn(`⚠️ Archivo no encontrado: ${rutaFotoLocal}`);
+            // Con memoryStorage, el contenido está en foto.buffer (no en disco)
+            if (!foto.buffer || foto.buffer.length === 0) {
+                console.warn(`⚠️ Archivo sin contenido: ${foto.originalname}`);
                 continue;
             }
 
-            // Generar nombre único para la foto
             const extensionOriginal = path.extname(foto.originalname || '').toLowerCase() || '.jpg';
-            const numero = String(contador).padStart(2, '0');
             const identificadorUnico = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
             const nombreArchivo = `${fechaNormalizada}_${semanaNormalizada}__${vehiculoNormalizado}__${destinoNormalizado}__${identificadorUnico}${extensionOriginal}`;
 
@@ -168,11 +152,11 @@ async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
 
             const media = {
                 mimeType: foto.mimetype || 'image/jpeg',
-                body: fs.createReadStream(rutaFotoLocal)
+                body: Readable.from(foto.buffer),
             };
 
             console.log(`📤 Subiendo foto ${contador} de ${arreglosFotos.length}: ${nombreArchivo}`);
-            
+
             const archivoSubido = await drive.files.create({
                 resource: metadatosArchivo,
                 media: media,
@@ -180,23 +164,12 @@ async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
                 supportsAllDrives: true,
             });
 
-            // Guardamos el link de cada foto en nuestro arreglo de resultados
             enlacesFotosSubidas.push({
                 idDrive: archivoSubido.data.id,
                 urlDrive: archivoSubido.data.webViewLink,
                 nombreOriginal: foto.originalname,
                 nombreDrive: nombreArchivo
             });
-
-            // Eliminar la foto temporal de tu servidor local para no llenar tu disco
-            try {
-                if (fs.existsSync(rutaFotoLocal)) {
-                    fs.unlinkSync(rutaFotoLocal);
-                    console.log(`🗑️ Archivo temporal eliminado: ${rutaFotoLocal}`);
-                }
-            } catch (err) {
-                console.warn(`⚠️ No se pudo eliminar archivo temporal: ${rutaFotoLocal}`, err.message);
-            }
 
             contador++;
         }
@@ -214,7 +187,6 @@ async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
 
     } catch (error) {
         console.error('❌ Error en el proceso de carga múltiple a Google Drive:', error);
-        limpiarFotosTemporales(arreglosFotos);
         throw normalizarErrorGoogleDrive(error);
     }
 }

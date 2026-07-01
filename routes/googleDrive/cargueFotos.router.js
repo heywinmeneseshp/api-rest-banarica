@@ -1,26 +1,10 @@
 const express = require("express");
 const multer = require("multer");
-const fs = require("fs");
 const path = require("path");
 const { cargarEvidenciaLogistica } = require('../../services/googleDrive/cargueFotos');
 const db = require('../../models');
 
 const router = express.Router();
-const uploadDir = path.resolve(__dirname, "../../uploads");
-
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
 
 const fileFilter = (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
@@ -34,8 +18,9 @@ const fileFilter = (req, file, cb) => {
     cb(new Error('Solo se permiten archivos de imagen (JPEG, PNG, GIF, WEBP)'));
 };
 
+// memoryStorage evita escribir al disco (requerido en entornos serverless como Vercel)
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: {
         fileSize: 5 * 1024 * 1024
     },
