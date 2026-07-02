@@ -61,6 +61,8 @@ module.exports = (sequelize, DataTypes) => {
     detalles: DataTypes.STRING,
     llegada_origen: DataTypes.STRING,
     salida_origen: DataTypes.STRING,
+    llegada_patio: DataTypes.STRING,
+    retiro_patio: DataTypes.STRING,
     llegada_destino: DataTypes.STRING,
     cierre: DataTypes.STRING,
     salida_destino: DataTypes.STRING,

@@ -14,6 +14,16 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// Contar contenedores únicos con los mismos filtros que paginar
+router.post('/contar-unicos', async (req, res, next) => {
+  try {
+    const result = await service.countUniqueContainers(req.body);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Paginar listados
 // Ejemplo: http://localhost:3000/api/v1/listados/paginar?offset=1&limit=4
 router.post('/paginar', async (req, res, next) => {

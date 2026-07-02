@@ -368,9 +368,9 @@ class ProgramacionService {
 
     let fecha;
     if (fechaFin) {
-      fecha = { [Op.between]: [new Date(restBody?.fecha), new Date(fechaFin)] };
+      fecha = { [Op.between]: [restBody?.fecha, fechaFin] };
     } else if (restBody?.fecha) {
-      fecha = { [Op.like]: `%${restBody.fecha}%` };
+      fecha = { [Op.gte]: restBody.fecha };
     }
 
     const vehiculoTransportadoraWhere = await this.getTransportadoraWhere(restBody, user);

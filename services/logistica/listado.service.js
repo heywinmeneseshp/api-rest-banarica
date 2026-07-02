@@ -637,6 +637,18 @@ async bulkUpdate(payload) {
     return { bodyFilter, includeOptions };
   }
 npom
+  async countUniqueContainers(body = {}) {
+    const { bodyFilter, includeOptions } = this.buildPaginateQuery({ ...body, includeSeriales: false });
+    const countIncludes = includeOptions.filter((inc) => inc.model !== db.serial_de_articulos);
+    const total = await db.Listado.count({
+      where: bodyFilter,
+      include: countIncludes,
+      distinct: true,
+      col: 'id_contenedor',
+    });
+    return { total };
+  }
+
   async paginate(offset, limit, body = {}) {
     const { bodyFilter, includeOptions } = this.buildPaginateQuery(body);
     const countIncludeOptions = includeOptions.filter(
