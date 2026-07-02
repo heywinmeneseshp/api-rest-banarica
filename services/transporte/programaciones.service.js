@@ -379,7 +379,11 @@ class ProgramacionService {
 
     // Usar igualdad exacta cuando hay valor; omitir el filtro si está vacío
     if (restBody?.semana) whereCondition.semana = restBody.semana;
-    if (restBody?.movimiento) whereCondition.movimiento = restBody.movimiento;
+    if (Array.isArray(restBody?.movimiento) && restBody.movimiento.length > 0) {
+      whereCondition.movimiento = { [Op.in]: restBody.movimiento };
+    } else if (typeof restBody?.movimiento === 'string' && restBody.movimiento) {
+      whereCondition.movimiento = restBody.movimiento;
+    }
     if (fecha) whereCondition.fecha = fecha;
     if (restBody?.bl) whereCondition.bl = { [Op.like]: `%${restBody.bl}%` };
     if (restBody?.estado_listado) whereCondition.estado_listado = restBody.estado_listado;
