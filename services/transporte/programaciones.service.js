@@ -450,12 +450,19 @@ class ProgramacionService {
     }
 
     // count usa baseClause sin limit/offset para obtener el total real
-    const [result, count] = await Promise.all([
+    const [result, count, distinctContenedores] = await Promise.all([
       db.programacion.findAll(pageClause),
       db.programacion.count(baseClause),
+      db.programacion.count({
+        col: 'contenedor',
+        distinct: true,
+        where: { ...whereCondition, contenedor: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } },
+        include: baseClause.include,
+        subQuery: false,
+      }),
     ]);
 
-    return { data: result, total: count };
+    return { data: result, total: count, distinctContenedores };
   }
 
 }
