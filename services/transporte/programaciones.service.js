@@ -366,9 +366,17 @@ class ProgramacionService {
     // Desectructurar para no mutar el objeto recibido
     const { fechaFin, ...restBody } = body || {};
 
+    const nextDateStr = (dateStr) => {
+      const d = new Date(dateStr + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() + 1);
+      return d.toISOString().split('T')[0];
+    };
+
     let fecha;
-    if (fechaFin) {
-      fecha = { [Op.between]: [restBody?.fecha, fechaFin] };
+    if (fechaFin && restBody?.fecha) {
+      fecha = { [Op.gte]: restBody.fecha, [Op.lt]: nextDateStr(fechaFin) };
+    } else if (fechaFin) {
+      fecha = { [Op.lt]: nextDateStr(fechaFin) };
     } else if (restBody?.fecha) {
       fecha = { [Op.gte]: restBody.fecha };
     }
