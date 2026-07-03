@@ -1762,6 +1762,18 @@ class SeguridadService {
 
 
 
+  async revertirSerialesContenedor(id_contenedor, serial_ids = []) {
+    if (!id_contenedor) throw boom.badRequest('Debes indicar el id del contenedor');
+    const where = { id_contenedor, available: false };
+    if (Array.isArray(serial_ids) && serial_ids.length > 0) {
+      where.id = { [Op.in]: serial_ids };
+    }
+    const [count] = await db.serial_de_articulos.update(
+      { available: true },
+      { where }
+    );
+    return { message: 'Seriales revertidos al inventario', count };
+  }
 }
 
 module.exports = SeguridadService;

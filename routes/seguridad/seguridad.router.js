@@ -195,6 +195,18 @@ router.post("/corregir-serial",
   }
 )
 
+router.post("/revertir-seriales-contenedor",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const { id_contenedor, serial_ids } = req.body;
+      const result = await service.revertirSerialesContenedor(id_contenedor, serial_ids);
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  }
+)
 
 module.exports = router;
 
