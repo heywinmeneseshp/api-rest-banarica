@@ -43,6 +43,49 @@ class RechazoService {
     return { message: 'El rechazo fue eliminado', id };
   }
 
+  async aprobar(id, { cod_productor }) {
+    const t = await db.sequelize.transaction();
+    try {
+      const rechazo = await db.Rechazo.findByPk(id, { transaction: t });
+      if (!rechazo) throw boom.notFound('Rechazo no encontrado');
+      if (rechazo.habilitado) throw boom.badRequest('El rechazo ya fue aprobado');
+
+      // Resolver id del almacen a partir del consecutivo
+      const almacen = await db.almacenes.findOne({
+        where: { consecutivo: cod_productor },
+        transaction: t,
+      });
+      if (!almacen) throw boom.notFound(`Productor "${cod_productor}" no encontrado`);
+
+      // SELECT FOR UPDATE: leer cajas actuales evitando race conditions
+      const listado = await db.Listado.findOne({
+        where: {
+          id_contenedor: rechazo.id_contenedor,
+          id_producto: rechazo.id_producto,
+          id_lugar_de_llenado: almacen.id,
+        },
+        lock: t.LOCK.UPDATE,
+        transaction: t,
+      });
+
+      if (!listado) throw boom.notFound('No se encontró el listado para el productor y producto indicados');
+
+      const nuevasCajas = listado.cajas_unidades - rechazo.cantidad;
+      if (nuevasCajas < 0) throw boom.badRequest(`Las cajas resultantes serían negativas (${nuevasCajas})`);
+
+      await Promise.all([
+        db.Rechazo.update({ habilitado: true, cod_productor }, { where: { id }, transaction: t }),
+        db.Listado.update({ cajas_unidades: nuevasCajas }, { where: { id: listado.id }, transaction: t }),
+      ]);
+
+      await t.commit();
+      return { message: 'Rechazo aprobado', nuevasCajas };
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
+  }
+
 
 
 

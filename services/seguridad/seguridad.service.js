@@ -1767,11 +1767,12 @@ class SeguridadService {
 
 
   async darDeBajaSerial(body, user) {
-    const { serial_ids, motivo, observacion } = body;
+    const { serial_ids, motivo, observacion, fecha, semana } = body;
 
     if (!Array.isArray(serial_ids) || !serial_ids.length) {
       throw boom.badRequest('Debes seleccionar al menos un serial');
     }
+    if (!motivo) throw boom.badRequest('Debes indicar el motivo de baja');
 
     const MOTIVOS_BAJA = {
       'Averia': 'BAJA01', 'Avería': 'BAJA01',
@@ -1783,12 +1784,12 @@ class SeguridadService {
       'Otro': 'BAJA07',
     };
 
-    const consecutivo = MOTIVOS_BAJA[motivo];
-    if (!consecutivo) throw boom.badRequest('Motivo de baja no valido');
+    const consecutivoBaja = MOTIVOS_BAJA[motivo];
+    if (!consecutivoBaja) throw boom.badRequest('Motivo de baja no valido');
 
     const [motivoDeUso] = await db.MotivoDeUso.findOrCreate({
-      where: { consecutivo },
-      defaults: { consecutivo, motivo_de_uso: motivo, habilitado: true }
+      where: { consecutivo: consecutivoBaja },
+      defaults: { consecutivo: consecutivoBaja, motivo_de_uso: motivo, habilitado: true }
     });
 
     const seriales = await db.serial_de_articulos.findAll({
@@ -1803,27 +1804,71 @@ class SeguridadService {
     const conProcesos = seriales.filter(s => s.programacion_seriales?.length > 0);
     if (conProcesos.length) {
       throw boom.conflict(
-        `${conProcesos.length} serial(es) tienen procesos pendientes y no pueden darse de baja: ${conProcesos.map(s => s.serial).join(', ')}`
+        `${conProcesos.length} serial(es) tienen procesos pendientes: ${conProcesos.map(s => s.serial).join(', ')}`
       );
     }
 
-    const userId = user?.id || null;
-    const fechaBaja = new Date().toISOString().slice(0, 10);
-    const ids = seriales.map(s => s.id);
+    const fechaBaja = fecha || new Date().toISOString().slice(0, 10);
+    const transaction = await db.sequelize.transaction();
 
-    const [count] = await db.serial_de_articulos.update(
-      {
-        dado_de_baja: true,
-        available: false,
-        id_motivo_de_uso: motivoDeUso.id,
-        id_usuario: userId,
-        fecha_de_uso: fechaBaja,
-        ...(observacion ? { ubicacion_en_contenedor: String(observacion).slice(0, 200) } : {})
-      },
-      { where: { id: { [Op.in]: ids } } }
-    );
+    try {
+      const movimiento = await movimientoService.create(
+        {
+          prefijo: 'AJ',
+          pendiente: false,
+          observaciones: observacion || `Baja de seriales por: ${motivo}`,
+          respuesta: `Baja por: ${motivo}`,
+          cons_semana: semana || null,
+          realizado_por: user?.username || null,
+          aprobado_por: user?.username || null,
+          vehiculo: null,
+          fecha: fechaBaja,
+        },
+        transaction
+      );
 
-    return { message: `${count} serial(es) dado(s) de baja por: ${motivo}`, count };
+      await Promise.all(seriales.map(async (serial) => {
+        await db.serial_de_articulos.update(
+          {
+            dado_de_baja: true,
+            available: false,
+            id_motivo_de_uso: motivoDeUso.id,
+            id_usuario: user?.id || null,
+            fecha_de_uso: fechaBaja,
+            cons_movimiento: movimiento.consecutivo,
+          },
+          { where: { id: serial.id }, transaction }
+        );
+
+        await historialMovimientoService.create(
+          {
+            cons_movimiento: movimiento.consecutivo,
+            cons_producto: serial.cons_producto,
+            cons_almacen_gestor: serial.cons_almacen,
+            cons_almacen_receptor: serial.cons_almacen,
+            cons_lista_movimientos: 'AJ',
+            tipo_movimiento: 'Salida',
+            razon_movimiento: `Baja por ${motivo}`,
+            cantidad: 1,
+            cons_pedido: null,
+          },
+          transaction
+        );
+
+        await stockService.subtractAmounts(serial.cons_almacen, serial.cons_producto, { cantidad: 1 }, transaction);
+      }));
+
+      await transaction.commit();
+
+      return {
+        message: `${seriales.length} serial(es) dado(s) de baja. Movimiento: ${movimiento.consecutivo}`,
+        count: seriales.length,
+        consecutivo: movimiento.consecutivo,
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw boom.badRequest(error.message || 'Error al dar de baja los seriales');
+    }
   }
 
   async revertirSerialesContenedor(id_contenedor, serial_ids = []) {

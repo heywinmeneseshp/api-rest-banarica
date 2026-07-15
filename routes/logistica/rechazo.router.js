@@ -64,6 +64,17 @@ router.patch('/:id', async (req, res, next) => {
   }
 });
 
+// Aprobar un rechazo (transacción con SELECT FOR UPDATE)
+router.post('/:id/aprobar', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await service.aprobar(id, req.body);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Eliminar un rechazo
 router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
