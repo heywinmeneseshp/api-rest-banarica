@@ -122,6 +122,11 @@ module.exports = (sequelize, DataTypes) => {
     ubicacion_en_contenedor: {
       type: DataTypes.STRING,
       allowNull: true
+    },
+    dado_de_baja: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
     }
   }, {
     sequelize,

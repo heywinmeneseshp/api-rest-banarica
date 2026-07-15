@@ -745,7 +745,7 @@ class SeguridadService {
 
     const {
       cons_producto, serial, bag_pack, s_pack, m_pack, l_pack,
-      cons_almacen, available, id_contenedor, id_motivo_de_uso, cons_movimiento, contenedor
+      cons_almacen, available, id_contenedor, id_motivo_de_uso, cons_movimiento, contenedor, dado_de_baja
     } = body;
 
     // 1. ConstrucciÃƒÂ³n dinÃƒÂ¡mica de filtros para mejorar el rendimiento de la DB
@@ -768,11 +768,14 @@ class SeguridadService {
         : cons_almacen;
     }
 
-    // Filtro booleano/estado
     if (available !== undefined) {
       filters.available = Array.isArray(available)
         ? { [Op.in]: available }
         : available;
+    }
+
+    if (dado_de_baja !== undefined) {
+      filters.dado_de_baja = dado_de_baja;
     }
 
     const includeModels = [
@@ -1185,7 +1188,8 @@ class SeguridadService {
     const serialWhere = {
       id_contenedor: inspeccion.id_contenedor,
       id_motivo_de_uso: moviUso.id,
-      available: false
+      available: false,
+      dado_de_baja: false
     };
 
     if (movimiento?.consecutivo) {
@@ -1762,9 +1766,69 @@ class SeguridadService {
 
 
 
+  async darDeBajaSerial(body, user) {
+    const { serial_ids, motivo, observacion } = body;
+
+    if (!Array.isArray(serial_ids) || !serial_ids.length) {
+      throw boom.badRequest('Debes seleccionar al menos un serial');
+    }
+
+    const MOTIVOS_BAJA = {
+      'Averia': 'BAJA01', 'Avería': 'BAJA01',
+      'Obsolescencia': 'BAJA02',
+      'Perdida': 'BAJA03', 'Pérdida': 'BAJA03',
+      'Robo': 'BAJA04',
+      'Destruccion': 'BAJA05', 'Destrucción': 'BAJA05',
+      'Donacion': 'BAJA06', 'Donación': 'BAJA06',
+      'Otro': 'BAJA07',
+    };
+
+    const consecutivo = MOTIVOS_BAJA[motivo];
+    if (!consecutivo) throw boom.badRequest('Motivo de baja no valido');
+
+    const [motivoDeUso] = await db.MotivoDeUso.findOrCreate({
+      where: { consecutivo },
+      defaults: { consecutivo, motivo_de_uso: motivo, habilitado: true }
+    });
+
+    const seriales = await db.serial_de_articulos.findAll({
+      where: { id: { [Op.in]: serial_ids }, available: true, dado_de_baja: false },
+      include: [{ model: db.programacion_serial, as: 'programacion_seriales', required: false }]
+    });
+
+    if (!seriales.length) {
+      throw boom.badRequest('No se encontraron seriales disponibles para dar de baja');
+    }
+
+    const conProcesos = seriales.filter(s => s.programacion_seriales?.length > 0);
+    if (conProcesos.length) {
+      throw boom.conflict(
+        `${conProcesos.length} serial(es) tienen procesos pendientes y no pueden darse de baja: ${conProcesos.map(s => s.serial).join(', ')}`
+      );
+    }
+
+    const userId = user?.id || null;
+    const fechaBaja = new Date().toISOString().slice(0, 10);
+    const ids = seriales.map(s => s.id);
+
+    const [count] = await db.serial_de_articulos.update(
+      {
+        dado_de_baja: true,
+        available: false,
+        id_motivo_de_uso: motivoDeUso.id,
+        id_usuario: userId,
+        fecha_de_uso: fechaBaja,
+        ...(observacion ? { ubicacion_en_contenedor: String(observacion).slice(0, 200) } : {})
+      },
+      { where: { id: { [Op.in]: ids } } }
+    );
+
+    return { message: `${count} serial(es) dado(s) de baja por: ${motivo}`, count };
+  }
+
   async revertirSerialesContenedor(id_contenedor, serial_ids = []) {
     if (!id_contenedor) throw boom.badRequest('Debes indicar el id del contenedor');
-    const where = { id_contenedor, available: false };
+    const where = { id_contenedor, available: false, dado_de_baja: false };
     if (Array.isArray(serial_ids) && serial_ids.length > 0) {
       where.id = { [Op.in]: serial_ids };
     }

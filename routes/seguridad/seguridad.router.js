@@ -195,6 +195,18 @@ router.post("/corregir-serial",
   }
 )
 
+router.post("/dar-de-baja-serial",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const result = await service.darDeBajaSerial(req.body, req.user);
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  }
+)
+
 router.post("/revertir-seriales-contenedor",
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
