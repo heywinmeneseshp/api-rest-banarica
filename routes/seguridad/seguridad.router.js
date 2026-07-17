@@ -134,6 +134,19 @@ router.post("/rechazar-inspeccion-lleno",
   }
 )
 
+router.post("/transferir-contenedor",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const { seriales, id_contenedor } = req.body;
+      const result = await service.transferirContenedor(seriales, id_contenedor);
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 router.post("/usar-seriales",
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {

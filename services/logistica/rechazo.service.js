@@ -146,7 +146,7 @@ async paginate(offset, limit, body) {
       include: includes,
       order: [['id', 'DESC']],
       distinct: true,
-      col: 'Rechazo.id',
+      col: 'id',
       subQuery: false
     });
 

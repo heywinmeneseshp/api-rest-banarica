@@ -380,6 +380,7 @@ class SeguridadService {
           serial: item.serial,
           cons_movimiento: movimiento.dataValues.consecutivo,
           available: false,
+          revisado: false,
           id_contenedor: contenedorRecord.id,
           fecha_de_uso: fecha,
           id_motivo_de_uso: motivoDeUso.id,
@@ -1319,6 +1320,25 @@ class SeguridadService {
     }
   }
 
+  async transferirContenedor(seriales, id_contenedor) {
+    if (!Array.isArray(seriales) || seriales.length === 0) {
+      throw boom.badRequest('Debe indicar al menos un serial');
+    }
+    const contenedor = await db.Contenedor.findByPk(id_contenedor);
+    if (!contenedor) {
+      throw boom.notFound('Contenedor destino no encontrado');
+    }
+    const [updated] = await db.serial_de_articulos.update(
+      { id_contenedor, revisado: false },
+      { where: { serial: { [Op.in]: seriales }, available: false } }
+    );
+    return {
+      message: `${updated} serial(es) transferido(s) a ${contenedor.contenedor}`,
+      updated,
+      contenedor: contenedor.contenedor
+    };
+  }
+
   async usarSeriales(body, user = null) {
     const { formulario, motivo_de_uso } = body;
     console.log(body);
@@ -1379,6 +1399,7 @@ class SeguridadService {
           const updateResult = await db.serial_de_articulos.update(
             {
               available: false,
+              revisado: false,
               fecha_de_uso: formulario.fecha,
               id_contenedor: formulario.contenedorId,
               cons_movimiento: movimiento.consecutivo,
