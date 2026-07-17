@@ -139,29 +139,22 @@ async paginate(offset, limit, body) {
       }
     ];
 
-    const [result, total] = await Promise.all([
-      db.Rechazo.findAll({
-        limit: parsedLimit,
-        offset: parsedOffset,
-        where: whereConditions,
-        include: includes,
-        order: [['id', 'DESC']],
-        distinct: true, 
-        subQuery: false // Mantener en false para que los filtros profundos funcionen
-      }),
-      db.Rechazo.count({
-        where: whereConditions,
-        include: includes, 
-        distinct: true,
-        col: 'id'
-      })
-    ]);
+    const { count, rows } = await db.Rechazo.findAndCountAll({
+      limit: parsedLimit,
+      offset: parsedOffset,
+      where: whereConditions,
+      include: includes,
+      order: [['id', 'DESC']],
+      distinct: true,
+      col: 'Rechazo.id',
+      subQuery: false
+    });
 
-    return { 
-      data: result, 
-      total,
+    return {
+      data: rows,
+      total: count,
       currentPage,
-      totalPages: Math.ceil(total / parsedLimit)
+      totalPages: Math.ceil(count / parsedLimit)
     };
 
   } catch (error) {
