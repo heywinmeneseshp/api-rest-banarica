@@ -1320,6 +1320,17 @@ class SeguridadService {
     }
   }
 
+  async revertirSerialsMasivo(seriales) {
+    if (!Array.isArray(seriales) || seriales.length === 0) {
+      throw boom.badRequest('Debe indicar al menos un serial');
+    }
+    const [count] = await db.serial_de_articulos.update(
+      { available: true, id_contenedor: null, revisado: null },
+      { where: { serial: { [Op.in]: seriales }, available: false } }
+    );
+    return { message: `${count} serial(es) revertido(s) al inventario`, count };
+  }
+
   async transferirContenedor(seriales, id_contenedor) {
     if (!Array.isArray(seriales) || seriales.length === 0) {
       throw boom.badRequest('Debe indicar al menos un serial');

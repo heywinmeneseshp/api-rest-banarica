@@ -134,6 +134,19 @@ router.post("/rechazar-inspeccion-lleno",
   }
 )
 
+router.post("/revertir-masivo",
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      const { seriales } = req.body;
+      const result = await service.revertirSerialsMasivo(seriales);
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 router.post("/transferir-contenedor",
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {

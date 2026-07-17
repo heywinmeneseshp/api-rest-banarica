@@ -168,13 +168,21 @@ class HttpBridgeConnection extends EventEmitter {
     }
 
     // ─── Envío al bridge ───
-    _send(body, callback) {
+    _send(body, callback, _attempt = 0) {
         if (this._destroyed) return this._error(new Error('Connection destroyed'), callback);
         body.apiKey = this._apiKey;
+
+        const MAX_RETRIES = 3;
+        const RETRYABLE = /Invalid JSON|invalid json/i;
 
         httpPost(this._bridgeUrl, body, this._apiKey)
             .then(({ body: resp }) => {
                 if (!resp.success) {
+                    // Reintentar si es el error transitorio del bridge (Invalid JSON)
+                    if (RETRYABLE.test(resp.error || '') && _attempt < MAX_RETRIES) {
+                        const delay = 500 * (_attempt + 1);
+                        return setTimeout(() => this._send(body, callback, _attempt + 1), delay);
+                    }
                     const err = new Error(resp.error || 'Bridge query failed');
                     err.code = resp.code || 'ER_BRIDGE_ERROR';
                     err.sqlState = resp.sqlState || 'HY000';
