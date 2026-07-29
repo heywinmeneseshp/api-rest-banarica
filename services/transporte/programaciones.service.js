@@ -1,7 +1,8 @@
 ﻿const boom = require('@hapi/boom');
-const { Op, Sequelize } = require('sequelize');
+const { Op } = require('sequelize');
 const db = require('../../models');
 const { normalizeRole, ROLES } = require('../../middlewares/auth.handler');
+const { toColombiaDate, toColombiaIso } = require('../../utils/dates');
 
 const ESTADO_LISTADO_PENDIENTE = 'pendiente';
 const ESTADO_LISTADO_ACTUALIZADO = 'actualizado';
@@ -362,6 +363,125 @@ class ProgramacionService {
     return { message: "El item fue eliminado", id };
   }
 
+  async getForExcel({ semana, fechaInicio, fechaFin, transportadoraId } = {}) {
+    const where = { eliminado: false };
+
+    if (semana) where.semana = semana;
+
+    if (fechaInicio || fechaFin) {
+      where.fecha = {};
+      if (fechaInicio) where.fecha[Op.gte] = fechaInicio;
+      if (fechaFin) {
+        const d = new Date(fechaFin + 'T00:00:00Z');
+        d.setUTCDate(d.getUTCDate() + 1);
+        where.fecha[Op.lt] = d.toISOString().split('T')[0];
+      }
+    }
+
+    const vehiculoWhere = transportadoraId
+      ? { transportadoraId: Number(transportadoraId) }
+      : {};
+
+    const rows = await db.programacion.findAll({
+      where,
+      order: [['fecha', 'ASC'], ['bl', 'ASC'], ['id', 'ASC']],
+      include: [
+        { model: db.conductores, as: 'conductor' },
+        { model: db.clientes },
+        {
+          model: db.vehiculo,
+          required: Object.keys(vehiculoWhere).length > 0,
+          ...(Object.keys(vehiculoWhere).length ? { where: vehiculoWhere } : {}),
+          include: [{ model: db.transportadoras, as: 'transportadora' }],
+        },
+        {
+          model: db.rutas,
+          include: [
+            { model: db.ubicaciones, as: 'ubicacion_1' },
+            { model: db.ubicaciones, as: 'ubicacion_2' },
+          ],
+        },
+      ],
+    });
+
+    // ── Lookup id_contenedor + hora_revision_puerto via listado ──────────────
+    const uniqueCodes = [...new Set(rows.map((r) => r.contenedor).filter(Boolean))];
+    const uniqueSemanas = [...new Set(rows.map((r) => r.semana).filter(Boolean))];
+
+    // key: `${contenedor_code}|${semana_consecutivo}` → { id, hora_revision_puerto }
+    const contenedorMap = new Map();
+
+    if (uniqueCodes.length && uniqueSemanas.length) {
+      const listadoRows = await db.Listado.findAll({
+        attributes: ['id_contenedor'],
+        include: [
+          {
+            model: db.Contenedor,
+            where: { contenedor: { [Op.in]: uniqueCodes } },
+            attributes: ['id', 'contenedor', 'hora_revision_puerto', 'latitud_revision_puerto', 'longitud_revision_puerto'],
+            required: true,
+          },
+          {
+            model: db.Embarque,
+            attributes: [],
+            required: true,
+            include: [{
+              model: db.semanas,
+              where: { consecutivo: { [Op.in]: uniqueSemanas } },
+              attributes: ['consecutivo'],
+              required: true,
+            }],
+          },
+        ],
+      });
+
+      for (const lr of listadoRows) {
+        const code = lr.Contenedor?.contenedor;
+        const sem = lr.Embarque?.semana?.consecutivo;
+        if (code && sem) {
+          contenedorMap.set(`${code}|${sem}`, {
+            id: lr.Contenedor.id,
+            hora_revision_puerto: lr.Contenedor.hora_revision_puerto,
+            latitud_revision_puerto: lr.Contenedor.latitud_revision_puerto,
+            longitud_revision_puerto: lr.Contenedor.longitud_revision_puerto,
+          });
+        }
+      }
+    }
+
+    return rows.map((row) => {
+      const entry = contenedorMap.get(`${row.contenedor}|${row.semana}`) || null;
+      return {
+        id: row.id,
+        fecha: toColombiaDate(row.fecha) || row.fecha || '',
+        semana: row.semana || '',
+        bl: row.bl || '',
+        contenedor: row.contenedor || '',
+        id_contenedor: entry?.id ?? null,
+        movimiento: row.movimiento || '',
+        conductor: row.conductor?.conductor || '',
+        vehiculo: row.vehiculo?.placa || '',
+        transportadora: row.vehiculo?.transportadora?.razon_social || '',
+        origen: row.ruta?.ubicacion_1?.ubicacion || '',
+        destino: row.ruta?.ubicacion_2?.ubicacion || '',
+        cliente: row.clientes?.razon_social || '',
+        estado_listado: row.estado_listado || '',
+        llegada_origen: row.llegada_origen || '',
+        salida_origen: row.salida_origen || '',
+        llegada_patio: row.llegada_patio || '',
+        retiro_patio: row.retiro_patio || '',
+        llegada_destino: row.llegada_destino || '',
+        salida_destino: row.salida_destino || '',
+        cierre: row.cierre || '',
+        hora_revision_puerto: entry ? (toColombiaIso(entry.hora_revision_puerto) || '') : '',
+        latitud_revision_puerto: entry?.latitud_revision_puerto ?? '',
+        longitud_revision_puerto: entry?.longitud_revision_puerto ?? '',
+        creado_en: toColombiaIso(row.createdAt) || '',
+        actualizado_en: toColombiaIso(row.updatedAt) || '',
+      };
+    });
+  }
+
   async paginate(offset, limit, body, user = null) {
     // Desectructurar para no mutar el objeto recibido
     const { fechaFin, ...restBody } = body || {};
@@ -462,7 +582,56 @@ class ProgramacionService {
       }),
     ]);
 
-    return { data: result, total: count, distinctContenedores };
+    // Enriquecer filas con hora_revision_puerto desde Contenedor via Listado
+    const uniquePairs = [
+      ...new Map(
+        result
+          .filter((r) => r.contenedor && r.semana)
+          .map((r) => [`${r.contenedor}|${r.semana}`, { contenedor: r.contenedor, semana: r.semana }])
+      ).values(),
+    ];
+
+    const revisionMap = new Map();
+    if (uniquePairs.length) {
+      const codes = [...new Set(uniquePairs.map((p) => p.contenedor))];
+      const semanas = [...new Set(uniquePairs.map((p) => p.semana))];
+      const listadoRows = await db.Listado.findAll({
+        attributes: ['id_contenedor'],
+        include: [
+          {
+            model: db.Contenedor,
+            where: { contenedor: { [Op.in]: codes } },
+            attributes: ['id', 'contenedor', 'hora_revision_puerto'],
+            required: true,
+          },
+          {
+            model: db.Embarque,
+            attributes: [],
+            required: true,
+            include: [{
+              model: db.semanas,
+              where: { consecutivo: { [Op.in]: semanas } },
+              attributes: ['consecutivo'],
+              required: true,
+            }],
+          },
+        ],
+      });
+      for (const lr of listadoRows) {
+        const code = lr.Contenedor?.contenedor;
+        const sem = lr.Embarque?.semana?.consecutivo;
+        if (code && sem) {
+          revisionMap.set(`${code}|${sem}`, lr.Contenedor.hora_revision_puerto || null);
+        }
+      }
+    }
+
+    const data = result.map((row) => {
+      const key = `${row.contenedor}|${row.semana}`;
+      return Object.assign(row, { hora_revision_puerto: revisionMap.get(key) ?? null });
+    });
+
+    return { data, total: count, distinctContenedores };
   }
 
 }

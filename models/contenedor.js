@@ -23,7 +23,10 @@ module.exports = (sequelize, DataTypes) => {
   }
   Contenedor.init({
     contenedor: DataTypes.STRING,
-    habilitado: DataTypes.BOOLEAN
+    habilitado: DataTypes.BOOLEAN,
+    hora_revision_puerto: DataTypes.DATE,
+    latitud_revision_puerto: DataTypes.DECIMAL(10, 7),
+    longitud_revision_puerto: DataTypes.DECIMAL(10, 7),
   }, {
     sequelize,
     modelName: 'Contenedor',

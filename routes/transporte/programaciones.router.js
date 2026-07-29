@@ -2,6 +2,7 @@ const express = require("express");
 const passport = require("passport");
 
 const itemService = require("../../services/transporte/programaciones.service");
+const env = require("../../config/env");
 const router = express.Router();
 const service = new itemService();
 
@@ -22,6 +23,23 @@ router.post("/paginar", passport.authenticate("jwt", { session: false }), async 
     const body = req.body;
     const items = await service.paginate(page, limit, body, req.user);
     res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Endpoint para Excel / Power Query ──────────────────────────────────────
+// GET /api/v1/programaciones/excel?api_key=TU_KEY&semana=W01&fechaInicio=2025-01-01&fechaFin=2025-12-31&transportadoraId=3
+// Autenticación: header "api: TU_KEY"  o  query param "?api_key=TU_KEY"
+router.get("/excel", async (req, res, next) => {
+  try {
+    const apiKey = req.headers["api"] || req.query.api_key;
+    if (!apiKey || apiKey !== env.apiKey) {
+      return res.status(401).json({ message: "API key invalida o no proporcionada" });
+    }
+    const { semana, fechaInicio, fechaFin, transportadoraId } = req.query;
+    const result = await service.getForExcel({ semana, fechaInicio, fechaFin, transportadoraId });
+    res.json(result);
   } catch (error) {
     next(error);
   }
