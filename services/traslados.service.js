@@ -4,6 +4,7 @@ const { Op } = require("sequelize");
 const db = require('../models');
 const StockService = require('./stock.service');
 const HistorialMovimientosService = require('./historialMovimientos.service');
+const { listarFotosDeCarpeta } = require('./googleDrive/cargueFotos');
 
 const stockService = new StockService();
 const historialService = new HistorialMovimientosService();
@@ -148,6 +149,320 @@ class TrasladosService {
       await t.rollback();
       throw error;
     }
+  }
+
+  async _usuarioTienePermisoAlmacen(usuario, almacenConsecutivo) {
+    if (!usuario?.username || !almacenConsecutivo) return false;
+
+    const permiso = await db.almacenes_por_usuario.findOne({
+      where: {
+        username: usuario.username,
+        id_almacen: almacenConsecutivo,
+        habilitado: true,
+      },
+    });
+
+    return Boolean(permiso);
+  }
+
+  async crearPendiente(data) {
+    const { origen, destino, semana, fecha, items, observaciones, realizado_por } = data;
+
+    if (origen === destino) {
+      throw boom.badRequest('El origen y el destino no pueden ser el mismo.');
+    }
+
+    const uniqueItems = new Map();
+    for (const item of items) {
+      const itemIdentifier = item.serial || item.bag_pack || item.s_pack || item.m_pack || item.l_pack;
+      if (!itemIdentifier) {
+        throw boom.badRequest(`El item ${item.cons_producto} no tiene un identificador valido para trasladar.`);
+      }
+      if (item.cons_almacen && item.cons_almacen !== origen) {
+        throw boom.badRequest(`El item ${itemIdentifier} no pertenece al almacen origen ${origen}.`);
+      }
+      const uniqueKey = `${item.cons_producto}-${itemIdentifier}`;
+      if (uniqueItems.has(uniqueKey)) {
+        throw boom.conflict(`El item ${uniqueKey} esta repetido en la solicitud.`);
+      }
+      uniqueItems.set(uniqueKey, item);
+    }
+
+    const t = await db.sequelize.transaction();
+    try {
+      const itemsWithId = items.filter((item) => item.id);
+      const itemsWithoutId = items.filter((item) => !item.id);
+      const identifierFilters = itemsWithoutId.map((item) => {
+        const identifiers = [
+          item.serial ? { serial: item.serial } : null,
+          item.bag_pack ? { bag_pack: item.bag_pack } : null,
+          item.s_pack ? { s_pack: item.s_pack } : null,
+          item.m_pack ? { m_pack: item.m_pack } : null,
+          item.l_pack ? { l_pack: item.l_pack } : null,
+        ].filter(Boolean);
+
+        return {
+          cons_producto: item.cons_producto,
+          [Op.or]: identifiers,
+        };
+      });
+
+      const seriales = await db.serial_de_articulos.findAll({
+        where: {
+          cons_almacen: origen,
+          available: true,
+          [Op.or]: [
+            ...(itemsWithId.length > 0 ? [{ id: { [Op.in]: itemsWithId.map((item) => item.id) } }] : []),
+            ...(identifierFilters.length > 0 ? identifierFilters : []),
+          ],
+        },
+        transaction: t,
+      });
+
+      if (seriales.length !== items.length) {
+        throw boom.badRequest('Algunos seriales ya no estan disponibles en el almacen origen.');
+      }
+
+      const traslado = await this.create({
+        transportadora: "No aplica",
+        conductor: "No aplica",
+        vehiculo: "No aplica",
+        origen,
+        destino,
+        estado: "Pendiente",
+        fecha_salida: fecha,
+        fecha_entrada: null,
+        observaciones: observaciones || `Precintos transferidos al almacen ${destino}`,
+        semana,
+      }, t);
+
+      // Reservar los seriales: se marcan como no disponibles y se etiquetan con el
+      // consecutivo del traslado, pero NO cambian de almacen hasta que se acepte.
+      await db.serial_de_articulos.update(
+        { available: false, cons_movimiento: traslado.consecutivo },
+        {
+          where: {
+            id: { [Op.in]: seriales.map((s) => s.id) },
+          },
+          transaction: t,
+        }
+      );
+
+      await db.notificaciones.create({
+        consecutivo: `NT-${Date.now() - 1662564279341}`,
+        almacen_emisor: origen,
+        almacen_receptor: destino,
+        cons_movimiento: traslado.consecutivo,
+        tipo_movimiento: "Traslado",
+        descripcion: `Transferencia pendiente por aceptar de ${realizado_por || 'un usuario'}.`,
+        aprobado: false,
+        visto: false
+      }, { transaction: t });
+
+      await t.commit();
+      return {
+        bool: true,
+        message: 'Transferencia registrada como pendiente. El almacen destino debe aceptarla.',
+        data: traslado,
+        itemsReservados: seriales.length
+      };
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
+  }
+
+  async aceptarTraslado(id, usuario) {
+    const traslado = await db.traslados.findByPk(id);
+    if (!traslado) {
+      throw boom.notFound('El traslado no existe');
+    }
+    if (traslado.estado !== 'Pendiente') {
+      throw boom.badRequest(`El traslado ya fue procesado (estado actual: ${traslado.estado}).`);
+    }
+
+    const tienePermiso = await this._usuarioTienePermisoAlmacen(usuario, traslado.destino);
+    if (!tienePermiso) {
+      throw boom.forbidden('No tienes permiso sobre el almacen destino de este traslado.');
+    }
+
+    const t = await db.sequelize.transaction();
+    try {
+      const seriales = await db.serial_de_articulos.findAll({
+        where: { cons_movimiento: traslado.consecutivo, cons_almacen: traslado.origen },
+        transaction: t,
+      });
+
+      if (seriales.length === 0) {
+        throw boom.badRequest('No se encontraron los articulos reservados para este traslado.');
+      }
+
+      await db.serial_de_articulos.update(
+        { cons_almacen: traslado.destino, available: true },
+        {
+          where: { id: { [Op.in]: seriales.map((s) => s.id) } },
+          transaction: t,
+        }
+      );
+
+      const cantidadesPorProducto = seriales.reduce((acc, item) => {
+        acc[item.cons_producto] = (acc[item.cons_producto] || 0) + 1;
+        return acc;
+      }, {});
+
+      for (const [cons_producto, cantidad] of Object.entries(cantidadesPorProducto)) {
+        await stockService.subtractAmounts(traslado.origen, cons_producto, { cantidad }, t);
+        await stockService.addAmounts(traslado.destino, cons_producto, { cantidad }, t);
+        await historialService.create({
+          cons_movimiento: traslado.consecutivo,
+          cons_producto,
+          cons_almacen_gestor: traslado.origen,
+          cons_almacen_receptor: traslado.destino,
+          cons_lista_movimientos: "TR",
+          tipo_movimiento: "Traslado",
+          cantidad,
+        }, t);
+      }
+
+      await db.traslados.update(
+        { estado: 'Completado', fecha_entrada: new Date().toISOString().slice(0, 10) },
+        { where: { id }, transaction: t }
+      );
+
+      await db.notificaciones.update(
+        { aprobado: true, visto: true },
+        { where: { cons_movimiento: traslado.consecutivo }, transaction: t }
+      );
+
+      await t.commit();
+      return { bool: true, message: 'Transferencia aceptada y completada.', itemsActualizados: seriales.length };
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
+  }
+
+  async rechazarTraslado(id, usuario, motivo) {
+    const traslado = await db.traslados.findByPk(id);
+    if (!traslado) {
+      throw boom.notFound('El traslado no existe');
+    }
+    if (traslado.estado !== 'Pendiente') {
+      throw boom.badRequest(`El traslado ya fue procesado (estado actual: ${traslado.estado}).`);
+    }
+
+    const tienePermiso = await this._usuarioTienePermisoAlmacen(usuario, traslado.destino);
+    if (!tienePermiso) {
+      throw boom.forbidden('No tienes permiso sobre el almacen destino de este traslado.');
+    }
+
+    const t = await db.sequelize.transaction();
+    try {
+      await db.serial_de_articulos.update(
+        { available: true, cons_movimiento: null },
+        {
+          where: { cons_movimiento: traslado.consecutivo, cons_almacen: traslado.origen },
+          transaction: t,
+        }
+      );
+
+      await db.traslados.update(
+        {
+          estado: 'Rechazado',
+          observaciones: motivo ? `${traslado.observaciones || ''} | Rechazado: ${motivo}`.trim() : traslado.observaciones,
+        },
+        { where: { id }, transaction: t }
+      );
+
+      await db.notificaciones.update(
+        { aprobado: false, visto: true },
+        { where: { cons_movimiento: traslado.consecutivo }, transaction: t }
+      );
+
+      await t.commit();
+      return { bool: true, message: 'Transferencia rechazada. Los articulos vuelven a estar disponibles en el almacen origen.' };
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
+  }
+
+  async listarPendientesPorAlmacenes(almacenes = [], tipo = 'recibir') {
+    if (!Array.isArray(almacenes) || almacenes.length === 0) return [];
+
+    const whereAlmacen = tipo === 'enviados'
+      ? { origen: { [Op.in]: almacenes } }
+      : { destino: { [Op.in]: almacenes } };
+
+    const traslados = await db.traslados.findAll({
+      where: { estado: 'Pendiente', ...whereAlmacen },
+      order: [['createdAt', 'DESC']],
+    });
+
+    const conteos = await Promise.all(
+      traslados.map((traslado) => this.contarSerialesPorTraslado(traslado.consecutivo))
+    );
+
+    return traslados.map((traslado, index) => ({
+      ...traslado.toJSON(),
+      total_items: conteos[index],
+    }));
+  }
+
+  async contarSerialesPorTraslado(consecutivo) {
+    return db.serial_de_articulos.count({ where: { cons_movimiento: consecutivo } });
+  }
+
+  async contarPendientes(almacenes = []) {
+    if (!Array.isArray(almacenes) || almacenes.length === 0) return 0;
+    return db.traslados.count({ where: { estado: 'Pendiente', destino: { [Op.in]: almacenes } } });
+  }
+
+  async listarEvidenciasTraslado(id, usuario) {
+    const traslado = await db.traslados.findByPk(id);
+    if (!traslado) {
+      throw boom.notFound('El traslado no existe');
+    }
+
+    const [tienePermisoOrigen, tienePermisoDestino] = await Promise.all([
+      this._usuarioTienePermisoAlmacen(usuario, traslado.origen),
+      this._usuarioTienePermisoAlmacen(usuario, traslado.destino),
+    ]);
+
+    if (!tienePermisoOrigen && !tienePermisoDestino) {
+      throw boom.forbidden('No tienes permiso para ver la evidencia de este traslado.');
+    }
+
+    if (!traslado.evidencia_carpeta_id) {
+      return { fotos: [], carpetaUrl: traslado.evidencia_carpeta_url || null };
+    }
+
+    const fotos = await listarFotosDeCarpeta(traslado.evidencia_carpeta_id);
+    return { fotos, carpetaUrl: traslado.evidencia_carpeta_url || null };
+  }
+
+  async listarArticulosTraslado(id, usuario) {
+    const traslado = await db.traslados.findByPk(id);
+    if (!traslado) {
+      throw boom.notFound('El traslado no existe');
+    }
+
+    const [tienePermisoOrigen, tienePermisoDestino] = await Promise.all([
+      this._usuarioTienePermisoAlmacen(usuario, traslado.origen),
+      this._usuarioTienePermisoAlmacen(usuario, traslado.destino),
+    ]);
+
+    if (!tienePermisoOrigen && !tienePermisoDestino) {
+      throw boom.forbidden('No tienes permiso para ver los articulos de este traslado.');
+    }
+
+    const seriales = await db.serial_de_articulos.findAll({
+      where: { cons_movimiento: traslado.consecutivo },
+      attributes: ['id', 'cons_producto', 'serial', 'bag_pack', 's_pack', 'm_pack', 'l_pack'],
+      order: [['cons_producto', 'ASC']],
+    });
+
+    return seriales;
   }
 
   async find() {

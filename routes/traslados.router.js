@@ -51,6 +51,82 @@ router.post("/ejecutar",
     }
   });
 
+router.post("/pendiente",
+  validatorHandler(ejecutarTraslado, "body"),
+  async (req, res, next) => {
+    try {
+      const result = await service.crearPendiente(req.body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+router.get("/pendientes/listar", async (req, res, next) => {
+  try {
+    const almacenes = String(req.query.almacenes || "").split(",").map((item) => item.trim()).filter(Boolean);
+    const tipo = req.query.tipo === "enviados" ? "enviados" : "recibir";
+    const result = await service.listarPendientesPorAlmacenes(almacenes, tipo);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/pendientes/contar", async (req, res, next) => {
+  try {
+    const almacenes = String(req.query.almacenes || "").split(",").map((item) => item.trim()).filter(Boolean);
+    const total = await service.contarPendientes(almacenes);
+    res.json({ total });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/:id/aceptar", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.body;
+    const result = await service.aceptarTraslado(id, usuario);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/:id/rechazar", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { usuario, motivo } = req.body;
+    const result = await service.rechazarTraslado(id, usuario, motivo);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/evidencias/listar", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.body;
+    const result = await service.listarEvidenciasTraslado(id, usuario);
+    res.json({ success: true, data: result.fotos, carpetaUrl: result.carpetaUrl });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/articulos/listar", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.body;
+    const result = await service.listarArticulosTraslado(id, usuario);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 //ACTUALIZACIONES PARCIALES
 router.patch("/modificar/:id",

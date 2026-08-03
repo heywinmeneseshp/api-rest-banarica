@@ -207,6 +207,22 @@ async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
 }
 
 /**
+ * Función para obtener el contenido binario de un archivo (para servirlo como imagen)
+ * @param {string} fileId - ID del archivo en Google Drive
+ * @returns {Promise<{data: Stream, headers: Object}>}
+ */
+async function obtenerContenidoArchivo(fileId) {
+    if (!fileId) {
+        throw new Error('Falta el ID del archivo');
+    }
+
+    return drive.files.get(
+        { fileId, alt: 'media', supportsAllDrives: true },
+        { responseType: 'stream' }
+    );
+}
+
+/**
  * Función para obtener el ID de una carpeta por nombre
  * @param {string} nombreCarpeta - Nombre de la carpeta a buscar
  * @param {string} carpetaPadreId - ID de la carpeta padre
@@ -269,5 +285,6 @@ module.exports = {
     cargarEvidenciaLogistica,
     obtenerCarpetaPorNombre,
     listarFotosDeCarpeta,
+    obtenerContenidoArchivo,
     eliminarFotoDeDrive
 };

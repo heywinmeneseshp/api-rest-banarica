@@ -29,7 +29,12 @@ module.exports = (sequelize, DataTypes) => {
     observaciones: DataTypes.STRING,
     fecha_salida: DataTypes.STRING,
     fecha_entrada: DataTypes.STRING,
-    estado: DataTypes.STRING
+    estado: DataTypes.STRING,
+    evidencia_cargada: DataTypes.BOOLEAN,
+    evidencia_carpeta_id: DataTypes.STRING,
+    evidencia_carpeta_url: DataTypes.STRING,
+    evidencia_fecha: DataTypes.DATE,
+    evidencia_total_fotos: DataTypes.INTEGER,
   }, {
     sequelize,
     modelName: 'traslados',
