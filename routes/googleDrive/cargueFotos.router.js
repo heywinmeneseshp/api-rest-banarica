@@ -1,7 +1,7 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const { cargarEvidenciaLogistica } = require('../../services/googleDrive/cargueFotos');
+const { cargarEvidenciaLogistica, listarFotosDeCarpeta } = require('../../services/googleDrive/cargueFotos');
 const db = require('../../models');
 
 const router = express.Router();
@@ -133,6 +133,22 @@ router.post('/subir-evidencia', upload.single('foto'), async (req, res, next) =>
         });
     } catch (error) {
         console.error('Error al subir evidencia:', error);
+        next(error);
+    }
+});
+
+router.get('/listar-evidencias/:carpetaId', async (req, res, next) => {
+    try {
+        const { carpetaId } = req.params;
+
+        if (!carpetaId) {
+            return res.status(400).json({ success: false, error: 'Falta el ID de la carpeta' });
+        }
+
+        const fotos = await listarFotosDeCarpeta(carpetaId);
+
+        res.json({ success: true, data: fotos });
+    } catch (error) {
         next(error);
     }
 });

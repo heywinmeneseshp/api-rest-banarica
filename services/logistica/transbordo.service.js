@@ -10,6 +10,20 @@ const movimientoService = new MovimientoService();
 const seguridadService = new SeguridadService();
 const stockService = new StockService();
 
+const buildSemanaInclude = () => ({
+  model: db.Listado,
+  separate: true,
+  limit: 1,
+  attributes: ['id', 'id_embarque'],
+  include: [
+    {
+      model: db.Embarque,
+      attributes: ['id'],
+      include: [{ model: db.semanas, attributes: ['consecutivo'] }],
+    },
+  ],
+});
+
 class TransbordoService {
 
   async create(data) {
@@ -240,7 +254,12 @@ class TransbordoService {
     return db.Transbordo.findAll({
       include: [
         { model: db.Contenedor, as: 'contenedorViejo', attributes: ['id', 'contenedor', 'habilitado'] },
-        { model: db.Contenedor, as: 'contenedorNuevo', attributes: ['id', 'contenedor', 'habilitado'] },
+        {
+          model: db.Contenedor,
+          as: 'contenedorNuevo',
+          attributes: ['id', 'contenedor', 'habilitado'],
+          include: [buildSemanaInclude()],
+        },
       ],
       order: [['fecha_transbordo', 'DESC'], ['createdAt', 'DESC']],
     });
@@ -250,7 +269,12 @@ class TransbordoService {
     const transbordo = await db.Transbordo.findByPk(id, {
       include: [
         { model: db.Contenedor, as: 'contenedorViejo', attributes: ['id', 'contenedor', 'habilitado'] },
-        { model: db.Contenedor, as: 'contenedorNuevo', attributes: ['id', 'contenedor', 'habilitado'] },
+        {
+          model: db.Contenedor,
+          as: 'contenedorNuevo',
+          attributes: ['id', 'contenedor', 'habilitado'],
+          include: [buildSemanaInclude()],
+        },
       ],
     });
     if (!transbordo) {
@@ -300,6 +324,7 @@ class TransbordoService {
         model: db.Contenedor,
         as: 'contenedorNuevo',
         attributes: ['id', 'contenedor', 'habilitado'],
+        include: [buildSemanaInclude()],
         ...(contenedor_nuevo
           ? { where: { contenedor: { [Op.like]: `%${contenedor_nuevo}%` } } }
           : {}),

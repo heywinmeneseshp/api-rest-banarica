@@ -59,6 +59,21 @@ const formatearFechaNombre = (fecha) => {
     return `${year}${month}${day}`;
 };
 
+const soloFecha = (fecha) => {
+    const texto = String(fecha || '').trim();
+    const match = texto.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) {
+        return match[1];
+    }
+
+    const date = new Date(texto);
+    if (Number.isNaN(date.getTime())) {
+        return texto || 'sin_fecha';
+    }
+
+    return date.toISOString().slice(0, 10);
+};
+
 const normalizarErrorGoogleDrive = (error) => {
     const message = error?.message || '';
 
@@ -89,7 +104,7 @@ async function cargarEvidenciaLogistica(datosFormulario, arreglosFotos) {
     }
 
     const ID_CARPETA_PRINCIPAL = carpetaID;
-    const nombreSubcarpeta = `${semana} - ${fecha} - ${item}`;
+    const nombreSubcarpeta = `${semana} - ${soloFecha(fecha)} - ${item}`;
     const fechaNormalizada = formatearFechaNombre(fecha);
     const semanaNormalizada = normalizarTexto(semana) || 'sin_semana';
     const vehiculoNormalizado = normalizarTexto(vehiculo || item) || 'sin_vehiculo';
@@ -213,6 +228,28 @@ async function obtenerCarpetaPorNombre(nombreCarpeta, carpetaPadreId) {
 }
 
 /**
+ * Función para listar las fotos dentro de una subcarpeta de evidencias
+ * @param {string} carpetaId - ID de la subcarpeta de Google Drive
+ * @returns {Promise<Array>} - Lista de fotos con id, nombre, enlaces y fecha
+ */
+async function listarFotosDeCarpeta(carpetaId) {
+    if (!carpetaId) {
+        throw new Error('Falta el ID de la carpeta');
+    }
+
+    const queryBusqueda = `'${carpetaId}' in parents and trashed=false and mimeType contains 'image/'`;
+
+    const resultado = await drive.files.list({
+        q: queryBusqueda,
+        fields: 'files(id, name, webViewLink, webContentLink, thumbnailLink, createdTime)',
+        orderBy: 'createdTime desc',
+        ...SHARED_DRIVE_OPTIONS,
+    });
+
+    return resultado.data.files || [];
+}
+
+/**
  * Función para eliminar una foto de Google Drive por ID
  * @param {string} fileId - ID del archivo a eliminar
  * @returns {Promise<boolean>} - True si se eliminó correctamente
@@ -228,8 +265,9 @@ async function eliminarFotoDeDrive(fileId) {
     }
 }
 
-module.exports = { 
+module.exports = {
     cargarEvidenciaLogistica,
     obtenerCarpetaPorNombre,
+    listarFotosDeCarpeta,
     eliminarFotoDeDrive
 };
