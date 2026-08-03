@@ -43,7 +43,12 @@ module.exports = (sequelize, DataTypes) => {
     cajas_unidades: DataTypes.INTEGER,
     id_sae: DataTypes.INTEGER,
     transbordado: DataTypes.BOOLEAN,
-    habilitado: DataTypes.BOOLEAN
+    habilitado: DataTypes.BOOLEAN,
+    evidencia_cargada: DataTypes.BOOLEAN,
+    evidencia_carpeta_id: DataTypes.STRING,
+    evidencia_carpeta_url: DataTypes.STRING,
+    evidencia_fecha: DataTypes.DATE,
+    evidencia_total_fotos: DataTypes.INTEGER,
   }, {
     sequelize,
     modelName: 'Listado',

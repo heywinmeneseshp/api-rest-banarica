@@ -7,7 +7,7 @@ const db = require('../../models');
 const router = express.Router();
 
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const allowedTypes = /jpeg|jpg|png|gif|webp|heic|heif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
@@ -27,18 +27,22 @@ const upload = multer({
     fileFilter
 });
 
-const guardarEstadoEvidencia = async (programacionId, resultado) => {
-    if (!programacionId) {
-        return;
-    }
-
-    await db.programacion.update({
+const guardarEstadoEvidencia = async (programacionId, listadoId, resultado) => {
+    const detalles = {
         evidencia_cargada: true,
         evidencia_carpeta_id: resultado.carpetaId || null,
         evidencia_carpeta_url: resultado.carpetaUrl || null,
         evidencia_fecha: new Date(),
         evidencia_total_fotos: resultado.totalFotos || 0,
-    }, { where: { id: programacionId } });
+    };
+
+    if (programacionId) {
+        await db.programacion.update(detalles, { where: { id: programacionId } });
+    }
+
+    if (listadoId) {
+        await db.Listado.update(detalles, { where: { id: listadoId } });
+    }
 };
 
 const validarSolicitud = (req, res, archivos) => {
@@ -73,7 +77,7 @@ const validarSolicitud = (req, res, archivos) => {
 
 router.post('/subir-evidencias', upload.array('fotos', 20), async (req, res, next) => {
     try {
-        const { semana, fecha, item, carpetaID, programacion_id } = req.body;
+        const { semana, fecha, item, carpetaID, programacion_id, listado_id } = req.body;
         const archivos = req.files;
 
         if (!validarSolicitud(req, res, archivos)) {
@@ -89,7 +93,7 @@ router.post('/subir-evidencias', upload.array('fotos', 20), async (req, res, nex
             carpetaID
         }, archivos);
 
-        await guardarEstadoEvidencia(programacion_id, resultado);
+        await guardarEstadoEvidencia(programacion_id, listado_id, resultado);
 
         res.json({
             success: true,
@@ -104,7 +108,7 @@ router.post('/subir-evidencias', upload.array('fotos', 20), async (req, res, nex
 
 router.post('/subir-evidencia', upload.single('foto'), async (req, res, next) => {
     try {
-        const { semana, fecha, item, carpetaID, programacion_id } = req.body;
+        const { semana, fecha, item, carpetaID, programacion_id, listado_id } = req.body;
         const archivos = req.file ? [req.file] : [];
 
         if (!validarSolicitud(req, res, archivos)) {
@@ -120,7 +124,7 @@ router.post('/subir-evidencia', upload.single('foto'), async (req, res, next) =>
             carpetaID
         }, archivos);
 
-        await guardarEstadoEvidencia(programacion_id, resultado);
+        await guardarEstadoEvidencia(programacion_id, listado_id, resultado);
 
         res.json({
             success: true,
