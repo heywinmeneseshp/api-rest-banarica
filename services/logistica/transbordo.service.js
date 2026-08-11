@@ -10,19 +10,45 @@ const movimientoService = new MovimientoService();
 const seguridadService = new SeguridadService();
 const stockService = new StockService();
 
-const buildSemanaInclude = () => ({
-  model: db.Listado,
-  separate: true,
-  limit: 1,
-  attributes: ['id', 'id_embarque'],
-  include: [
-    {
-      model: db.Embarque,
-      attributes: ['id'],
-      include: [{ model: db.semanas, attributes: ['consecutivo'] }],
-    },
-  ],
-});
+// NOTA: la semana del contenedor nuevo se resuelve aparte (attachSemanaAContenedores)
+// en vez de con un include `separate: true`, porque ese patron genera un SQL con
+// UNION ALL por cada contenedor de la pagina y el bridge HTTP de MySQL lo bloquea
+// (403 Access Denied) cuando hay varios contenedores en el resultado.
+const attachSemanaAContenedores = async (transbordos) => {
+  const idsContenedor = [...new Set(
+    transbordos.map((t) => t.contenedorNuevo?.id).filter(Boolean)
+  )];
+
+  if (idsContenedor.length === 0) return transbordos;
+
+  const listados = await db.Listado.findAll({
+    where: { id_contenedor: { [Op.in]: idsContenedor } },
+    attributes: ['id', 'id_embarque', 'id_contenedor'],
+    include: [
+      {
+        model: db.Embarque,
+        attributes: ['id'],
+        include: [{ model: db.semanas, attributes: ['consecutivo'] }],
+      },
+    ],
+  });
+
+  const listadoPorContenedor = new Map();
+  listados.forEach((listado) => {
+    if (!listadoPorContenedor.has(listado.id_contenedor)) {
+      listadoPorContenedor.set(listado.id_contenedor, listado);
+    }
+  });
+
+  transbordos.forEach((transbordo) => {
+    if (transbordo.contenedorNuevo) {
+      const listado = listadoPorContenedor.get(transbordo.contenedorNuevo.id);
+      transbordo.contenedorNuevo.dataValues.Listados = listado ? [listado] : [];
+    }
+  });
+
+  return transbordos;
+};
 
 class TransbordoService {
 
@@ -251,35 +277,27 @@ class TransbordoService {
 
 
   async find() {
-    return db.Transbordo.findAll({
+    const transbordos = await db.Transbordo.findAll({
       include: [
         { model: db.Contenedor, as: 'contenedorViejo', attributes: ['id', 'contenedor', 'habilitado'] },
-        {
-          model: db.Contenedor,
-          as: 'contenedorNuevo',
-          attributes: ['id', 'contenedor', 'habilitado'],
-          include: [buildSemanaInclude()],
-        },
+        { model: db.Contenedor, as: 'contenedorNuevo', attributes: ['id', 'contenedor', 'habilitado'] },
       ],
       order: [['fecha_transbordo', 'DESC'], ['createdAt', 'DESC']],
     });
+    return attachSemanaAContenedores(transbordos);
   }
 
   async findOne(id) {
     const transbordo = await db.Transbordo.findByPk(id, {
       include: [
         { model: db.Contenedor, as: 'contenedorViejo', attributes: ['id', 'contenedor', 'habilitado'] },
-        {
-          model: db.Contenedor,
-          as: 'contenedorNuevo',
-          attributes: ['id', 'contenedor', 'habilitado'],
-          include: [buildSemanaInclude()],
-        },
+        { model: db.Contenedor, as: 'contenedorNuevo', attributes: ['id', 'contenedor', 'habilitado'] },
       ],
     });
     if (!transbordo) {
       throw boom.notFound('El transbordo no existe');
     }
+    await attachSemanaAContenedores([transbordo]);
     return transbordo;
   }
 
@@ -324,7 +342,6 @@ class TransbordoService {
         model: db.Contenedor,
         as: 'contenedorNuevo',
         attributes: ['id', 'contenedor', 'habilitado'],
-        include: [buildSemanaInclude()],
         ...(contenedor_nuevo
           ? { where: { contenedor: { [Op.like]: `%${contenedor_nuevo}%` } } }
           : {}),
@@ -341,6 +358,25 @@ class TransbordoService {
       }
     }
 
+    const includeParaConteo = [
+      {
+        model: db.Contenedor,
+        as: 'contenedorViejo',
+        attributes: ['id'],
+        ...(contenedor_viejo
+          ? { where: { contenedor: { [Op.like]: `%${contenedor_viejo}%` } } }
+          : {}),
+      },
+      {
+        model: db.Contenedor,
+        as: 'contenedorNuevo',
+        attributes: ['id'],
+        ...(contenedor_nuevo
+          ? { where: { contenedor: { [Op.like]: `%${contenedor_nuevo}%` } } }
+          : {}),
+      },
+    ];
+
     const [result, total] = await Promise.all([
       db.Transbordo.findAll({
         where: whereClause,
@@ -349,8 +385,10 @@ class TransbordoService {
         offset: parsedOffset,
         order: [['fecha_transbordo', 'DESC'], ['createdAt', 'DESC']],
       }),
-      db.Transbordo.count({ where: whereClause, include, distinct: true, col: 'id' }),
+      db.Transbordo.count({ where: whereClause, include: includeParaConteo, distinct: true, col: 'id' }),
     ]);
+
+    await attachSemanaAContenedores(result);
 
     return { data: result, total };
   }
