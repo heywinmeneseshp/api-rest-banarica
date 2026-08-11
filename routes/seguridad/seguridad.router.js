@@ -62,6 +62,16 @@ router.post("/cargar-seriales", async (req, res, next) => {
   }
 });
 
+router.post("/deshacer-carga-seriales", async (req, res, next) => {
+  try {
+    const { cons_movimiento } = req.body;
+    const result = await service.deshacerCargaSeriales(cons_movimiento);
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
 //LISTAR PRODUCTOS
 router.get("/listar-articulos",
   async (req, res, next) => {

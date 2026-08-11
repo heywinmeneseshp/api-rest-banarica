@@ -593,15 +593,32 @@ class SeguridadService {
     return almacenes[0];
   }
 
-  async cargarSeriales({ data, remision, pedido, semana, fecha, observaciones, username }) {
+  async cargarSeriales({ data, remision, pedido, semana, fecha, observaciones, username, cons_movimiento }) {
     const consAlmacen = this.validateSerialUploadRows(data);
 
     const batchSize = 500; // TamaÃƒÂ±o del lote
     const t = await db.sequelize.transaction();
 
     try {
-      for (let i = 0; i < data.length; i += batchSize) {
-        const batch = data.slice(i, i + batchSize);
+      // Si ya existe un movimiento (lote posterior de un mismo archivo grande dividido
+      // automaticamente por el frontend), se reutiliza en vez de crear uno nuevo.
+      let consecutivoMovimiento = cons_movimiento;
+
+      if (!consecutivoMovimiento) {
+        const dataMovimiento = {
+          prefijo: "RC", remision: remision, pendiente: false, observaciones: observaciones, cons_semana: semana,
+          realizado_por: username, aprobado_por: username, vehiculo: null, fecha: fecha
+        };
+        const movimiento = await movimientoService.create(dataMovimiento, t);
+        consecutivoMovimiento = movimiento.dataValues.consecutivo;
+      }
+
+      // Cada serial queda etiquetado con su movimiento, para poder revertir el archivo
+      // completo (todos los lotes ya cargados) si un lote posterior falla.
+      const dataConMovimiento = data.map((item) => ({ ...item, cons_movimiento: consecutivoMovimiento }));
+
+      for (let i = 0; i < dataConMovimiento.length; i += batchSize) {
+        const batch = dataConMovimiento.slice(i, i + batchSize);
         await db.serial_de_articulos.bulkCreate(batch, { transaction: t });
       }
 
@@ -609,12 +626,6 @@ class SeguridadService {
         acc[item.cons_producto] = (acc[item.cons_producto] || 0) + 1;
         return acc;
       }, {});
-      const dataMovimiento = {
-        prefijo: "RC", remision: remision, pendiente: false, observaciones: observaciones, cons_semana: semana,
-        realizado_por: username, aprobado_por: username, vehiculo: null, fecha: fecha
-      };
-      const movimiento = await movimientoService.create(dataMovimiento, t);
-
 
       for (const key in countConsProductos) {
         if (countConsProductos.hasOwnProperty(key)) {
@@ -622,7 +633,7 @@ class SeguridadService {
           const cantidad = countConsProductos[key];
           await stockService.addAmounts(consAlmacen, cons_producto, { cantidad: cantidad }, t)
           const dataHistorial = {
-            cons_movimiento: movimiento.dataValues.consecutivo,
+            cons_movimiento: consecutivoMovimiento,
             cons_producto: cons_producto,
             cons_almacen_gestor: consAlmacen,
             cons_almacen_receptor: consAlmacen,
@@ -637,7 +648,7 @@ class SeguridadService {
       }
 
       await t.commit();
-      return { bool: true, message: 'Datos cargados exitosamente', cons_movimiento: movimiento.dataValues.consecutivo, total_seriales: data.length };
+      return { bool: true, message: 'Datos cargados exitosamente', cons_movimiento: consecutivoMovimiento, total_seriales: data.length };
     } catch (e) {
       await t.rollback();
 
@@ -662,6 +673,55 @@ class SeguridadService {
 
 
       throw boom.badRequest(e.message || e.original?.sqlMessage || 'Error al cargar los datos.');
+    }
+  }
+
+  // Revierte por completo un movimiento de recepcion (todos los lotes ya cargados bajo ese
+  // consecutivo): elimina los seriales, revierte el stock sumado y elimina el historial y el
+  // movimiento. Se usa cuando un archivo grande falla a mitad de la carga, para que el
+  // resultado final sea todo o nada, sin importar cuantos lotes hayan alcanzado a subirse.
+  async deshacerCargaSeriales(cons_movimiento) {
+    if (!cons_movimiento) {
+      throw boom.badRequest('Falta el consecutivo del movimiento a revertir.');
+    }
+
+    const t = await db.sequelize.transaction();
+
+    try {
+      const seriales = await db.serial_de_articulos.findAll({
+        where: { cons_movimiento },
+        transaction: t,
+      });
+
+      const countConsProductos = seriales.reduce((acc, item) => {
+        acc[item.cons_producto] = (acc[item.cons_producto] || 0) + 1;
+        return acc;
+      }, {});
+      const consAlmacen = seriales[0]?.cons_almacen;
+
+      if (seriales.length > 0) {
+        await db.serial_de_articulos.destroy({ where: { cons_movimiento }, transaction: t });
+      }
+
+      if (consAlmacen) {
+        for (const cons_producto of Object.keys(countConsProductos)) {
+          const cantidad = countConsProductos[cons_producto];
+          await stockService.subtractAmounts(consAlmacen, cons_producto, { cantidad }, t);
+        }
+      }
+
+      await db.historial_movimientos.destroy({ where: { cons_movimiento }, transaction: t });
+      await db.movimientos.destroy({ where: { consecutivo: cons_movimiento }, transaction: t });
+
+      await t.commit();
+      return {
+        bool: true,
+        message: `Se revirtio el movimiento ${cons_movimiento}. ${seriales.length} serial(es) eliminado(s).`,
+        seriales_eliminados: seriales.length,
+      };
+    } catch (e) {
+      await t.rollback();
+      throw boom.badRequest(e.message || 'Error al revertir el movimiento.');
     }
   }
 
