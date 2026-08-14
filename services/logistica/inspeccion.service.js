@@ -362,6 +362,81 @@ class InspeccionService {
     const data = await this.enrichInspectionRows(rows);
     return { data, total: count };
   }
+
+  // Estadisticas de inspeccionados vs exportados, agrupables por anio,
+  // destino, naviera y cliente (o cualquier combinacion de estos).
+  // "Exportado": contenedor con al menos un Listado ligado a un Embarque.
+  // "Inspeccionado": ese mismo contenedor tiene una Inspeccion aprobada
+  // (habilitado=true) que no sea de zona "vacio" (coincide con el filtro
+  // que ya usa el listado de Unidades Inspeccionadas).
+  async estadisticas({ groupBy = ['anio'], anio } = {}) {
+    // El año se toma de semanas.anho (campo propio de la semana), no de la fecha de
+    // zarpe del embarque: esa fecha suele venir vacia en muchos registros y los
+    // dejaba fuera del reporte (o los agrupaba mal, ej. como si fueran de 1970).
+    const DIMENSIONES = {
+      anio: { select: 's.anho', alias: 'anio', orderBy: 's.anho' },
+      semana: { select: 's.consecutivo', alias: 'semana', orderBy: 'MIN(s.fecha_inicio)' },
+      destino: { select: 'd.cod', alias: 'destino' },
+      naviera: { select: 'n.cod', alias: 'naviera' },
+      cliente: { select: 'c.cod', alias: 'cliente' },
+    };
+
+    const solicitadas = (Array.isArray(groupBy) ? groupBy : [groupBy]).filter((dim) => DIMENSIONES[dim]);
+    const dimensiones = solicitadas.length > 0 ? solicitadas : ['anio'];
+
+    const selectDimensiones = dimensiones
+      .map((dim) => `${DIMENSIONES[dim].select} AS ${DIMENSIONES[dim].alias}`)
+      .join(', ');
+    const groupByClause = dimensiones.map((dim) => DIMENSIONES[dim].select).join(', ');
+    const orderByClause = dimensiones
+      .map((dim) => DIMENSIONES[dim].orderBy || DIMENSIONES[dim].select)
+      .join(', ');
+
+    const replacements = {};
+    let whereClause = 's.anho IS NOT NULL';
+    if (anio) {
+      whereClause += ' AND s.anho = :anio';
+      replacements.anio = anio;
+    }
+
+    const sql = `
+      SELECT
+        ${selectDimensiones},
+        COUNT(DISTINCT ct.id) AS exportados,
+        COUNT(DISTINCT CASE WHEN i.id_contenedor IS NOT NULL THEN ct.id END) AS inspeccionados
+      FROM Listados l
+      INNER JOIN Contenedors ct ON l.id_contenedor = ct.id
+      INNER JOIN Embarques e ON l.id_embarque = e.id
+      LEFT JOIN Destinos d ON e.id_destino = d.id
+      LEFT JOIN Navieras n ON e.id_naviera = n.id
+      LEFT JOIN clientes c ON e.id_cliente = c.id
+      LEFT JOIN semanas s ON e.id_semana = s.id
+      LEFT JOIN (
+        SELECT DISTINCT id_contenedor
+        FROM Inspeccions
+        WHERE habilitado = true AND (zona IS NULL OR zona NOT LIKE '%vacio%')
+      ) i ON i.id_contenedor = ct.id
+      WHERE ${whereClause}
+      GROUP BY ${groupByClause}
+      ORDER BY ${orderByClause}
+    `;
+
+    const rows = await db.sequelize.query(sql, {
+      replacements,
+      type: db.Sequelize.QueryTypes.SELECT,
+    });
+
+    return rows.map((row) => {
+      const exportados = Number(row.exportados) || 0;
+      const inspeccionados = Number(row.inspeccionados) || 0;
+      return {
+        ...row,
+        exportados,
+        inspeccionados,
+        porcentaje: exportados > 0 ? Number(((inspeccionados / exportados) * 100).toFixed(1)) : 0,
+      };
+    });
+  }
 }
 
 module.exports = InspeccionService;

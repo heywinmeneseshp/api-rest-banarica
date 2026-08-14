@@ -43,26 +43,31 @@ class RechazoService {
     return { message: 'El rechazo fue eliminado', id };
   }
 
-  async aprobar(id, { cod_productor }) {
+  // cod_productor: productor que queda registrado en el rechazo (puede no tener el
+  // producto en el contenedor). cod_productor_descuento: productor del contenedor al
+  // que realmente se le descuentan las cajas; si no se envia, se usa cod_productor.
+  async aprobar(id, { cod_productor, cod_productor_descuento }) {
     const t = await db.sequelize.transaction();
     try {
       const rechazo = await db.Rechazo.findByPk(id, { transaction: t });
       if (!rechazo) throw boom.notFound('Rechazo no encontrado');
       if (rechazo.habilitado) throw boom.badRequest('El rechazo ya fue aprobado');
 
-      // Resolver id del almacen a partir del consecutivo
-      const almacen = await db.almacenes.findOne({
-        where: { consecutivo: cod_productor },
+      const codProductorDescuento = cod_productor_descuento || cod_productor;
+
+      // Resolver id del almacen del que se descuentan las cajas
+      const almacenDescuento = await db.almacenes.findOne({
+        where: { consecutivo: codProductorDescuento },
         transaction: t,
       });
-      if (!almacen) throw boom.notFound(`Productor "${cod_productor}" no encontrado`);
+      if (!almacenDescuento) throw boom.notFound(`Productor "${codProductorDescuento}" no encontrado`);
 
       // SELECT FOR UPDATE: leer cajas actuales evitando race conditions
       const listado = await db.Listado.findOne({
         where: {
           id_contenedor: rechazo.id_contenedor,
           id_producto: rechazo.id_producto,
-          id_lugar_de_llenado: almacen.id,
+          id_lugar_de_llenado: almacenDescuento.id,
         },
         lock: t.LOCK.UPDATE,
         transaction: t,

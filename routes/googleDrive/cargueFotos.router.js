@@ -41,7 +41,15 @@ const guardarEstadoEvidencia = async (programacionId, listadoId, resultado, tras
     }
 
     if (listadoId) {
-        await db.Listado.update(detalles, { where: { id: listadoId } });
+        // Un contenedor puede tener varias lineas de Listado (una por producto).
+        // La evidencia es del contenedor, asi que se marca en todas sus lineas,
+        // no solo en la que se uso para subir las fotos.
+        const listado = await db.Listado.findByPk(listadoId);
+        if (listado?.id_contenedor) {
+            await db.Listado.update(detalles, { where: { id_contenedor: listado.id_contenedor } });
+        } else {
+            await db.Listado.update(detalles, { where: { id: listadoId } });
+        }
     }
 
     if (trasladoId) {

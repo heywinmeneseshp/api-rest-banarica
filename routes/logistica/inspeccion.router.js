@@ -27,6 +27,19 @@ router.post('/paginar', async (req, res, next) => {
   }
 });
 
+// Estadisticas de inspeccionados vs exportados (por anio, destino, naviera, cliente o combinaciones)
+// Ejemplo: /api/v1/inspeccion/estadisticas?groupBy=anio,destino&anio=2026
+router.get('/estadisticas', async (req, res, next) => {
+  try {
+    const { groupBy, anio } = req.query;
+    const dimensiones = groupBy ? String(groupBy).split(',').map((item) => item.trim()).filter(Boolean) : ['anio'];
+    const data = await service.estadisticas({ groupBy: dimensiones, anio });
+    res.json({ data });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Obtener una inspección por ID
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
