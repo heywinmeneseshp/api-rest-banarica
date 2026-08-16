@@ -5,6 +5,7 @@ const MovimientoService = require('../movimientos.service');
 const SeguridadService = require('../seguridad/seguridad.service');
 const StockService = require('../stock.service');
 const HistorialMovimientoService = require('../historialMovimientos.service');
+const { registrarHistorialListado } = require('./listadoHistorial.helper');
 const historialMovimientoService = new HistorialMovimientoService();
 const movimientoService = new MovimientoService();
 const seguridadService = new SeguridadService();
@@ -123,6 +124,13 @@ class TransbordoService {
       }, { transaction });
 
       // ACTUALIZAR LISTADO
+      const listadosAntes = await db.Listado.findAll({
+        where: { id: lineasNormalizadas.map((item) => item.id) },
+        include: [db.Contenedor],
+        transaction,
+      });
+      const listadosAntesMap = new Map(listadosAntes.map((item) => [item.id, item.toJSON()]));
+
       await Promise.all(
         lineasNormalizadas.map(element =>
           db.Listado.update(
@@ -266,6 +274,22 @@ class TransbordoService {
 
       // COMMIT TRANSACTION
       await transaction.commit();
+
+      // Se registra fuera de la transaccion: si el historial falla no debe
+      // revertir el transbordo (registrarHistorialListado ya atrapa sus
+      // propios errores).
+      await Promise.all(lineasNormalizadas.map((element) => {
+        const datosAnteriores = listadosAntesMap.get(element.id) || null;
+        return registrarHistorialListado({
+          listado_id: element.id,
+          accion: 'editado',
+          usuario: usuario?.username || null,
+          datosAnteriores,
+          datosNuevos: { ...(datosAnteriores || {}), id_contenedor: id_contenedor_nuevo, transbordado: true },
+          contenedorCodigo: contenedorNuevo.contenedor,
+        });
+      }));
+
       return transbordo;
 
     } catch (error) {

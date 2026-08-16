@@ -1,6 +1,8 @@
 const boom = require('@hapi/boom');
 const { Op, where } = require('sequelize');
 const db = require('../../models');
+const { toColombiaIso } = require('../../utils/dates');
+const { registrarHistorialListado } = require('./listadoHistorial.helper');
 
 const SeguridadService = require('../seguridad/seguridad.service');
 const MovimientoService = require('../movimientos.service');
@@ -142,6 +144,19 @@ class ListadoService {
 
       // Confirmar la transacción
       await transaction.commit();
+
+      // Se registra fuera de la transaccion: si el historial falla no debe
+      // revertir la creacion del listado (registrarHistorialListado ya atrapa
+      // sus propios errores).
+      await this.registrarHistorialListado({
+        listado_id: itemListado.id,
+        accion: 'creado',
+        usuario: data?.usuario?.username || null,
+        datosAnteriores: null,
+        datosNuevos: itemListado.toJSON(),
+        contenedorCodigo: data.contenedor || null,
+      });
+
       return itemListado;
 
     } catch (error) {
@@ -151,9 +166,17 @@ class ListadoService {
     }
   }
 
+  // Delega al helper compartido (services/logistica/listadoHistorial.helper.js)
+  // para que otros servicios que tambien escriben Listado directamente
+  // (seguridad.service.js, rechazo.service.js, transbordo.service.js) usen la
+  // misma logica sin duplicarla.
+  async registrarHistorialListado(datos) {
+    return registrarHistorialListado(datos);
+  }
+
 
   //Cargue Masivo
-  async bulkCreate(dataArray) {
+  async bulkCreate(dataArray, usuario = null) {
     const transaction = await db.sequelize.transaction();
     try {
       if (!Array.isArray(dataArray) || dataArray.length === 0) {
@@ -251,6 +274,19 @@ class ListadoService {
       const results = await db.Listado.bulkCreate(datosConHabilitado, { validate: true, transaction });
       await transaction.commit();
 
+      // Se registra fuera de la transaccion: si el historial falla no debe
+      // revertir la carga masiva (registrarHistorialListado ya atrapa sus propios errores).
+      // dataArray y results conservan el mismo orden/longitud (datosConHabilitado
+      // se construyo con un map 1:1 sobre dataArray).
+      await Promise.all(results.map((item, index) => this.registrarHistorialListado({
+        listado_id: item.id,
+        accion: 'creado',
+        usuario,
+        datosAnteriores: null,
+        datosNuevos: item.toJSON(),
+        contenedorCodigo: dataArray[index]?.contenedor || null,
+      })));
+
       return { message: "Carga masiva exitosa", count: results.length };
     } catch (error) {
       await transaction.rollback();
@@ -308,11 +344,14 @@ class ListadoService {
     return listado;
   }
 
-  async update(id, changes) {
-    const listado = await db.Listado.findByPk(id);
+  async update(id, changes, usuario = null) {
+    const listado = await db.Listado.findByPk(id, { include: [db.Contenedor] });
     if (!listado) {
       throw boom.notFound('El listado no existe');
     }
+
+    const datosAnteriores = listado.toJSON();
+    const contenedorCodigo = datosAnteriores?.Contenedor?.contenedor || null;
 
     const { id_transportadora, ...listadoChanges } = changes || {};
 
@@ -345,12 +384,36 @@ class ListadoService {
       }
     }
 
+    const datosNuevos = (await db.Listado.findByPk(id))?.toJSON() || { ...datosAnteriores, ...listadoChanges };
+
+    // "Eliminar linea"/"Restaurar linea" en el frontend son en realidad un update
+    // del campo habilitado: se distinguen aqui para que el historial diga lo
+    // que realmente paso, en vez de un generico "editado".
+    let accion = 'editado';
+    if (Object.prototype.hasOwnProperty.call(listadoChanges, 'habilitado')) {
+      if (datosAnteriores.habilitado !== false && datosNuevos.habilitado === false) {
+        accion = 'eliminado';
+      } else if (datosAnteriores.habilitado === false && datosNuevos.habilitado !== false) {
+        accion = 'restaurado';
+      }
+    }
+
+    await this.registrarHistorialListado({
+      listado_id: id,
+      accion,
+      usuario,
+      datosAnteriores,
+      datosNuevos,
+      contenedorCodigo,
+    });
+
     return { message: 'El listado fue actualizado', id, changes };
   }
 
   //Actualizacion masiva
-async bulkUpdate(payload) {
+async bulkUpdate(payload, usuario = null) {
   const transaction = await db.sequelize.transaction();
+  const historialPendiente = [];
 
   try {
     const updatesArray = Array.isArray(payload)
@@ -488,11 +551,24 @@ async bulkUpdate(payload) {
         duplicated = true;
       }
 
+      const datosAnteriores = duplicated ? null : listado.toJSON();
+
       await db.Listado.update(changes, {
         where: {
           id: listado.id
         },
         transaction
+      });
+
+      const datosNuevos = (await db.Listado.findByPk(listado.id, { transaction }))?.toJSON()
+        || { ...(datosAnteriores || {}), ...changes };
+
+      historialPendiente.push({
+        listado_id: listado.id,
+        accion: duplicated ? 'creado' : 'editado',
+        datosAnteriores,
+        datosNuevos,
+        contenedorCodigo: contenedor,
       });
 
       usedIds.add(listado.id);
@@ -538,6 +614,12 @@ async bulkUpdate(payload) {
     }
 
     await transaction.commit();
+
+    // Se registra fuera de la transaccion: si el historial falla no debe
+    // revertir la actualizacion masiva (registrarHistorialListado ya atrapa
+    // sus propios errores).
+    await Promise.all(historialPendiente.map((entry) => this.registrarHistorialListado({ ...entry, usuario })));
+
     return {
       message: missingRows.length > 0
         ? 'Actualizacion masiva completada parcialmente'
@@ -555,11 +637,23 @@ async bulkUpdate(payload) {
     throw error;
   }
 }
-  async delete(id) {
-    const listado = await db.Listado.findByPk(id);
+  async delete(id, usuario = null) {
+    const listado = await db.Listado.findByPk(id, { include: [db.Contenedor] });
     if (!listado) {
       throw boom.notFound('El listado no existe');
     }
+
+    const datosAnteriores = listado.toJSON();
+
+    await this.registrarHistorialListado({
+      listado_id: id,
+      accion: 'eliminado',
+      usuario,
+      datosAnteriores,
+      datosNuevos: null,
+      contenedorCodigo: datosAnteriores?.Contenedor?.contenedor || null,
+    });
+
     await db.Listado.destroy({ where: { id } });
     return { message: 'El listado fue eliminado', id };
   }
@@ -796,6 +890,60 @@ npom
     ]);
 
     return { data: rows, total: countRows[0]?.total || 0 };
+  }
+
+  // Historial de una linea de listado puntual (creacion, ediciones, eliminacion, restauracion).
+  async historialPorId(listado_id) {
+    const rows = await db.listado_historial.findAll({
+      where: { listado_id },
+      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+    });
+    return rows.map((row) => this.formatHistorialRow(row));
+  }
+
+  // Historial general filtrable: util para consultar que habia antes de una
+  // eliminacion, ya que esa fila deja de existir en Listado (hard delete via delete()).
+  async paginarHistorial(offset, limit, body = {}) {
+    const where = {};
+    if (body?.listado_id) where.listado_id = body.listado_id;
+    if (body?.accion) where.accion = body.accion;
+    if (body?.usuario) where.usuario = { [Op.like]: `%${body.usuario}%` };
+    if (body?.contenedor) where.contenedor = { [Op.like]: `%${body.contenedor}%` };
+
+    // Filtra por el campo "fecha" que digita el usuario en el registro. No hay
+    // columna propia para esto en el historial: se lee del snapshot JSON
+    // guardado (datos_nuevos, y si no existe -p.ej. en un "eliminado"- se usa
+    // datos_anteriores).
+    const fechaCampo = db.sequelize.fn(
+      'COALESCE',
+      db.sequelize.fn('JSON_UNQUOTE', db.sequelize.fn('JSON_EXTRACT', db.sequelize.col('datos_nuevos'), '$.fecha')),
+      db.sequelize.fn('JSON_UNQUOTE', db.sequelize.fn('JSON_EXTRACT', db.sequelize.col('datos_anteriores'), '$.fecha'))
+    );
+    const fechaConditions = [];
+    if (body?.fechaInicio) fechaConditions.push(db.sequelize.where(fechaCampo, { [Op.gte]: body.fechaInicio }));
+    if (body?.fechaFin) fechaConditions.push(db.sequelize.where(fechaCampo, { [Op.lte]: body.fechaFin }));
+
+    const parsedLimit = parseInt(limit, 10) || 25;
+    const page = parseInt(offset, 10) || 1;
+    const parsedOffset = (page - 1) * parsedLimit;
+
+    const { count, rows } = await db.listado_historial.findAndCountAll({
+      where: fechaConditions.length ? { [Op.and]: [where, ...fechaConditions] } : where,
+      limit: parsedLimit,
+      offset: parsedOffset,
+      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+    });
+
+    return { data: rows.map((row) => this.formatHistorialRow(row)), total: count };
+  }
+
+  formatHistorialRow(row) {
+    const item = row.toJSON();
+    return {
+      ...item,
+      creado_en: toColombiaIso(item.createdAt),
+      actualizado_en: toColombiaIso(item.updatedAt),
+    };
   }
 }
 

@@ -1,4 +1,5 @@
 const express = require('express');
+const passport = require('passport');
 const ListadoService = require('../../services/logistica/listado.service.js');
 
 const router = express.Router();
@@ -32,6 +33,29 @@ router.post('/paginar', async (req, res, next) => {
     const body = req.body;
     const items = await service.paginate(offset, limit, body);
     res.json(items);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Historial general (filtrable), util para consultar que habia antes de una
+// eliminacion ya que la fila deja de existir en Listado (hard delete).
+// Debe ir antes de "/:id" para que Express no lo confunda con un id.
+router.post('/historial/paginar', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
+  try {
+    const { page, limit } = req.query;
+    const result = await service.paginarHistorial(page, limit, req.body);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/:id/historial', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await service.historialPorId(id);
+    res.json({ data: result });
   } catch (error) {
     next(error);
   }
@@ -74,10 +98,10 @@ router.post('/', async (req, res, next) => {
 });
 
 //Cargar Listado masivo
-router.post('/masivo', async (req, res, next) => {
+router.post('/masivo', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const body = req.body;
-    const listadoNuevo = await service.bulkCreate(body);
+    const listadoNuevo = await service.bulkCreate(body, req.user?.username);
     res.json({
       message: 'Listado creado',
       data: listadoNuevo
@@ -88,10 +112,10 @@ router.post('/masivo', async (req, res, next) => {
 });
 
 //Actualizar Listado masivo
-router.post('/actualizar-masivo', async (req, res, next) => {
+router.post('/actualizar-masivo', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const body = req.body;
-    const listadoNuevo = await service.bulkUpdate(body);
+    const listadoNuevo = await service.bulkUpdate(body, req.user?.username);
     res.json({
       message: 'Listado creado',
       data: listadoNuevo
@@ -102,11 +126,11 @@ router.post('/actualizar-masivo', async (req, res, next) => {
 });
 
 // Actualizar un listado
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const { id } = req.params;
     const body = req.body;
-    const listado = await service.update(id, body);
+    const listado = await service.update(id, body, req.user?.username);
     res.json(listado);
   } catch (error) {
     next(error);
@@ -114,10 +138,10 @@ router.patch('/:id', async (req, res, next) => {
 });
 
 // Eliminar un listado
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   const { id } = req.params;
   try {
-    const result = await service.delete(id);
+    const result = await service.delete(id, req.user?.username);
     res.json(result);
   } catch (error) {
     next(error);

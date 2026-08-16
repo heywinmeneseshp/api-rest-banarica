@@ -1,4 +1,5 @@
 const express = require('express');
+const passport = require('passport');
 const RechazoService = require('../../services/logistica/rechazo.service.js');
 
 const router = express.Router();
@@ -65,10 +66,10 @@ router.patch('/:id', async (req, res, next) => {
 });
 
 // Aprobar un rechazo (transacción con SELECT FOR UPDATE)
-router.post('/:id/aprobar', async (req, res, next) => {
+router.post('/:id/aprobar', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await service.aprobar(id, req.body);
+    const result = await service.aprobar(id, req.body, req.user?.username);
     res.json(result);
   } catch (error) {
     next(error);

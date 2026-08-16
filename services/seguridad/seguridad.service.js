@@ -7,6 +7,7 @@ const StockService = require('../stock.service');
 const MovimientoService = require('../movimientos.service');
 const HistorialMovimientosServiceService = require('../historialMovimientos.service');
 const EmailService = require('../email.service');
+const { registrarHistorialListado } = require('../logistica/listadoHistorial.helper');
 const stockService = new StockService();
 const historialMovimientoService = new HistorialMovimientosServiceService();
 const movimientoService = new MovimientoService();
@@ -445,6 +446,18 @@ class SeguridadService {
       }, { transaction });
 
       await transaction.commit();
+
+      // Se registra fuera de la transaccion: si el historial falla no debe
+      // revertir la inspeccion vacio (registrarHistorialListado ya atrapa
+      // sus propios errores).
+      await registrarHistorialListado({
+        listado_id: listado.id,
+        accion: 'creado',
+        usuario: user?.username || null,
+        datosAnteriores: null,
+        datosNuevos: listado.toJSON(),
+        contenedorCodigo: contenedorRecord.contenedor,
+      });
 
       return { listado, inspeccion, movimiento: movimiento.dataValues.consecutivo, contenedor: contenedorRecord.contenedor };
     } catch (error) {

@@ -262,7 +262,28 @@ class ProgramacionService {
     };
   }
 
-  async create(data) {
+  // Registra en programacion_historial quien hizo un cambio, cuando (fecha del
+  // servidor, se muestra en hora Colombia en el frontend) y el estado antes/despues.
+  async registrarHistorial({ programacion_id, accion, usuario, datosAnteriores, datosNuevos, referencia }) {
+    try {
+      const ref = referencia || datosNuevos || datosAnteriores || {};
+      await db.programacion_historial.create({
+        programacion_id,
+        accion,
+        usuario: usuario || null,
+        contenedor: ref.contenedor || null,
+        bl: ref.bl || null,
+        semana: ref.semana || null,
+        datos_anteriores: datosAnteriores || null,
+        datos_nuevos: datosNuevos || null,
+      });
+    } catch (error) {
+      // No se debe romper la operacion principal si falla el registro de historial.
+      console.error('No se pudo registrar el historial de programacion:', error?.message);
+    }
+  }
+
+  async create(data, usuario = null) {
     await this.validateBl(data?.bl);
     await this.validateTipoMovimiento(data);
     const vehiculoSinCombustible = await this.isVehiculoSinCombustible(data?.vehiculo_id);
@@ -271,7 +292,17 @@ class ProgramacionService {
       await this.validateSaldoConsistenteConUltimaLiquidacion(data?.vehiculo_id);
     }
     const body = { ...data, eliminado: false, estado_listado: data?.estado_listado || ESTADO_LISTADO_PENDIENTE }
-    return await db.programacion.create(body);
+    const creado = await db.programacion.create(body);
+
+    await this.registrarHistorial({
+      programacion_id: creado.id,
+      accion: 'creado',
+      usuario,
+      datosAnteriores: null,
+      datosNuevos: creado.toJSON(),
+    });
+
+    return creado;
   }
 
 
@@ -301,7 +332,7 @@ class ProgramacionService {
     return item;
   }
 
-  async update(id, changes) {
+  async update(id, changes, usuario = null) {
     const item = await db.programacion.findOne({ where: { id } });
     if (!item) {
       throw boom.notFound('El item no existe');
@@ -330,22 +361,34 @@ class ProgramacionService {
       }
     }
 
+    const datosAnteriores = item.toJSON();
+
     const nextChanges = { ...changes };
     if (!Object.prototype.hasOwnProperty.call(nextChanges, 'estado_listado')) {
       nextChanges.estado_listado = ESTADO_LISTADO_PENDIENTE;
     }
     await db.programacion.update(nextChanges, { where: { id } });
+
+    const actualizado = await db.programacion.findOne({ where: { id } });
+    await this.registrarHistorial({
+      programacion_id: id,
+      accion: 'editado',
+      usuario,
+      datosAnteriores,
+      datosNuevos: actualizado ? actualizado.toJSON() : { ...datosAnteriores, ...nextChanges },
+    });
+
     return { message: "El item fue actualizado", id };
   }
 
-  async bulkUpdate(rows = []) {
+  async bulkUpdate(rows = [], usuario = null) {
     const errors = [];
     let processed = 0;
     for (const row of rows) {
       try {
         const { id, ...changes } = row;
         if (!id) throw new Error('Falta el campo id');
-        await this.update(id, changes);
+        await this.update(id, changes, usuario);
         processed += 1;
       } catch (e) {
         errors.push({ id: row?.id, error: e?.message || 'Error desconocido' });
@@ -354,11 +397,20 @@ class ProgramacionService {
     return { processed, total: rows.length, errors };
   }
 
-  async delete(id) {
+  async delete(id, usuario = null) {
     const existe = await db.programacion.findOne({ where: { id } });
     if (!existe) {
       throw boom.notFound('El item no existe');
     }
+
+    await this.registrarHistorial({
+      programacion_id: id,
+      accion: 'eliminado',
+      usuario,
+      datosAnteriores: existe.toJSON(),
+      datosNuevos: null,
+    });
+
     await db.programacion.destroy({ where: { id } });
     return { message: "El item fue eliminado", id };
   }
@@ -632,6 +684,65 @@ class ProgramacionService {
     });
 
     return { data, total: count, distinctContenedores };
+  }
+
+  // Historial de una programacion puntual (creacion, ediciones, eliminacion).
+  async historialPorId(programacion_id) {
+    const rows = await db.programacion_historial.findAll({
+      where: { programacion_id },
+      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+    });
+    return rows.map((row) => this.formatHistorialRow(row));
+  }
+
+  // Historial general filtrable: util para consultar que habia antes de una
+  // eliminacion, ya que esa fila deja de existir en programacion (hard delete).
+  async paginarHistorial(offset, limit, body = {}) {
+    const where = {};
+    if (body?.programacion_id) where.programacion_id = body.programacion_id;
+    if (body?.accion) where.accion = body.accion;
+    if (body?.usuario) where.usuario = { [Op.like]: `%${body.usuario}%` };
+    if (body?.contenedor) where.contenedor = { [Op.like]: `%${body.contenedor}%` };
+    if (body?.bl) where.bl = { [Op.like]: `%${body.bl}%` };
+    if (body?.semana) where.semana = body.semana;
+
+    // Filtra por el campo "fecha" que digita el usuario en el registro (la fecha
+    // del viaje/movimiento, la que se ve en la tabla). No hay columna propia para
+    // esto en el historial: se lee del snapshot JSON guardado (datos_nuevos, y si
+    // no existe -p.ej. en un "eliminado"- se usa datos_anteriores).
+    const fechaCampo = db.sequelize.fn(
+      'COALESCE',
+      db.sequelize.fn('JSON_UNQUOTE', db.sequelize.fn('JSON_EXTRACT', db.sequelize.col('datos_nuevos'), '$.fecha')),
+      db.sequelize.fn('JSON_UNQUOTE', db.sequelize.fn('JSON_EXTRACT', db.sequelize.col('datos_anteriores'), '$.fecha'))
+    );
+    const fechaConditions = [];
+    if (body?.fechaInicio) fechaConditions.push(db.sequelize.where(fechaCampo, { [Op.gte]: body.fechaInicio }));
+    if (body?.fechaFin) fechaConditions.push(db.sequelize.where(fechaCampo, { [Op.lte]: body.fechaFin }));
+
+    const parsedLimit = parseInt(limit, 10) || 25;
+    const page = parseInt(offset, 10) || 1;
+    const parsedOffset = (page - 1) * parsedLimit;
+
+    const { count, rows } = await db.programacion_historial.findAndCountAll({
+      where: fechaConditions.length ? { [Op.and]: [where, ...fechaConditions] } : where,
+      limit: parsedLimit,
+      offset: parsedOffset,
+      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+    });
+
+    return { data: rows.map((row) => this.formatHistorialRow(row)), total: count };
+  }
+
+  formatHistorialRow(row) {
+    const item = row.toJSON();
+    return {
+      ...item,
+      // Se conserva fecha_hora por compatibilidad; creado_en/actualizado_en son
+      // los mismos datos con nombres explicitos, en hora Bogota.
+      fecha_hora: toColombiaIso(item.createdAt),
+      creado_en: toColombiaIso(item.createdAt),
+      actualizado_en: toColombiaIso(item.updatedAt),
+    };
   }
 
 }

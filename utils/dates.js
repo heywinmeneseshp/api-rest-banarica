@@ -66,4 +66,28 @@ function toColombiaTime(value) {
   return iso ? iso.slice(11, 19) : null;
 }
 
-module.exports = { toUtcDate, toColombiaIso, toColombiaDate, toColombiaTime };
+/**
+ * Convierte una fecha calendario en hora Colombia ("YYYY-MM-DD", tal como la
+ * elige el usuario en un filtro) al rango UTC que cubre ese dia completo en
+ * Bogota. Util para filtrar columnas createdAt/updatedAt (guardadas en UTC)
+ * por un dia "de Colombia" sin desfasarse 5 horas.
+ * Ejemplo: "2026-08-16" -> { start: 2026-08-16T05:00:00.000Z, end: 2026-08-17T04:59:59.999Z }
+ */
+function colombiaDayStartUtc(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00.000Z`);
+  return new Date(d.getTime() - COLOMBIA_OFFSET_MS);
+}
+
+function colombiaDayEndUtc(dateStr) {
+  const d = new Date(`${dateStr}T23:59:59.999Z`);
+  return new Date(d.getTime() - COLOMBIA_OFFSET_MS);
+}
+
+module.exports = {
+  toUtcDate,
+  toColombiaIso,
+  toColombiaDate,
+  toColombiaTime,
+  colombiaDayStartUtc,
+  colombiaDayEndUtc,
+};

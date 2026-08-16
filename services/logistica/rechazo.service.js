@@ -2,6 +2,7 @@ const boom = require('@hapi/boom');
 const { Op, where } = require('sequelize');
 const db = require('../../models');
 const { required } = require('joi');
+const { registrarHistorialListado } = require('./listadoHistorial.helper');
 
 class RechazoService {
   async create(data) {
@@ -46,7 +47,7 @@ class RechazoService {
   // cod_productor: productor que queda registrado en el rechazo (puede no tener el
   // producto en el contenedor). cod_productor_descuento: productor del contenedor al
   // que realmente se le descuentan las cajas; si no se envia, se usa cod_productor.
-  async aprobar(id, { cod_productor, cod_productor_descuento }) {
+  async aprobar(id, { cod_productor, cod_productor_descuento }, usuario = null) {
     const t = await db.sequelize.transaction();
     try {
       const rechazo = await db.Rechazo.findByPk(id, { transaction: t });
@@ -69,11 +70,14 @@ class RechazoService {
           id_producto: rechazo.id_producto,
           id_lugar_de_llenado: almacenDescuento.id,
         },
+        include: [db.Contenedor],
         lock: t.LOCK.UPDATE,
         transaction: t,
       });
 
       if (!listado) throw boom.notFound('No se encontró el listado para el productor y producto indicados');
+
+      const datosAnteriores = listado.toJSON();
 
       const nuevasCajas = listado.cajas_unidades - rechazo.cantidad;
       if (nuevasCajas < 0) throw boom.badRequest(`Las cajas resultantes serían negativas (${nuevasCajas})`);
@@ -84,6 +88,19 @@ class RechazoService {
       ]);
 
       await t.commit();
+
+      // Se registra fuera de la transaccion: si el historial falla no debe
+      // revertir la aprobacion del rechazo (registrarHistorialListado ya
+      // atrapa sus propios errores).
+      await registrarHistorialListado({
+        listado_id: listado.id,
+        accion: 'editado',
+        usuario,
+        datosAnteriores,
+        datosNuevos: { ...datosAnteriores, cajas_unidades: nuevasCajas },
+        contenedorCodigo: datosAnteriores?.Contenedor?.contenedor || null,
+      });
+
       return { message: 'Rechazo aprobado', nuevasCajas };
     } catch (e) {
       await t.rollback();

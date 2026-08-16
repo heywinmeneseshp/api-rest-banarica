@@ -45,6 +45,29 @@ router.get("/excel", async (req, res, next) => {
   }
 });
 
+// Historial general (filtrable), util para consultar que habia antes de una
+// eliminacion ya que la fila deja de existir en programacion (hard delete).
+// Debe ir antes de "/:id" para que Express no lo confunda con un id.
+router.post("/historial/paginar", passport.authenticate("jwt", { session: false }), async (req, res, next) => {
+  try {
+    const { page, limit } = req.query;
+    const result = await service.paginarHistorial(page, limit, req.body);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/:id/historial", passport.authenticate("jwt", { session: false }), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await service.historialPorId(id);
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -56,10 +79,11 @@ router.get("/:id", async (req, res, next) => {
 });
 
 router.post("/",
+  passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
       const body = req.body;
-      const itemNuevo = await service.create(body);
+      const itemNuevo = await service.create(body, req.user?.username);
       res.json({
         message: "item creado",
         data: itemNuevo
@@ -70,11 +94,12 @@ router.post("/",
   });
 
 router.patch("/:id",
+  passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
       const { id } = req.params;
       const body = req.body;
-      await service.update(id, body)
+      await service.update(id, body, req.user?.username)
       res.json({
         message: "item actualizado",
         data: body
@@ -84,23 +109,23 @@ router.patch("/:id",
     }
   });
 
-router.delete("/:id", async (req, res, next) => {
+router.delete("/:id", passport.authenticate("jwt", { session: false }), async (req, res, next) => {
   const { id } = req.params;
   try {
-    const result = await service.delete(id)
+    const result = await service.delete(id, req.user?.username)
     res.json(result)
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/actualizar-masivo", async (req, res, next) => {
+router.post("/actualizar-masivo", passport.authenticate("jwt", { session: false }), async (req, res, next) => {
   try {
     const rows = req.body;
     if (!Array.isArray(rows) || !rows.length) {
       return res.status(400).json({ message: 'Se requiere un array de programaciones' });
     }
-    const result = await service.bulkUpdate(rows);
+    const result = await service.bulkUpdate(rows, req.user?.username);
     res.json(result);
   } catch (error) {
     next(error);
