@@ -1,6 +1,7 @@
 const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../../models');
+const { registrarHistorialListado } = require('./listadoHistorial.helper');
 
 class ContenedorService {
   async create(data) {
@@ -24,9 +25,32 @@ class ContenedorService {
     return contenedor;
   }
 
-  async update(id, changes) {
+  // Si cambia el codigo del contenedor, se registra en el historial de CADA
+  // linea de Listado de ese contenedor (el historial general esta indexado
+  // por linea, no por contenedor), asi "cual tenia, cual tiene" queda visible
+  // aunque el cambio se haya hecho aqui y no en listado.service.js.
+  async update(id, changes, usuario = null) {
     const contenedor = await this.findOne(id);
+    const codigoAnterior = contenedor.contenedor;
+
     await contenedor.update(changes);
+
+    const cambioCodigo = Object.prototype.hasOwnProperty.call(changes || {}, 'contenedor')
+      && changes.contenedor
+      && changes.contenedor !== codigoAnterior;
+
+    if (cambioCodigo) {
+      const lineas = await db.Listado.findAll({ where: { id_contenedor: id } });
+      await Promise.all(lineas.map((linea) => registrarHistorialListado({
+        listado_id: linea.id,
+        accion: 'editado',
+        usuario,
+        datosAnteriores: { contenedor_codigo: codigoAnterior },
+        datosNuevos: { contenedor_codigo: changes.contenedor },
+        contenedorCodigo: changes.contenedor,
+      })));
+    }
+
     return { message: 'El contenedor fue actualizado', id, changes };
   }
 

@@ -1,4 +1,5 @@
 const express = require('express');
+const passport = require('passport');
 const ContenedorService = require('../../services/logistica/contenedor.service.js');
 
 const router = express.Router();
@@ -53,11 +54,11 @@ router.post('/', async (req, res, next) => {
 });
 
 // Actualizar un contenedor
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const { id } = req.params;
     const body = req.body;
-    const contenedor = await service.update(id, body);
+    const contenedor = await service.update(id, body, req.user?.username);
     res.json(contenedor);
   } catch (error) {
     next(error);
