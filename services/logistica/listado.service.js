@@ -730,7 +730,7 @@ async bulkUpdate(payload, usuario = null) {
 
     return { bodyFilter, includeOptions };
   }
-npom
+
   async countUniqueContainers(body = {}) {
     const { bodyFilter, includeOptions } = this.buildPaginateQuery({ ...body, includeSeriales: false });
     const countIncludes = includeOptions.filter((inc) => inc.model !== db.serial_de_articulos);

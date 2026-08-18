@@ -40,10 +40,19 @@ module.exports = (sequelize, DataTypes) => {
     cantidad: DataTypes.INTEGER,
     serial_palet: DataTypes.STRING,
     cod_productor: DataTypes.STRING,
+    // Productor del que realmente se descontaron las cajas al aprobar (puede
+    // diferir de cod_productor cuando el productor original no tenia el
+    // producto en el contenedor). Se necesita guardado para poder devolver o
+    // ajustar el inventario correcto al eliminar o editar un rechazo aprobado.
+    cod_productor_descuento: DataTypes.STRING,
     id_contenedor: DataTypes.INTEGER,
     observaciones: DataTypes.TEXT,
     id_usuario: DataTypes.INTEGER,
     habilitado: DataTypes.BOOLEAN,
+    // Borrado logico: permite "Ver eliminados"/restaurar en vez de perder el
+    // registro. habilitado se conserva tal cual estaba (aprobado o no) para
+    // que restaurar sepa si debe volver a descontar el inventario.
+    eliminado: DataTypes.BOOLEAN,
     fecha_rechazo: DataTypes.DATE
   }, {
     sequelize,

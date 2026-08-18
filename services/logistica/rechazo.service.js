@@ -3,8 +3,54 @@ const { Op, where } = require('sequelize');
 const db = require('../../models');
 const { required } = require('joi');
 const { registrarHistorialListado } = require('./listadoHistorial.helper');
+const ConfigService = require('../configuracion.service');
+
+const configService = new ConfigService();
 
 class RechazoService {
+  // Semana del rechazo, tomada del Listado de su contenedor (todas las lineas
+  // de un contenedor comparten el mismo Embarque/semana en este sistema).
+  async _obtenerSemanaRechazo(rechazo) {
+    const listado = await db.Listado.findOne({
+      where: { id_contenedor: rechazo.id_contenedor },
+      include: [{ model: db.Embarque, include: [{ model: db.semanas }] }],
+    });
+    return listado?.Embarque?.semana?.consecutivo || null;
+  }
+
+  async _obtenerUltimaSemanaConDatos() {
+    const listado = await db.Listado.findOne({
+      where: { habilitado: true },
+      order: [['id_contenedor', 'DESC'], ['fecha', 'DESC']],
+      include: [{ model: db.Embarque, include: [{ model: db.semanas } ] }],
+    });
+    return listado?.Embarque?.semana?.consecutivo || null;
+  }
+
+  // Eliminar/restaurar un rechazo solo se permite si es de la semana actual o
+  // de la ultima semana con datos registrados, para evitar tocar por error
+  // inventario de semanas ya cerradas/antiguas.
+  async _validarSemanaPermitida(rechazo) {
+    const [semanaRechazo, ultimaConDatos, configSemana] = await Promise.all([
+      this._obtenerSemanaRechazo(rechazo),
+      this._obtenerUltimaSemanaConDatos(),
+      configService.find('Semana', { syncWeeks: false }),
+    ]);
+
+    const semanaActual = configSemana?.[0]?.semana_actual !== undefined
+      ? `S${String(configSemana[0].semana_actual).padStart(2, '0')}-${configSemana[0].anho_actual}`
+      : null;
+
+    const permitidas = new Set([semanaActual, ultimaConDatos].filter(Boolean));
+
+    if (permitidas.size > 0 && semanaRechazo && !permitidas.has(semanaRechazo)) {
+      throw boom.badRequest(
+        `Este rechazo es de la semana ${semanaRechazo}, distinta a la actual o a la ultima con datos registrados. `
+        + 'Solo se pueden eliminar o restaurar rechazos de esas semanas.'
+      );
+    }
+  }
+
   async create(data) {
     try {
       const rechazo = await db.Rechazo.create(data);
@@ -26,22 +72,186 @@ class RechazoService {
     return rechazo;
   }
 
-  async update(id, changes) {
-    const rechazo = await db.Rechazo.findByPk(id);
-    if (!rechazo) {
-      throw boom.notFound('El rechazo no existe');
-    }
-    await db.Rechazo.update(changes, { where: { id } });
-    return { message: 'El rechazo fue actualizado', id, changes };
+  // Encuentra (con SELECT FOR UPDATE) el Listado del que se descontaron/se
+  // descontarian las cajas de un rechazo: el productor real es
+  // cod_productor_descuento si quedo guardado, o cod_productor si no (rechazos
+  // aprobados antes de que existiera esta columna).
+  async _resolverListadoDescuento(rechazo, transaction) {
+    const codProductorDescuento = rechazo.cod_productor_descuento || rechazo.cod_productor;
+
+    const almacenDescuento = await db.almacenes.findOne({
+      where: { consecutivo: codProductorDescuento },
+      transaction,
+    });
+    if (!almacenDescuento) throw boom.notFound(`Productor "${codProductorDescuento}" no encontrado`);
+
+    const listado = await db.Listado.findOne({
+      where: {
+        id_contenedor: rechazo.id_contenedor,
+        id_producto: rechazo.id_producto,
+        id_lugar_de_llenado: almacenDescuento.id,
+      },
+      include: [db.Contenedor],
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+    if (!listado) throw boom.notFound('No se encontró el listado del productor y producto del rechazo');
+
+    return listado;
   }
 
-  async delete(id) {
+  // Si el rechazo ya esta aprobado y cambia la cantidad, hay que ajustar el
+  // inventario ya descontado por la diferencia (no solo actualizar el numero).
+  async update(id, changes, usuario = null) {
     const rechazo = await db.Rechazo.findByPk(id);
     if (!rechazo) {
       throw boom.notFound('El rechazo no existe');
     }
-    await db.Rechazo.destroy({ where: { id } });
-    return { message: 'El rechazo fue eliminado', id };
+
+    const cantidadNueva = changes?.cantidad !== undefined ? Number(changes.cantidad) : undefined;
+    const cambiaCantidad = rechazo.habilitado
+      && cantidadNueva !== undefined
+      && cantidadNueva !== rechazo.cantidad;
+
+    if (rechazo.habilitado && changes?.cod_productor && changes.cod_productor !== rechazo.cod_productor) {
+      throw boom.badRequest(
+        'No se puede cambiar el productor de un rechazo ya aprobado. Eliminalo (devuelve las cajas) y crea uno nuevo.'
+      );
+    }
+
+    if (!cambiaCantidad) {
+      await db.Rechazo.update(changes, { where: { id } });
+      return { message: 'El rechazo fue actualizado', id, changes };
+    }
+
+    const t = await db.sequelize.transaction();
+    try {
+      const listado = await this._resolverListadoDescuento(rechazo, t);
+      const datosAnteriores = listado.toJSON();
+
+      const diferencia = cantidadNueva - rechazo.cantidad;
+      const nuevasCajas = listado.cajas_unidades - diferencia;
+      if (nuevasCajas < 0) throw boom.badRequest(`Las cajas resultantes serían negativas (${nuevasCajas})`);
+
+      await Promise.all([
+        db.Rechazo.update(changes, { where: { id }, transaction: t }),
+        db.Listado.update({ cajas_unidades: nuevasCajas }, { where: { id: listado.id }, transaction: t }),
+      ]);
+
+      await t.commit();
+
+      await registrarHistorialListado({
+        listado_id: listado.id,
+        accion: 'editado',
+        usuario,
+        datosAnteriores,
+        datosNuevos: { ...datosAnteriores, cajas_unidades: nuevasCajas },
+        contenedorCodigo: datosAnteriores?.Contenedor?.contenedor || null,
+      });
+
+      return { message: 'El rechazo fue actualizado', id, changes };
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
+  }
+
+  // Borrado logico (no destruye el registro, para poder restaurarlo despues).
+  // Si el rechazo ya estaba aprobado, devuelve al inventario las cajas que se
+  // habian descontado. Solo se permite en la semana actual o la ultima con datos.
+  async delete(id, usuario = null) {
+    const rechazo = await db.Rechazo.findByPk(id);
+    if (!rechazo) {
+      throw boom.notFound('El rechazo no existe');
+    }
+    if (rechazo.eliminado) {
+      throw boom.badRequest('El rechazo ya esta eliminado');
+    }
+
+    await this._validarSemanaPermitida(rechazo);
+
+    if (!rechazo.habilitado) {
+      await db.Rechazo.update({ eliminado: true }, { where: { id } });
+      return { message: 'El rechazo fue eliminado', id };
+    }
+
+    const t = await db.sequelize.transaction();
+    try {
+      const listado = await this._resolverListadoDescuento(rechazo, t);
+      const datosAnteriores = listado.toJSON();
+
+      const nuevasCajas = listado.cajas_unidades + rechazo.cantidad;
+
+      await Promise.all([
+        db.Listado.update({ cajas_unidades: nuevasCajas }, { where: { id: listado.id }, transaction: t }),
+        db.Rechazo.update({ eliminado: true }, { where: { id }, transaction: t }),
+      ]);
+
+      await t.commit();
+
+      await registrarHistorialListado({
+        listado_id: listado.id,
+        accion: 'editado',
+        usuario,
+        datosAnteriores,
+        datosNuevos: { ...datosAnteriores, cajas_unidades: nuevasCajas },
+        contenedorCodigo: datosAnteriores?.Contenedor?.contenedor || null,
+      });
+
+      return { message: 'El rechazo fue eliminado y las cajas devueltas al inventario', id, cajasDevueltas: rechazo.cantidad };
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
+  }
+
+  // Restaura un rechazo eliminado. Si estaba aprobado al momento de eliminarlo,
+  // vuelve a descontar el inventario (reversa lo que delete() devolvio).
+  async restaurar(id, usuario = null) {
+    const rechazo = await db.Rechazo.findByPk(id);
+    if (!rechazo) {
+      throw boom.notFound('El rechazo no existe');
+    }
+    if (!rechazo.eliminado) {
+      throw boom.badRequest('El rechazo no esta eliminado');
+    }
+
+    await this._validarSemanaPermitida(rechazo);
+
+    if (!rechazo.habilitado) {
+      await db.Rechazo.update({ eliminado: false }, { where: { id } });
+      return { message: 'El rechazo fue restaurado', id };
+    }
+
+    const t = await db.sequelize.transaction();
+    try {
+      const listado = await this._resolverListadoDescuento(rechazo, t);
+      const datosAnteriores = listado.toJSON();
+
+      const nuevasCajas = listado.cajas_unidades - rechazo.cantidad;
+      if (nuevasCajas < 0) throw boom.badRequest(`Las cajas resultantes serían negativas (${nuevasCajas})`);
+
+      await Promise.all([
+        db.Listado.update({ cajas_unidades: nuevasCajas }, { where: { id: listado.id }, transaction: t }),
+        db.Rechazo.update({ eliminado: false }, { where: { id }, transaction: t }),
+      ]);
+
+      await t.commit();
+
+      await registrarHistorialListado({
+        listado_id: listado.id,
+        accion: 'editado',
+        usuario,
+        datosAnteriores,
+        datosNuevos: { ...datosAnteriores, cajas_unidades: nuevasCajas },
+        contenedorCodigo: datosAnteriores?.Contenedor?.contenedor || null,
+      });
+
+      return { message: 'El rechazo fue restaurado y las cajas descontadas de nuevo', id };
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
   }
 
   // cod_productor: productor que queda registrado en el rechazo (puede no tener el
@@ -56,26 +266,11 @@ class RechazoService {
 
       const codProductorDescuento = cod_productor_descuento || cod_productor;
 
-      // Resolver id del almacen del que se descuentan las cajas
-      const almacenDescuento = await db.almacenes.findOne({
-        where: { consecutivo: codProductorDescuento },
-        transaction: t,
-      });
-      if (!almacenDescuento) throw boom.notFound(`Productor "${codProductorDescuento}" no encontrado`);
-
       // SELECT FOR UPDATE: leer cajas actuales evitando race conditions
-      const listado = await db.Listado.findOne({
-        where: {
-          id_contenedor: rechazo.id_contenedor,
-          id_producto: rechazo.id_producto,
-          id_lugar_de_llenado: almacenDescuento.id,
-        },
-        include: [db.Contenedor],
-        lock: t.LOCK.UPDATE,
-        transaction: t,
-      });
-
-      if (!listado) throw boom.notFound('No se encontró el listado para el productor y producto indicados');
+      const listado = await this._resolverListadoDescuento(
+        { ...rechazo.toJSON(), cod_productor_descuento: codProductorDescuento },
+        t
+      );
 
       const datosAnteriores = listado.toJSON();
 
@@ -83,7 +278,10 @@ class RechazoService {
       if (nuevasCajas < 0) throw boom.badRequest(`Las cajas resultantes serían negativas (${nuevasCajas})`);
 
       await Promise.all([
-        db.Rechazo.update({ habilitado: true, cod_productor }, { where: { id }, transaction: t }),
+        db.Rechazo.update(
+          { habilitado: true, cod_productor, cod_productor_descuento: codProductorDescuento },
+          { where: { id }, transaction: t }
+        ),
         db.Listado.update({ cajas_unidades: nuevasCajas }, { where: { id: listado.id }, transaction: t }),
       ]);
 
@@ -119,7 +317,9 @@ async paginate(offset, limit, body) {
 
     const { semana, productor, contenedor, producto } = body;
 
-    const whereConditions = {}; 
+    // "eliminado" es explicito (false por defecto) para no mezclar rechazos
+    // borrados en el listado normal; la vista "Ver eliminados" manda true.
+    const whereConditions = { eliminado: body?.eliminado === true };
 
     const includes = [
       {
@@ -190,8 +390,8 @@ async paginate(offset, limit, body) {
     const pLimit = Number(limit) || 500;
     const pOffset = Number(offset) ? (Number(offset) - 1) * pLimit : 0;
 
-    const where = ['1=1'];
-    const params = [];
+    const where = ['r.eliminado = ?'];
+    const params = [body.eliminado ? 1 : 0];
 
     if (body.fecha_inicial) {
       where.push('r.fecha_rechazo >= ?');

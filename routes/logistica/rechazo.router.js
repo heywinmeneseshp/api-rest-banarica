@@ -5,6 +5,13 @@ const RechazoService = require('../../services/logistica/rechazo.service.js');
 const router = express.Router();
 const service = new RechazoService();
 
+const requireSuperAdmin = (req, res, next) => {
+  if (req.user?.id_rol !== 'Super administrador') {
+    return res.status(403).json({ message: 'Solo un Super administrador puede eliminar o restaurar rechazos.' });
+  }
+  next();
+};
+
 // Obtener todos los rechazos
 router.get('/', async (req, res, next) => {
   try {
@@ -54,11 +61,11 @@ router.post('/', async (req, res, next) => {
 });
 
 // Actualizar un rechazo
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const { id } = req.params;
     const body = req.body;
-    const rechazo = await service.update(id, body);
+    const rechazo = await service.update(id, body, req.user?.username);
     res.json(rechazo);
   } catch (error) {
     next(error);
@@ -76,11 +83,24 @@ router.post('/:id/aprobar', passport.authenticate('jwt', { session: false }), as
   }
 });
 
-// Eliminar un rechazo
-router.delete('/:id', async (req, res, next) => {
+// Eliminar un rechazo (solo Super administrador; si ya estaba aprobado, devuelve
+// las cajas descontadas al inventario)
+router.delete('/:id', passport.authenticate('jwt', { session: false }), requireSuperAdmin, async (req, res, next) => {
   const { id } = req.params;
   try {
-    const result = await service.delete(id);
+    const result = await service.delete(id, req.user?.username);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Restaurar un rechazo eliminado (solo Super administrador; si estaba aprobado
+// al eliminarse, vuelve a descontar el inventario)
+router.post('/:id/restaurar', passport.authenticate('jwt', { session: false }), requireSuperAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await service.restaurar(id, req.user?.username);
     res.json(result);
   } catch (error) {
     next(error);
