@@ -71,4 +71,4 @@ function checkAllowedRoles(allowedRoles = []) {
   };
 }
 
-module.exports = { checkApiKey, checkSuperAdminRole, checkAllowedRoles, normalizeRole, ROLES };
+module.exports = { checkApiKey, checkApiKeyOrJwt, checkSuperAdminRole, checkAllowedRoles, normalizeRole, ROLES };
