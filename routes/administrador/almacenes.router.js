@@ -3,11 +3,16 @@ const express = require("express");
 const AlmacenesService = require("./../../services/almacenes.service");
 const validatorHandler = require('./../../middlewares/validator.handler');
 const { crearAlmacen, actualizarAlmacen } = require('./../../schema/almacen.schema');
+const { checkApiKeyOrJwt } = require('./../../middlewares/auth.handler');
 
 const router = express.Router();
 const service = new AlmacenesService();
 
-router.get("/", async (req, res, next) => {
+// Antes público (cualquiera podía listar almacenes sin autenticarse). Ahora
+// exige login JWT (como ya hace el panel admin propio, que manda el token
+// automático tras iniciar sesión) o el header `api` para integraciones
+// servidor-a-servidor (ej. api-rest-corbana) — ver checkApiKeyOrJwt.
+router.get("/", checkApiKeyOrJwt, async (req, res, next) => {
   try {
     const result = await service.find();
     res.json(result);

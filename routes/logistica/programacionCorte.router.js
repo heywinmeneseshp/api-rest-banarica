@@ -1,11 +1,14 @@
 const express = require('express');
 const passport = require('passport');
+const { checkApiKeyOrJwt } = require('../../middlewares/auth.handler');
 const ProgramacionCorteService = require('../../services/logistica/programacionCorte.service');
 
 const router = express.Router();
 const service = new ProgramacionCorteService();
 
-router.get('/', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
+// GET / acepta el header `api` (integraciones servidor-a-servidor, ej.
+// api-rest-corbana) además del login JWT normal — ver checkApiKeyOrJwt.
+router.get('/', checkApiKeyOrJwt, async (req, res, next) => {
   try {
     const items = await service.listar();
     res.json(items);
