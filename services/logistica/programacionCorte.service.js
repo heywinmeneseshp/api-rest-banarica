@@ -3,6 +3,7 @@
 const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../../models');
+const env = require('../../config/env');
 
 const MODULO_CONFIG = 'ProgramacionCorte';
 
@@ -217,6 +218,14 @@ class ProgramacionCorteService {
 
     const creados = await db.programacionCorte.bulkCreate(filasParaCrear);
 
+    // Best-effort: avisa a Corbana que ya cargamos esta semana, para que la
+    // traiga sola (evita que alguien tenga que apretar "Sincronizar" allá a
+    // mano). Nunca debe hacer fallar el cargue de acá — por eso no se
+    // espera (`await`) y cualquier error solo se loguea.
+    this.avisarCorbana(semana.consecutivo).catch((error) => {
+      console.error('No se pudo avisar a Corbana del cargue de Programacion de Corte:', error.message);
+    });
+
     return {
       creados: creados.length,
       borrados,
@@ -224,6 +233,21 @@ class ProgramacionCorteService {
       message: `Se borraron ${borrados} registros de la semana "${semana.consecutivo}" y se cargaron ${creados.length} nuevos.`,
       errores: []
     };
+  }
+
+  async avisarCorbana(semanaConsecutivo) {
+    if (!env.corbanaApiUrl || !env.corbanaApiKey) return;
+
+    const response = await fetch(`${env.corbanaApiUrl.replace(/\/$/, '')}/api/v1/programacion-corte/webhook-sync-banarica`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', api: env.corbanaApiKey },
+      body: JSON.stringify({ semana: semanaConsecutivo }),
+      signal: AbortSignal.timeout(20000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
   }
 
   async listar() {

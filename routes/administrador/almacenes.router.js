@@ -45,6 +45,7 @@ router.get("/:consecutivo", async (req, res, next) => {
 });
 
 router.post("/",
+  checkApiKeyOrJwt,
   validatorHandler(crearAlmacen, "body"),
   async (req, res, next) => {
     try {

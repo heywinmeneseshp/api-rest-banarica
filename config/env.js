@@ -16,6 +16,12 @@ const env = {
   seedAdminUsername: process.env.SEED_ADMIN_USERNAME || 'admin',
   seedAdminEmail: process.env.SEED_ADMIN_EMAIL || 'admin@banarica.local',
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD || 'Admin123*',
+  // Webhook a api-rest-corbana: se llama al terminar de cargar un Excel de
+  // Programación de Corte, para avisarle a Corbana que traiga esa semana de
+  // nuevo — así no tienen que apretar "Sincronizar" a mano allá. En espejo
+  // de nuestro propio API_KEY, pero para el sentido inverso.
+  corbanaApiUrl: process.env.CORBANA_API_URL || '',
+  corbanaApiKey: process.env.CORBANA_API_KEY || '',
 };
 
 module.exports = env;

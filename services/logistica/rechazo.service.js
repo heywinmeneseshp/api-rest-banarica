@@ -4,6 +4,7 @@ const db = require('../../models');
 const { required } = require('joi');
 const { registrarHistorialListado } = require('./listadoHistorial.helper');
 const ConfigService = require('../configuracion.service');
+const env = require('../../config/env');
 
 const configService = new ConfigService();
 
@@ -51,9 +52,74 @@ class RechazoService {
     }
   }
 
+  // Avisa a Corbana (best-effort, nunca bloquea al usuario) que los rechazos
+  // de una semana cambiaron, mandando el listado completo de rechazos
+  // ACTIVOS (no eliminados) de esa semana — Corbana reemplaza por completo
+  // lo que tenía guardado de esa semana con lo que llega acá (ver
+  // rechazoCorteService.syncSemanaWebhook en api-rest-corbana).
+  async _avisarCorbanaRechazos(semanaConsecutivo) {
+    if (!semanaConsecutivo || !env.corbanaApiUrl || !env.corbanaApiKey) return;
+
+    const rechazos = await db.Rechazo.findAll({
+      where: { eliminado: false },
+      include: [
+        {
+          model: db.Contenedor,
+          required: true,
+          include: [
+            {
+              model: db.Listado,
+              required: true,
+              include: [
+                { model: db.Embarque, required: true, include: [{ model: db.semanas, required: true }] },
+                { model: db.almacenes, as: 'almacen' },
+              ],
+            },
+          ],
+        },
+        { model: db.combos },
+      ],
+    });
+
+    const filas = rechazos
+      .filter((r) => r.Contenedor?.Listados?.some((l) => l.Embarque?.semana?.consecutivo === semanaConsecutivo))
+      .map((r) => {
+        // Listado exacto del que salió/saldría esta fruta: mismo producto y
+        // mismo productor que el rechazo (cod_productor_descuento si ya fue
+        // aprobado, si no cod_productor — mismo criterio que
+        // _resolverListadoDescuento). Su `fecha` es cuándo se llenó el
+        // contenedor con esa fruta, es decir la fecha real de cosecha.
+        const codProductor = r.cod_productor_descuento || r.cod_productor;
+        const listado = r.Contenedor?.Listados?.find(
+          (l) => l.id_producto === r.id_producto && l.almacen?.consecutivo === codProductor,
+        );
+
+        return {
+          fechaRechazo: r.fecha_rechazo,
+          fechaLlenado: listado?.fecha || undefined,
+          fincaCodigo: r.cod_productor,
+          productoNombre: r.combo?.nombre || '',
+          cajas: r.cantidad,
+          motivo: r.observaciones || undefined,
+        };
+      });
+
+    const response = await fetch(`${env.corbanaApiUrl.replace(/\/$/, '')}/api/v1/rechazos-corte/webhook-sync-banarica`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', api: env.corbanaApiKey },
+      body: JSON.stringify({ semana: semanaConsecutivo, rechazos: filas }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  }
+
   async create(data) {
     try {
       const rechazo = await db.Rechazo.create(data);
+      const semana = await this._obtenerSemanaRechazo(rechazo);
+      this._avisarCorbanaRechazos(semana).catch((error) => {
+        console.error('No se pudo avisar a Corbana del cargue de Rechazos:', error.message);
+      });
       return rechazo;
     } catch (error) {
       throw boom.badRequest(error.message || 'Error al crear el rechazo');
@@ -121,6 +187,9 @@ class RechazoService {
 
     if (!cambiaCantidad) {
       await db.Rechazo.update(changes, { where: { id } });
+      this._avisarCorbanaRechazos(await this._obtenerSemanaRechazo(rechazo)).catch((error) => {
+        console.error('No se pudo avisar a Corbana de la edición del rechazo:', error.message);
+      });
       return { message: 'El rechazo fue actualizado', id, changes };
     }
 
@@ -149,6 +218,10 @@ class RechazoService {
         contenedorCodigo: datosAnteriores?.Contenedor?.contenedor || null,
       });
 
+      this._avisarCorbanaRechazos(await this._obtenerSemanaRechazo(rechazo)).catch((error) => {
+        console.error('No se pudo avisar a Corbana de la edición del rechazo:', error.message);
+      });
+
       return { message: 'El rechazo fue actualizado', id, changes };
     } catch (e) {
       await t.rollback();
@@ -172,6 +245,9 @@ class RechazoService {
 
     if (!rechazo.habilitado) {
       await db.Rechazo.update({ eliminado: true }, { where: { id } });
+      this._avisarCorbanaRechazos(await this._obtenerSemanaRechazo(rechazo)).catch((error) => {
+        console.error('No se pudo avisar a Corbana de la eliminación del rechazo:', error.message);
+      });
       return { message: 'El rechazo fue eliminado', id };
     }
 
@@ -198,6 +274,10 @@ class RechazoService {
         contenedorCodigo: datosAnteriores?.Contenedor?.contenedor || null,
       });
 
+      this._avisarCorbanaRechazos(await this._obtenerSemanaRechazo(rechazo)).catch((error) => {
+        console.error('No se pudo avisar a Corbana de la eliminación del rechazo:', error.message);
+      });
+
       return { message: 'El rechazo fue eliminado y las cajas devueltas al inventario', id, cajasDevueltas: rechazo.cantidad };
     } catch (e) {
       await t.rollback();
@@ -220,6 +300,9 @@ class RechazoService {
 
     if (!rechazo.habilitado) {
       await db.Rechazo.update({ eliminado: false }, { where: { id } });
+      this._avisarCorbanaRechazos(await this._obtenerSemanaRechazo(rechazo)).catch((error) => {
+        console.error('No se pudo avisar a Corbana de la restauración del rechazo:', error.message);
+      });
       return { message: 'El rechazo fue restaurado', id };
     }
 
@@ -245,6 +328,10 @@ class RechazoService {
         datosAnteriores,
         datosNuevos: { ...datosAnteriores, cajas_unidades: nuevasCajas },
         contenedorCodigo: datosAnteriores?.Contenedor?.contenedor || null,
+      });
+
+      this._avisarCorbanaRechazos(await this._obtenerSemanaRechazo(rechazo)).catch((error) => {
+        console.error('No se pudo avisar a Corbana de la restauración del rechazo:', error.message);
       });
 
       return { message: 'El rechazo fue restaurado y las cajas descontadas de nuevo', id };
@@ -297,6 +384,10 @@ class RechazoService {
         datosAnteriores,
         datosNuevos: { ...datosAnteriores, cajas_unidades: nuevasCajas },
         contenedorCodigo: datosAnteriores?.Contenedor?.contenedor || null,
+      });
+
+      this._avisarCorbanaRechazos(await this._obtenerSemanaRechazo(rechazo)).catch((error) => {
+        console.error('No se pudo avisar a Corbana de la aprobación del rechazo:', error.message);
       });
 
       return { message: 'Rechazo aprobado', nuevasCajas };

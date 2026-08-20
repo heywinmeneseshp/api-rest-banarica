@@ -13,10 +13,13 @@ const crearAlmacen = Joi.object({
       id,
       consecutivo: consecutivo,
       nombre: nombre.required(),
-      razon_social: razon_social.required(),
-      direccion: direccion.required(),
-      telefono: telefono.required(),
-      email: email.required(),
+      // Opcionales: los almacenes que llegan por integración desde Corbana
+      // (al crear una finca allá) solo traen nombre/consecutivo, no estos
+      // datos administrativos — se completan a mano después si hace falta.
+      razon_social: razon_social,
+      direccion: direccion,
+      telefono: telefono,
+      email: email,
       isBlock,
 });
 
