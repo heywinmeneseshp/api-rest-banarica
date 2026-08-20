@@ -3,11 +3,15 @@ const express = require("express");
 const combosService = require('../../services/combos.service');
 const validatorHandler = require('../../middlewares/validator.handler');
 const { crearCombo, actualizarCombo, armarCombo } = require('../../schema/combo.schema');
+const { checkApiKeyOrJwt } = require('../../middlewares/auth.handler');
 
 const router = express.Router();
 const service = new combosService();
 
-router.get("/", async (req, res, next) => {
+// Antes público. Ahora exige login JWT (panel admin propio) o el header
+// `api` para integraciones servidor-a-servidor (ej. api-rest-corbana),
+// mismo criterio que almacenes/programacion-corte — ver checkApiKeyOrJwt.
+router.get("/", checkApiKeyOrJwt, async (req, res, next) => {
   try {
     const items = await service.find();
     res.json(items);

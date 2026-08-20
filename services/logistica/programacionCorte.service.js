@@ -53,9 +53,10 @@ class ProgramacionCorteService {
       const procesoEmpaque = String(fila.proceso_empaque ?? '').trim();
       const finca = String(fila.finca ?? '').trim();
       const cajas = Number(fila.cajas);
+      const combo = String(fila.combo ?? '').trim();
 
-      if (fecha && booking && procesoEmpaque && finca && Number.isFinite(cajas)) {
-        filasValidas.push({ fecha, booking, procesoEmpaque, finca, cajas });
+      if (fecha && booking && procesoEmpaque && finca && combo && Number.isFinite(cajas)) {
+        filasValidas.push({ fecha, booking, procesoEmpaque, finca, cajas, combo });
       }
     }
 
@@ -94,6 +95,28 @@ class ProgramacionCorteService {
       almacenPorNombre.set(String(a.consecutivo || '').trim(), a);
     }
 
+    // Columna "combo" opcional (compatibilidad con Excels viejos que no la
+    // traen) — el producto/fruta que se está cortando, referenciando el
+    // catálogo de combos ya existente por código o nombre.
+    const combosTexto = [...new Set(
+      filasValidas.map((f) => String(f.combo ?? '').trim()).filter(Boolean),
+    )];
+    const combos = combosTexto.length > 0
+      ? await db.combos.findAll({
+        where: {
+          [Op.or]: [
+            { nombre: { [Op.in]: combosTexto } },
+            { consecutivo: { [Op.in]: combosTexto } },
+          ],
+        },
+      })
+      : [];
+    const comboPorNombre = new Map();
+    for (const c of combos) {
+      comboPorNombre.set(String(c.nombre || '').trim(), c);
+      comboPorNombre.set(String(c.consecutivo || '').trim(), c);
+    }
+
     const filasParaCrear = [];
     const erroresFila = new Map();
     let filaActual = 0;
@@ -106,11 +129,12 @@ class ProgramacionCorteService {
       const procesoEmpaque = String(fila.proceso_empaque ?? '').trim();
       const finca = String(fila.finca ?? '').trim();
       const cajas = Number(fila.cajas);
+      const comboTexto = String(fila.combo ?? '').trim();
 
-      if (!fecha || !booking || !procesoEmpaque || !finca || !Number.isFinite(cajas)) {
+      if (!fecha || !booking || !procesoEmpaque || !finca || !comboTexto || !Number.isFinite(cajas)) {
         errores.push({
           fila: numeroFila,
-          message: 'Campos incompletos o invalidos (Fecha, Booking, Proceso de Empaque, Finca, Cajas).'
+          message: 'Campos incompletos o invalidos (Fecha, Booking, Proceso de Empaque, Finca, Producto, Cajas).'
         });
         continue;
       }
@@ -146,6 +170,16 @@ class ProgramacionCorteService {
         continue;
       }
 
+      const combo = comboPorNombre.get(comboTexto);
+      if (!combo) {
+        errores.push({
+          fila: numeroFila,
+          combo: comboTexto,
+          message: `No se encontro un producto/combo "${comboTexto}".`
+        });
+        continue;
+      }
+
       filasParaCrear.push({
         fecha,
         booking,
@@ -153,7 +187,8 @@ class ProgramacionCorteService {
         finca,
         cajas,
         id_embarque: embarque.id,
-        id_almacen: almacen.id
+        id_almacen: almacen.id,
+        id_combo: combo.id
       });
       filaActual++;
     }
@@ -201,7 +236,8 @@ class ProgramacionCorteService {
           as: 'Embarque',
           include: [{ model: db.semanas, required: false }]
         },
-        { model: db.almacenes, required: false, as: 'almacen' }
+        { model: db.almacenes, required: false, as: 'almacen' },
+        { model: db.combos, required: false, as: 'combo' }
       ]
     });
   }
@@ -227,7 +263,10 @@ class ProgramacionCorteService {
     const ids = embarquesSemana.map((e) => e.id);
 
     const progRows = ids.length > 0
-      ? await db.programacionCorte.findAll({ where: { id_embarque: { [Op.in]: ids } } })
+      ? await db.programacionCorte.findAll({
+        where: { id_embarque: { [Op.in]: ids } },
+        include: [{ model: db.combos, required: false, as: 'combo' }]
+      })
       : [];
 
     const listRows = ids.length > 0
@@ -251,11 +290,16 @@ class ProgramacionCorteService {
         .map((p) => [String(p.proceso).trim().toLowerCase(), String(p.almacen).trim()])
     );
 
+    // La clave de comparación ahora incluye el producto (combo) — antes
+    // agrupaba solo por fecha+booking+finca y el producto quedaba como un
+    // desglose informativo aparte, lo que podía "coincidir" en cajas totales
+    // aunque los productos programados y despachados fueran distintos.
     const progMap = new Map();
     for (const r of progRows) {
       const procesoKey = String(r.proceso_empaque || '').trim().toLowerCase();
       const fincaComparacion = procesoAAlmacen.get(procesoKey) || String(r.finca).trim();
-      const key = `${r.fecha}|${String(r.booking).trim()}|${fincaComparacion}`;
+      const producto = String(r.combo?.nombre || 'Sin producto').trim();
+      const key = `${r.fecha}|${String(r.booking).trim()}|${fincaComparacion}|${producto}`;
       progMap.set(key, (progMap.get(key) || 0) + Number(r.cajas || 0));
     }
 
@@ -264,24 +308,18 @@ class ProgramacionCorteService {
       const fecha = r.fecha ? String(r.fecha).slice(0, 10) : '';
       const bl = String(r.Embarque?.bl || '').trim();
       const finca = String(r.almacen?.nombre || '').trim();
-      const key = `${fecha}|${bl}|${finca}`;
-      if (!listMap.has(key)) {
-        listMap.set(key, { cajas: 0, productos: new Map() });
-      }
-      const entry = listMap.get(key);
-      const cajas = Number(r.cajas_unidades || 0);
-      entry.cajas += cajas;
       const producto = String(r.combo?.nombre || 'Sin producto').trim();
-      entry.productos.set(producto, (entry.productos.get(producto) || 0) + cajas);
+      const key = `${fecha}|${bl}|${finca}|${producto}`;
+      const cajas = Number(r.cajas_unidades || 0);
+      listMap.set(key, (listMap.get(key) || 0) + cajas);
     }
 
     const todas = new Set([...progMap.keys(), ...listMap.keys()]);
     const filas = [];
     for (const key of todas) {
-      const [fecha, booking, finca] = key.split('|');
+      const [fecha, booking, finca, producto] = key.split('|');
       const cajasProgramacion = progMap.get(key) || 0;
-      const listEntry = listMap.get(key);
-      const cajasListado = listEntry?.cajas || 0;
+      const cajasListado = listMap.get(key) || 0;
 
       let estado;
       if (cajasProgramacion > 0 && cajasListado === 0) estado = 'solo_programacion';
@@ -292,13 +330,11 @@ class ProgramacionCorteService {
         fecha,
         booking,
         finca,
+        producto,
         cajasProgramacion,
         cajasListado,
         diferencia: cajasProgramacion - cajasListado,
-        estado,
-        productos: listEntry
-          ? [...listEntry.productos.entries()].map(([producto, cajas]) => ({ producto, cajas }))
-          : []
+        estado
       });
     }
 
@@ -306,6 +342,7 @@ class ProgramacionCorteService {
       (a, b) => String(a.fecha).localeCompare(String(b.fecha))
         || String(a.booking).localeCompare(String(b.booking))
         || String(a.finca).localeCompare(String(b.finca))
+        || String(a.producto).localeCompare(String(b.producto))
     );
 
     return {

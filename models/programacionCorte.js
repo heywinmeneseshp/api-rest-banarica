@@ -14,6 +14,11 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: 'id_almacen',
         as: 'almacen'
       });
+      programacionCorte.hasOne(models.combos, {
+        foreignKey: 'id',
+        sourceKey: 'id_combo',
+        as: 'combo'
+      });
     }
   }
 
@@ -24,7 +29,8 @@ module.exports = (sequelize, DataTypes) => {
     finca: DataTypes.STRING,
     cajas: DataTypes.INTEGER,
     id_embarque: DataTypes.INTEGER,
-    id_almacen: DataTypes.INTEGER
+    id_almacen: DataTypes.INTEGER,
+    id_combo: DataTypes.INTEGER
   }, {
     sequelize,
     modelName: 'programacionCorte',
