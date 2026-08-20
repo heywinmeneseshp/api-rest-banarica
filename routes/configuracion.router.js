@@ -1,10 +1,21 @@
 const express = require('express');
 const passport = require('passport');
+const multer = require('multer');
 
 const ConfigService = require('./../services/configuracion.service');
 const service = new ConfigService();
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 200 * 1024 * 1024 },
+});
 
+const requireSuperAdmin = (req, res, next) => {
+  if (req.user?.id_rol !== 'Super administrador') {
+    return res.status(403).json({ message: 'Solo un Super administrador puede exportar o importar la base de datos.' });
+  }
+  next();
+};
 
 const router = express.Router();
 
@@ -72,5 +83,50 @@ router.patch('/email',
     }
   });
 
+
+// Exportar toda la base de datos como un archivo JSON descargable.
+router.get('/exportar-db',
+  passport.authenticate('jwt', { session: false }),
+  requireSuperAdmin,
+  async (req, res, next) => {
+    try {
+      const data = await service.exportarBaseDatos();
+      const fecha = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      res.setHeader('Content-Disposition', `attachment; filename="backup-banarica-${fecha}.json"`);
+      res.setHeader('Content-Type', 'application/json');
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+// Restaurar la base de datos desde un archivo generado por /exportar-db.
+// DESTRUCTIVO: reemplaza el contenido de cada tabla incluida en el archivo.
+router.post('/importar-db',
+  passport.authenticate('jwt', { session: false }),
+  requireSuperAdmin,
+  upload.single('archivo'),
+  async (req, res, next) => {
+    try {
+      if (req.body?.confirmacion !== 'IMPORTAR BASE DE DATOS') {
+        return res.status(400).json({ message: 'Falta la confirmacion exacta para importar la base de datos.' });
+      }
+      if (!req.file) {
+        return res.status(400).json({ message: 'No se recibio ningun archivo.' });
+      }
+
+      let datos;
+      try {
+        datos = JSON.parse(req.file.buffer.toString('utf-8'));
+      } catch {
+        return res.status(400).json({ message: 'El archivo no es un JSON valido.' });
+      }
+
+      const result = await service.importarBaseDatos(datos);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
 
 module.exports = router;

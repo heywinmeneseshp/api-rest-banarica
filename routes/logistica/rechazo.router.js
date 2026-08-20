@@ -1,5 +1,6 @@
 const express = require('express');
 const passport = require('passport');
+const { checkApiKeyOrJwt } = require('../../middlewares/auth.handler');
 const RechazoService = require('../../services/logistica/rechazo.service.js');
 
 const router = express.Router();
@@ -107,11 +108,17 @@ router.post('/:id/restaurar', passport.authenticate('jwt', { session: false }), 
   }
 });
 
-// Reenvía a Corbana los rechazos ya existentes de una semana (backfill,
-// solo Super administrador) — sin esto, los rechazos creados antes de que
-// existiera esta sincronización nunca llegan a Corbana.
-router.post('/backfill', passport.authenticate('jwt', { session: false }), requireSuperAdmin, async (req, res, next) => {
+// Reenvía a Corbana los rechazos ya existentes de una semana (backfill) —
+// sin esto, los rechazos creados antes de que existiera esta sincronización
+// nunca llegan a Corbana. Acepta login de Super administrador (uso manual)
+// O la API key servidor-a-servidor (llamado por Corbana cada vez que
+// alguien le da "Sincronizar" a Programación de Corte de esa semana — ver
+// programacionCorteService.syncFromBanarica en api-rest-corbana).
+router.post('/backfill', checkApiKeyOrJwt, async (req, res, next) => {
   try {
+    if (req.user && req.user.id_rol !== 'Super administrador') {
+      return res.status(403).json({ message: 'Solo un Super administrador puede reenviar rechazos.' });
+    }
     const { semana } = req.body;
     if (!semana) return res.status(400).json({ message: 'Debes indicar la semana (ej. S33-2026)' });
     const result = await service.backfillSemana(semana);

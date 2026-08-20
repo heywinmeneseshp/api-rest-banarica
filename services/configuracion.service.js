@@ -268,6 +268,77 @@ class ConfigService {
       { where: { modulo: EMAIL_CONFIG_MODULE } }
     );
   }
+
+  // Todos los modelos Sequelize registrados (db.sequelize/db.Sequelize no son
+  // modelos, se excluyen).
+  _obtenerModelos() {
+    return Object.keys(db)
+      .filter((key) => key !== 'sequelize' && key !== 'Sequelize')
+      .map((key) => db[key]);
+  }
+
+  // Exporta TODA la base de datos como JSON: { NombreModelo: [filas...] }.
+  // Se usa Sequelize (no mysqldump) porque la conexion real pasa por un bridge
+  // HTTP y no hay acceso directo al puerto de MySQL desde este servidor.
+  async exportarBaseDatos() {
+    const modelos = this._obtenerModelos();
+    const resultado = {};
+
+    for (const modelo of modelos) {
+      resultado[modelo.name] = await modelo.findAll({ raw: true });
+    }
+
+    return resultado;
+  }
+
+  // Restaura la base de datos desde un export generado por exportarBaseDatos().
+  // DESTRUCTIVO: por cada modelo presente en el archivo, borra todas sus filas
+  // actuales y las reemplaza por las del archivo. Los modelos que NO esten en
+  // el archivo no se tocan. Se desactivan temporalmente las FK para poder
+  // borrar/insertar sin preocuparse por el orden entre tablas relacionadas.
+  async importarBaseDatos(datos) {
+    if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
+      throw new Error('El archivo no tiene el formato esperado (debe ser un objeto {modelo: [filas]}).');
+    }
+
+    const modelosPorNombre = this._obtenerModelos().reduce((acc, modelo) => {
+      acc[modelo.name] = modelo;
+      return acc;
+    }, {});
+
+    const entradasValidas = Object.entries(datos).filter(([nombreModelo, filas]) => {
+      return modelosPorNombre[nombreModelo] && Array.isArray(filas);
+    });
+
+    if (entradasValidas.length === 0) {
+      throw new Error('El archivo no contiene ninguna tabla reconocida para importar.');
+    }
+
+    const resumen = [];
+    const t = await db.sequelize.transaction();
+    try {
+      await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { transaction: t });
+
+      for (const [nombreModelo, filas] of entradasValidas) {
+        const modelo = modelosPorNombre[nombreModelo];
+        // DELETE en vez de TRUNCATE: mas compatible con el bridge HTTP y no
+        // requiere privilegios extra de TRUNCATE en el usuario de la BD.
+        await db.sequelize.query(`DELETE FROM \`${modelo.getTableName()}\``, { transaction: t });
+        if (filas.length > 0) {
+          await modelo.bulkCreate(filas, { transaction: t, validate: false, ignoreDuplicates: false });
+        }
+        resumen.push({ modelo: nombreModelo, filas: filas.length });
+      }
+
+      await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { transaction: t });
+      await t.commit();
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
+
+    return { message: 'Base de datos restaurada', tablas: resumen };
+  }
 }
 
 module.exports = ConfigService;
