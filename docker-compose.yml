@@ -1,0 +1,14 @@
+# Referencia para probar la imagen localmente. NO reemplaza ni toca los
+# contenedores/servicios ya existentes en el VPS de Hostinger (MySQL,
+# Traefik) — solo levanta esta API sola, apuntando a un MySQL ya accesible
+# (local, remoto, o el contenedor MySQL de Hostinger si esta red puede
+# alcanzarlo).
+services:
+  api-rest-banarica:
+    build: .
+    image: ghcr.io/heywinmeneseshp/api-rest-banarica:latest
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env

@@ -4,6 +4,7 @@ const path = require('path');
 const routerApi = require('./routes');
 const { checkApiKey } = require('./middlewares/auth.handler');
 const env = require('./config/env');
+const { sequelize } = require('./models');
 const { bootstrapInitialData } = require('./utils/bootstrap');
 const { PasswordPolicyService } = require('./services/password-policy.service');
 
@@ -49,6 +50,23 @@ app.get("/", checkApiKey, (req, res) => {
   res.send("<h3>Hola, soy el servidor de la CI Banarica SA</h3>");
 });
 
+// Liveness simple: solo confirma que el proceso Express responde, sin tocar
+// la base de datos ni exigir API key (para healthchecks de Docker/Traefik).
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Readiness: confirma que Sequelize puede llegar a MySQL con un SELECT 1.
+// Nunca expone host/credenciales ni el stack trace del error real.
+app.get('/health/db', async (req, res) => {
+  try {
+    await sequelize.query('SELECT 1');
+    res.json({ status: 'ok', database: 'ok' });
+  } catch (error) {
+    res.status(503).json({ status: 'error', database: 'unavailable' });
+  }
+});
+
 routerApi(app);
 
 app.use(logErrors);
@@ -64,7 +82,7 @@ async function startServer() {
       console.log(`Initial bootstrap completed for user ${bootstrapResult.admin}`);
     }
 
-    app.listen(port, () => {
+    app.listen(port, '0.0.0.0', () => {
       console.log("My port " + port);
     });
   } catch (error) {

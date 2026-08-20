@@ -147,3 +147,4 @@ dist
 # End of https://www.toptal.com/developers/gitignore/api/nodes
 .vercel
 .env*
+!.env.example

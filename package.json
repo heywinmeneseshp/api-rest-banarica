@@ -4,7 +4,7 @@
   "description": "api rest de la CI Bana Rica SA",
   "main": "index.js",
   "engines": {
-    "node": "24.x"
+    "node": "20.x"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -46,8 +46,5 @@
     "eslint-plugin-prettier": "^4.2.1",
     "nodemon": "^2.0.18",
     "prettier": "^2.7.1"
-  },
-  "engines": {
-    "node": "20.x"
   }
 }
