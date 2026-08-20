@@ -113,6 +113,16 @@ class RechazoService {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
   }
 
+  // Reenvía a Corbana los rechazos de una semana puntual, sin que haya
+  // cambiado nada — para poblar el espejo con rechazos que ya existían
+  // antes de que se agregara esta sincronización (que solo se dispara con
+  // create/update/delete/aprobar/restaurar, no hay cargue retroactivo
+  // automático).
+  async backfillSemana(semanaConsecutivo) {
+    await this._avisarCorbanaRechazos(semanaConsecutivo);
+    return { message: `Rechazos de ${semanaConsecutivo} reenviados a Corbana` };
+  }
+
   async create(data) {
     try {
       const rechazo = await db.Rechazo.create(data);

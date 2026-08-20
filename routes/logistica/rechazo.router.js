@@ -107,6 +107,20 @@ router.post('/:id/restaurar', passport.authenticate('jwt', { session: false }), 
   }
 });
 
+// Reenvía a Corbana los rechazos ya existentes de una semana (backfill,
+// solo Super administrador) — sin esto, los rechazos creados antes de que
+// existiera esta sincronización nunca llegan a Corbana.
+router.post('/backfill', passport.authenticate('jwt', { session: false }), requireSuperAdmin, async (req, res, next) => {
+  try {
+    const { semana } = req.body;
+    if (!semana) return res.status(400).json({ message: 'Debes indicar la semana (ej. S33-2026)' });
+    const result = await service.backfillSemana(semana);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Exporte plano para Excel
 router.post('/exportar', async (req, res, next) => {
   try {
