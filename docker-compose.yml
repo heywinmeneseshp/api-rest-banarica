@@ -1,8 +1,7 @@
 # Referencia para probar la imagen localmente. NO reemplaza ni toca los
 # contenedores/servicios ya existentes en el VPS de Hostinger (MySQL,
-# Traefik) — solo levanta esta API sola, apuntando a un MySQL ya accesible
-# (local, remoto, o el contenedor MySQL de Hostinger si esta red puede
-# alcanzarlo).
+# Traefik) — se conecta a la red Docker externa "banarica-network" donde ya
+# vive el contenedor "banarica-mysql", en vez de crear una red propia.
 services:
   api-rest-banarica:
     build: .
@@ -12,3 +11,9 @@ services:
       - "3001:3000"
     env_file:
       - .env
+    networks:
+      - banarica-network
+
+networks:
+  banarica-network:
+    external: true

@@ -58,21 +58,20 @@ Nunca metas el `.env` dentro de la imagen (`.dockerignore` ya lo excluye) — p�
 
 ## 8. Configuración de `DATABASE_HOST`
 
-**Importante**: como la API corre dentro de un contenedor Docker y MySQL también corre dentro de otro contenedor Docker en el mismo VPS, `DATABASE_HOST` **NO debe ser** `localhost` ni `127.0.0.1` — esas direcciones apuntan al contenedor de la propia API, no al de MySQL.
-
-`DATABASE_HOST` debe ser el **nombre DNS del servicio/contenedor de MySQL** dentro de la red Docker que administra Hostinger (por ejemplo, el nombre del servicio tal como aparece en el `docker-compose`/stack de Hostinger, algo como `mysql`, `db`, o el nombre específico que le haya puesto Hostinger a ese contenedor).
-
-Este repositorio **no puede determinar ese nombre exacto** — no gestiona el contenedor de MySQL. Se dejó como placeholder en `.env.example`:
+**Confirmado en el VPS de Hostinger**: el contenedor de MySQL ya existente se llama `banarica-mysql`, escucha internamente en el puerto `3306`, y vive en la red Docker externa `banarica-network`. Por eso:
 
 ```
-DATABASE_HOST=mysql
+DATABASE_HOST=banarica-mysql
+DATABASE_PORT=3306
+DATABASE_NAME=logistica
+DATABASE_USERNAME=banarica_user
 ```
 
-**Debes reemplazarlo por el nombre real del servicio MySQL de tu proyecto en el Administrador de Docker de Hostinger** antes de desplegar. Revisa ahí el nombre del contenedor/servicio de MySQL (o pregunta en soporte de Hostinger si no es evidente).
+`DATABASE_HOST` **NO es** `localhost` ni `127.0.0.1` — esas direcciones apuntarían al propio contenedor de la API, no al de MySQL. `DATABASE_USERNAME` es el usuario de aplicación (`banarica_user`); la API **no debe usar `root`**. `DATABASE_PASSWORD` se configura como secreto directamente en Hostinger (variable de entorno del contenedor), nunca en un archivo del repo.
 
 ## 9. Conectar la API al contenedor de MySQL
 
-Para que la API pueda resolver ese nombre DNS, el contenedor de la API **debe estar en la misma red Docker** que el contenedor de MySQL. Desde el Administrador de Docker de Hostinger, agrega el contenedor de esta API a la red externa donde ya vive MySQL (no crees una red nueva aislada). Este repo no crea ni modifica esa red — solo queda preparado para conectarse a ella.
+El contenedor de esta API debe unirse a la red Docker externa **`banarica-network`** (la misma donde ya vive `banarica-mysql`) para poder resolver ese nombre por DNS interno de Docker. Este repo no crea esa red — ya existe en Hostinger — solo se conecta a ella. Ver `docker-compose.yml`, que la declara como `external: true`.
 
 ## 10. Comprobar `/health`
 
