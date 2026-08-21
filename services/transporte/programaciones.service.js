@@ -285,13 +285,18 @@ class ProgramacionService {
 
   async create(data, usuario = null) {
     await this.validateBl(data?.bl);
-    await this.validateTipoMovimiento(data);
+    const tipoMovimiento = await this.validateTipoMovimiento(data);
     const vehiculoSinCombustible = await this.isVehiculoSinCombustible(data?.vehiculo_id);
     if (!vehiculoSinCombustible) {
       await this.validateFechaPosteriorALiquidacion(data?.vehiculo_id, data?.fecha);
       await this.validateSaldoConsistenteConUltimaLiquidacion(data?.vehiculo_id);
     }
-    const body = { ...data, eliminado: false, estado_listado: data?.estado_listado || ESTADO_LISTADO_PENDIENTE }
+    const body = {
+      ...data,
+      movimiento_id: tipoMovimiento.id,
+      eliminado: false,
+      estado_listado: data?.estado_listado || ESTADO_LISTADO_PENDIENTE,
+    }
     const creado = await db.programacion.create(body);
 
     await this.registrarHistorial({
@@ -345,8 +350,9 @@ class ProgramacionService {
 
     // Solo validar tipo de movimiento si se está cambiando movimiento o contenedor
     const movimientoOContenedorCambian = 'movimiento' in changes || 'contenedor' in changes;
+    let tipoMovimiento = null;
     if (movimientoOContenedorCambian) {
-      await this.validateTipoMovimiento(changes, item);
+      tipoMovimiento = await this.validateTipoMovimiento(changes, item);
     }
 
     // Solo validar fecha/combustible si cambia el vehículo o la fecha
@@ -367,6 +373,11 @@ class ProgramacionService {
     if (!Object.prototype.hasOwnProperty.call(nextChanges, 'estado_listado')) {
       nextChanges.estado_listado = ESTADO_LISTADO_PENDIENTE;
     }
+    // Solo se toca movimiento_id cuando el texto de movimiento realmente
+    // cambio (no cuando el unico cambio en este patch fue el contenedor).
+    if ('movimiento' in changes && tipoMovimiento) {
+      nextChanges.movimiento_id = tipoMovimiento.id;
+    }
     await db.programacion.update(nextChanges, { where: { id } });
 
     const actualizado = await db.programacion.findOne({ where: { id } });
@@ -378,18 +389,34 @@ class ProgramacionService {
       datosNuevos: actualizado ? actualizado.toJSON() : { ...datosAnteriores, ...nextChanges },
     });
 
-    // Si esta linea queda pendiente, sus hermanas (mismo contenedor+fecha)
-    // tambien deben quedar pendientes: la sincronizacion hacia Listado las
-    // trata como un grupo (compiten por las mismas lineas de Listado), asi
-    // que revisar solo una del grupo dejaria al resto con datos obsoletos.
-    // Se marca tanto el grupo nuevo (por si cambio contenedor/fecha) como el
-    // viejo (que ahora tiene una linea menos).
-    await this.marcarHermanosPendientes(item.contenedor, item.fecha, id);
+    // El estado_listado es por grupo (mismo contenedor+fecha), no por linea:
+    // la sincronizacion hacia Listado compite por las mismas lineas de
+    // Listado entre todas las lineas del grupo, asi que deben compartir el
+    // mismo estado. Si esta linea queda pendiente, todas las hermanas quedan
+    // pendientes; si esta linea queda actualizada (toggle manual del Super
+    // Admin), todas las hermanas quedan actualizadas tambien.
+    // Se sincroniza tanto el grupo nuevo (por si cambio contenedor/fecha)
+    // como el viejo (que ahora tiene una linea menos).
+    await this.sincronizarEstadoHermanos(item.contenedor, item.fecha, nextChanges.estado_listado, id);
     if (actualizado && (actualizado.contenedor !== item.contenedor || actualizado.fecha !== item.fecha)) {
-      await this.marcarHermanosPendientes(actualizado.contenedor, actualizado.fecha, id);
+      await this.sincronizarEstadoHermanos(actualizado.contenedor, actualizado.fecha, nextChanges.estado_listado, id);
     }
 
     return { message: "El item fue actualizado", id };
+  }
+
+  async sincronizarEstadoHermanos(contenedor, fecha, estadoListado, excludeId) {
+    if (!contenedor || !fecha || !estadoListado) return;
+    await db.programacion.update(
+      { estado_listado: estadoListado },
+      {
+        where: {
+          contenedor,
+          fecha,
+          id: { [Op.ne]: excludeId },
+        },
+      }
+    );
   }
 
   async marcarHermanosPendientes(contenedor, fecha, excludeId) {

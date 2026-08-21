@@ -4,7 +4,6 @@ const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../../models');
 const env = require('../../config/env');
-const { toColombiaDate } = require('../../utils/dates');
 
 const MODULO_CONFIG = 'ProgramacionCorte';
 
@@ -79,19 +78,21 @@ class ProgramacionCorteService {
     for (const fila of filas) {
       const fecha = normalizarFechaProgramacion(fila.fecha);
       const booking = String(fila.booking ?? '').trim();
+      const transportadora = String(fila.transportadora ?? '').trim();
       const procesoEmpaque = String(fila.proceso_empaque ?? '').trim();
       const finca = String(fila.finca ?? '').trim();
       const cajas = Number(fila.cajas);
       const combo = String(fila.combo ?? '').trim();
 
-      if (fecha && booking && procesoEmpaque && finca && combo && Number.isFinite(cajas)) {
-        filasValidas.push({ fecha, booking, procesoEmpaque, finca, cajas, combo });
+      if (fecha && booking && transportadora && procesoEmpaque && finca && combo && Number.isFinite(cajas)) {
+        filasValidas.push({ fecha, booking, transportadora, procesoEmpaque, finca, cajas, combo });
       }
     }
 
     const errores = [];
     const bookingsUnicos = [...new Set(filasValidas.map((f) => f.booking))];
     const fincasUnicas = [...new Set(filasValidas.map((f) => f.finca))];
+    const transportadorasUnicas = [...new Set(filasValidas.map((f) => f.transportadora))];
 
     const embarques = await db.Embarque.findAll({
       where: {
@@ -122,6 +123,22 @@ class ProgramacionCorteService {
     for (const a of almacenes) {
       almacenPorNombre.set(String(a.nombre || '').trim(), a);
       almacenPorNombre.set(String(a.consecutivo || '').trim(), a);
+    }
+
+    const transportadorasCatalogo = transportadorasUnicas.length > 0
+      ? await db.transportadoras.findAll({
+        where: {
+          [Op.or]: [
+            { razon_social: { [Op.in]: transportadorasUnicas } },
+            { consecutivo: { [Op.in]: transportadorasUnicas } },
+          ],
+        },
+      })
+      : [];
+    const transportadoraPorNombre = new Map();
+    for (const t of transportadorasCatalogo) {
+      transportadoraPorNombre.set(String(t.razon_social || '').trim(), t);
+      transportadoraPorNombre.set(String(t.consecutivo || '').trim(), t);
     }
 
     // Columna "combo" opcional (compatibilidad con Excels viejos que no la
@@ -155,15 +172,16 @@ class ProgramacionCorteService {
       const numeroFila = i + 2;
       const fecha = normalizarFechaProgramacion(fila.fecha);
       const booking = String(fila.booking ?? '').trim();
+      const transportadoraTexto = String(fila.transportadora ?? '').trim();
       const procesoEmpaque = String(fila.proceso_empaque ?? '').trim();
       const finca = String(fila.finca ?? '').trim();
       const cajas = Number(fila.cajas);
       const comboTexto = String(fila.combo ?? '').trim();
 
-      if (!fecha || !booking || !procesoEmpaque || !finca || !comboTexto || !Number.isFinite(cajas)) {
+      if (!fecha || !booking || !transportadoraTexto || !procesoEmpaque || !finca || !comboTexto || !Number.isFinite(cajas)) {
         errores.push({
           fila: numeroFila,
-          message: 'Campos incompletos o invalidos (Fecha, Booking, Proceso de Empaque, Finca, Producto, Cajas).'
+          message: 'Campos incompletos o invalidos (Fecha, Booking, Transportadora, Proceso de Empaque, Finca, Producto, Cajas).'
         });
         continue;
       }
@@ -209,15 +227,27 @@ class ProgramacionCorteService {
         continue;
       }
 
+      const transportadora = transportadoraPorNombre.get(transportadoraTexto);
+      if (!transportadora) {
+        errores.push({
+          fila: numeroFila,
+          transportadora: transportadoraTexto,
+          message: `No se encontro una transportadora "${transportadoraTexto}".`
+        });
+        continue;
+      }
+
       filasParaCrear.push({
         fecha,
         booking,
+        transportadora: transportadoraTexto,
         proceso_empaque: procesoEmpaque,
         finca,
         cajas,
         id_embarque: embarque.id,
         id_almacen: almacen.id,
-        id_combo: combo.id
+        id_combo: combo.id,
+        id_transportadora: transportadora.id
       });
       filaActual++;
     }
@@ -347,39 +377,83 @@ class ProgramacionCorteService {
     // desglose informativo aparte, lo que podía "coincidir" en cajas totales
     // aunque los productos programados y despachados fueran distintos.
     // programacionCorte.fecha es STRING (texto tal cual se cargo, "YYYY-MM-DD").
-    // Listado.fecha es DATE (Sequelize la devuelve como objeto Date). Antes se
-    // hacia String(r.fecha).slice(0,10) sobre ese objeto Date, lo que llama a
-    // Date.prototype.toString() ("Fri Aug 21 2026...") en vez de convertirlo a
-    // fecha calendario, y ademas quedaba en la zona horaria del servidor. Con
-    // toColombiaDate ambos lados quedan en el mismo formato "YYYY-MM-DD" y en
-    // hora Bogota, sin importar donde corra el servidor.
+    // Listado.fecha es DATE (Sequelize la devuelve como objeto Date), pero
+    // guardada como fecha calendario pura (ver comentario donde se lee mas
+    // abajo) — se extrae su fecha en UTC directamente, sin conversion de
+    // zona horaria, para que ambos lados queden en el mismo "YYYY-MM-DD".
+    // Cuando un proceso_empaque no tiene almacen mapeado en la configuracion,
+    // se compara el texto crudo de "finca" (Programacion de Corte) contra el
+    // nombre del almacen (Listado). Sin normalizar, diferencias de
+    // mayusculas/tildes/espacios ("Finca La Union" vs "finca la union ")
+    // hacian que nunca calzaran aunque fueran el mismo lugar.
+    const acentos = { a: 'áàäâ', e: 'éèëê', i: 'íìïî', o: 'óòöô', u: 'úùüû', n: 'ñ' };
+    const mapaAcentos = new Map();
+    Object.entries(acentos).forEach(([plano, variantes]) => {
+      [...variantes].forEach((c) => mapaAcentos.set(c, plano));
+    });
+    const normalizarTexto = (valor) => [...String(valor || '').trim().toLowerCase()]
+      .map((c) => mapaAcentos.get(c) || c)
+      .join('')
+      .replace(/\s+/g, ' ');
+
+    // labelsPorKey guarda el texto original (sin normalizar) para mostrarlo
+    // en la tabla, priorizando el de Programacion de Corte.
+    const labelsPorKey = new Map();
+
+    // procesosPorKey junta los proceso_empaque (puede haber mas de uno si
+    // varios procesos distintos mapean al mismo almacen) que componen cada
+    // fila de la comparativa, solo para mostrarlos en la columna.
+    const procesosPorKey = new Map();
+
     const progMap = new Map();
     for (const r of progRows) {
       const procesoKey = String(r.proceso_empaque || '').trim().toLowerCase();
       const fincaComparacion = procesoAAlmacen.get(procesoKey) || String(r.finca).trim();
       const producto = String(r.combo?.nombre || 'Sin producto').trim();
       const fecha = String(r.fecha || '').trim().slice(0, 10);
-      const key = `${fecha}|${String(r.booking).trim()}|${fincaComparacion}|${producto}`;
+      const booking = String(r.booking).trim();
+      const key = `${fecha}|${normalizarTexto(booking)}|${normalizarTexto(fincaComparacion)}|${normalizarTexto(producto)}`;
       progMap.set(key, (progMap.get(key) || 0) + Number(r.cajas || 0));
+      if (!labelsPorKey.has(key)) {
+        labelsPorKey.set(key, { fecha, booking, finca: fincaComparacion, producto });
+      }
+      const procesoTexto = String(r.proceso_empaque || '').trim();
+      if (procesoTexto) {
+        if (!procesosPorKey.has(key)) procesosPorKey.set(key, new Set());
+        procesosPorKey.get(key).add(procesoTexto);
+      }
     }
 
     const listMap = new Map();
     for (const r of listRows) {
-      const fecha = toColombiaDate(r.fecha) || '';
+      // Listado.fecha se guarda como fecha calendario pura (medianoche, sin
+      // hora real de un evento — ver listado.service.js `fecha: data.fecha`),
+      // no como un timestamp de un instante real. toColombiaDate() le resta 5
+      // horas asumiendo lo segundo, lo que corre la fecha un dia hacia atras
+      // y rompe el emparejamiento contra programacionCorte.fecha (string
+      // "YYYY-MM-DD" tal cual). Por eso se lee directo en UTC (asi fue
+      // guardada), sin conversion de zona horaria.
+      const fecha = r.fecha instanceof Date
+        ? r.fecha.toISOString().slice(0, 10)
+        : String(r.fecha || '').slice(0, 10);
       const bl = String(r.Embarque?.bl || '').trim();
       const finca = String(r.almacen?.nombre || '').trim();
       const producto = String(r.combo?.nombre || 'Sin producto').trim();
-      const key = `${fecha}|${bl}|${finca}|${producto}`;
+      const key = `${fecha}|${normalizarTexto(bl)}|${normalizarTexto(finca)}|${normalizarTexto(producto)}`;
       const cajas = Number(r.cajas_unidades || 0);
       listMap.set(key, (listMap.get(key) || 0) + cajas);
+      if (!labelsPorKey.has(key)) {
+        labelsPorKey.set(key, { fecha, booking: bl, finca, producto });
+      }
     }
 
     const todas = new Set([...progMap.keys(), ...listMap.keys()]);
     const filas = [];
     for (const key of todas) {
-      const [fecha, booking, finca, producto] = key.split('|');
+      const { fecha, booking, finca, producto } = labelsPorKey.get(key) || {};
       const cajasProgramacion = progMap.get(key) || 0;
       const cajasListado = listMap.get(key) || 0;
+      const procesoEmpaque = [...(procesosPorKey.get(key) || [])].join(', ');
 
       let estado;
       if (cajasProgramacion > 0 && cajasListado === 0) estado = 'solo_programacion';
@@ -389,6 +463,7 @@ class ProgramacionCorteService {
       filas.push({
         fecha,
         booking,
+        procesoEmpaque,
         finca,
         producto,
         cajasProgramacion,
@@ -408,7 +483,7 @@ class ProgramacionCorteService {
     return {
       semana: semana.consecutivo,
       totalProgramacion: [...progMap.values()].reduce((acc, v) => acc + v, 0),
-      totalListado: [...listMap.values()].reduce((acc, v) => acc + v.cajas, 0),
+      totalListado: [...listMap.values()].reduce((acc, v) => acc + v, 0),
       filas
     };
   }

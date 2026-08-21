@@ -41,8 +41,14 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: "vehiculo_id",
       })
 
-
-
+      // "movimiento" (texto) sigue siendo la fuente de verdad para reportes y
+      // exports existentes; "movimiento_id" es la relacion real agregada
+      // despues, para no depender de comparar texto.
+      programacion.hasOne(models.tipo_movimiento_vehiculos, {
+        foreignKey: "id",
+        sourceKey: "movimiento_id",
+        as: "tipoMovimiento",
+      })
 
     }
   }
@@ -52,6 +58,7 @@ module.exports = (sequelize, DataTypes) => {
     id_pagador_flete: DataTypes.STRING,
     activo: DataTypes.BOOLEAN,
     movimiento: DataTypes.STRING,
+    movimiento_id: DataTypes.INTEGER,
     conductor_id: DataTypes.STRING,
     vehiculo_id: DataTypes.STRING,
     contenedor: DataTypes.STRING,

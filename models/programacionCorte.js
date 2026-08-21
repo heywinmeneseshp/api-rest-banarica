@@ -19,18 +19,25 @@ module.exports = (sequelize, DataTypes) => {
         sourceKey: 'id_combo',
         as: 'combo'
       });
+      programacionCorte.hasOne(models.transportadoras, {
+        foreignKey: 'id',
+        sourceKey: 'id_transportadora',
+        as: 'transportadoraCatalogo'
+      });
     }
   }
 
   programacionCorte.init({
     fecha: DataTypes.STRING,
     booking: DataTypes.STRING,
+    transportadora: DataTypes.STRING,
     proceso_empaque: DataTypes.STRING,
     finca: DataTypes.STRING,
     cajas: DataTypes.INTEGER,
     id_embarque: DataTypes.INTEGER,
     id_almacen: DataTypes.INTEGER,
-    id_combo: DataTypes.INTEGER
+    id_combo: DataTypes.INTEGER,
+    id_transportadora: DataTypes.INTEGER
   }, {
     sequelize,
     modelName: 'programacionCorte',
