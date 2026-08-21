@@ -998,7 +998,11 @@ class SeguridadService {
     const { formulario, rechazos } = body;
 
     if (!formulario || !formulario.consecutivo || !formulario.fecha) {
-      throw new Error("Datos insuficientes para realizar la inspecciÃ³n.");
+      // boom (no Error generico): en produccion el manejador de errores
+      // oculta el mensaje de cualquier Error comun por seguridad, pero los
+      // errores boom si pasan su mensaje real al usuario — y este es un
+      // error de validacion esperado, no una falla inesperada.
+      throw boom.badRequest("Datos insuficientes para realizar la inspección.");
     }
 
     const approvedBySuperAdmin = await this.canApproveFullInspection(user);
@@ -1065,7 +1069,7 @@ class SeguridadService {
       });
 
       if (kitsInventario.length === 0) {
-        throw new Error("No se encontraron artÃ­culos asociados al kit de inventario.");
+        throw boom.badRequest(`No se encontraron articulos disponibles para el kit "${formulario.bolsa}".`);
       }
 
       const [moviUso] = await db.MotivoDeUso.findOrCreate({
@@ -1101,43 +1105,51 @@ class SeguridadService {
         }
       );
 
-      await Promise.all(
-        kitsInventario.map(async (item) => {
-          const article = item.dataValues;
+      // Se procesan en secuencia (no en paralelo con Promise.all) y
+      // compartiendo la MISMA transaccion: antes cada kit llamaba
+      // stockService.subtractAmounts sin pasarle la transaccion, asi que
+      // cada uno abria su propia transaccion aparte y todas corrian al
+      // mismo tiempo — si dos kits tocaban la misma fila de stock, MySQL
+      // hacia deadlock/lock timeout en una de ellas, que quedaba con la
+      // transaccion ya abortada, y el rollback propio de esa funcion volvia
+      // a fallar con "Transaction cannot be rolled back...", tapando el
+      // error real. Ademas, al no compartir transaccion, un fallo posterior
+      // no revertia el stock ya descontado (quedaba inconsistente).
+      for (const item of kitsInventario) {
+        const article = item.dataValues;
 
-          await db.serial_de_articulos.update(
-            {
-              available: false,
-              fecha_de_uso: formulario.fecha,
-              id_contenedor: formulario.consecutivo,
-              cons_movimiento: movimiento.consecutivo,
-              ubicacion_en_contenedor: "Exterior",
-              id_usuario: resolvedUserId,
-              id_motivo_de_uso: moviUso.id,
-            },
-            {
-              where: { id: article.id, available: true },
-              transaction,
-            }
-          );
+        await db.serial_de_articulos.update(
+          {
+            available: false,
+            fecha_de_uso: formulario.fecha,
+            id_contenedor: formulario.consecutivo,
+            cons_movimiento: movimiento.consecutivo,
+            ubicacion_en_contenedor: "Exterior",
+            id_usuario: resolvedUserId,
+            id_motivo_de_uso: moviUso.id,
+          },
+          {
+            where: { id: article.id, available: true },
+            transaction,
+          }
+        );
 
-          await stockService.subtractAmounts(article.cons_almacen, article.cons_producto, { cantidad: 1 });
+        await stockService.subtractAmounts(article.cons_almacen, article.cons_producto, { cantidad: 1 }, transaction);
 
-          await historialMovimientoService.create(
-            {
-              cons_movimiento: movimiento.consecutivo,
-              cons_producto: article.cons_producto,
-              cons_almacen_gestor: article.cons_almacen,
-              cons_almacen_receptor: article.cons_almacen,
-              cons_lista_movimientos: "EX",
-              tipo_movimiento: "Salida",
-              razon_movimiento: "Inspeccion antinarcoticos",
-              cantidad: "1",
-            },
-            transaction
-          );
-        })
-      );
+        await historialMovimientoService.create(
+          {
+            cons_movimiento: movimiento.consecutivo,
+            cons_producto: article.cons_producto,
+            cons_almacen_gestor: article.cons_almacen,
+            cons_almacen_receptor: article.cons_almacen,
+            cons_lista_movimientos: "EX",
+            tipo_movimiento: "Salida",
+            razon_movimiento: "Inspeccion antinarcoticos",
+            cantidad: "1",
+          },
+          transaction
+        );
+      }
 
       await transaction.commit();
       if (!inspectionApproved) {
