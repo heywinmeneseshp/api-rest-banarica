@@ -84,24 +84,25 @@ router.patch('/email',
   });
 
 
-// Exportar toda la base de datos como un archivo JSON descargable.
+// Exportar toda la base de datos como un archivo .sql descargable.
 router.get('/exportar-db',
   passport.authenticate('jwt', { session: false }),
   requireSuperAdmin,
   async (req, res, next) => {
     try {
-      const data = await service.exportarBaseDatos();
+      const sql = await service.exportarBaseDatosSql();
       const fecha = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-      res.setHeader('Content-Disposition', `attachment; filename="backup-banarica-${fecha}.json"`);
-      res.setHeader('Content-Type', 'application/json');
-      res.json(data);
+      res.setHeader('Content-Disposition', `attachment; filename="backup-banarica-${fecha}.sql"`);
+      res.setHeader('Content-Type', 'application/sql; charset=utf-8');
+      res.send(sql);
     } catch (err) {
       next(err);
     }
   });
 
-// Restaurar la base de datos desde un archivo generado por /exportar-db.
-// DESTRUCTIVO: reemplaza el contenido de cada tabla incluida en el archivo.
+// Restaurar la base de datos desde un archivo .sql generado por /exportar-db
+// (o cualquier dump compatible con INSERT/DELETE estandar).
+// DESTRUCTIVO: ejecuta el archivo tal cual, sentencia por sentencia.
 router.post('/importar-db',
   passport.authenticate('jwt', { session: false }),
   requireSuperAdmin,
@@ -115,14 +116,8 @@ router.post('/importar-db',
         return res.status(400).json({ message: 'No se recibio ningun archivo.' });
       }
 
-      let datos;
-      try {
-        datos = JSON.parse(req.file.buffer.toString('utf-8'));
-      } catch {
-        return res.status(400).json({ message: 'El archivo no es un JSON valido.' });
-      }
-
-      const result = await service.importarBaseDatos(datos);
+      const sqlTexto = req.file.buffer.toString('utf-8');
+      const result = await service.importarBaseDatosSql(sqlTexto);
       res.json(result);
     } catch (err) {
       next(err);

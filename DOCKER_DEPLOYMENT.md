@@ -92,7 +92,13 @@ curl http://localhost:3001/health/db
 
 Nunca expone credenciales, host completo, ni stack traces — solo un estado genérico.
 
-## 12. Hostinger + Docker + Traefik
+## 12. Migraciones automaticas
+
+El contenedor corre `npx sequelize-cli db:migrate` antes de `npm start` (ver el `CMD` del `Dockerfile`), asi que cada vez que se levanta una imagen nueva, las migraciones pendientes se aplican solas — no hace falta correrlas a mano en el VPS.
+
+Los **seeders** (`seeders/*.js`) NO se corren automaticamente: varios hacen `bulkInsert` directo sin revisar si el dato ya existe, asi que correrlos en cada despliegue fallaria o duplicaria filas (el usuario admin, productos, etc.). La siembra inicial real (usuario Super administrador, empresa, almacen, semana) ya la hace `utils/bootstrap.js` al arrancar `index.js`, de forma segura (revisa si ya hay usuarios antes de crear nada).
+
+## 13. Hostinger + Docker + Traefik
 
 - Hostinger ya tiene Traefik corriendo — **no instales Nginx ni otro Traefik**.
 - Este repo no incluye configuración de Traefik ni la modifica.

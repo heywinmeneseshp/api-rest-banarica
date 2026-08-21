@@ -1,7 +1,17 @@
 'use strict';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  up: async (queryInterface) => {
+    // Idempotente: si ya existe un usuario con este username, no hace nada
+    // (antes hacia bulkInsert sin revisar, asi que correr este seeder una
+    // segunda vez fallaba por username duplicado).
+    const existente = await queryInterface.rawSelect(
+      'usuarios',
+      { where: { username: 'admin' } },
+      'username'
+    );
+    if (existente) return;
+
     return queryInterface.bulkInsert('usuarios', [{
       username: "admin",
       nombre: "Administrador",
@@ -16,7 +26,8 @@ module.exports = {
     }]);
   },
 
-  down: async (queryInterface, Sequelize) => {
-    return queryInterface.bulkDelete('Users', null, {});
+  down: async (queryInterface) => {
+    // Antes decia 'Users' (tabla que no existe en este proyecto, es 'usuarios').
+    return queryInterface.bulkDelete('usuarios', { username: 'admin' }, {});
   }
 };

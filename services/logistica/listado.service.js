@@ -472,7 +472,11 @@ async bulkUpdate(payload, usuario = null) {
         where: {
           fecha: {
             [Op.between]: [fechaInicio, fechaFin]
-          }
+          },
+          // Una linea deshabilitada esta borrada logicamente: no debe
+          // reutilizarse ni "resucitarse" por una sincronizacion, aunque
+          // coincida en contenedor y fecha.
+          habilitado: { [Op.ne]: false }
         },
         include: [
           {
@@ -497,13 +501,14 @@ async bulkUpdate(payload, usuario = null) {
         continue;
       }
 
-      const candidatePool = embarqueId
-        ? (listadosCandidatos.filter((item) => Number(item?.id_embarque) === Number(embarqueId)).length
-          ? listadosCandidatos.filter((item) => Number(item?.id_embarque) === Number(embarqueId))
-          : listadosCandidatos)
-        : listadosCandidatos;
+      // id_embarque es uno de los campos que esta sincronizacion puede estar
+      // corrigiendo (changes.id_embarque, arriba), asi que no se puede usar
+      // para filtrar/agrupar candidatos: la linea correcta puede tener
+      // todavia el embarque viejo. El emparejamiento y el control de "ya
+      // usada" son solo por contenedor+fecha.
+      const candidatePool = listadosCandidatos;
 
-      const usageKey = `${fecha}__${contenedor}__${embarqueId || reference || 'sin-embarque'}`;
+      const usageKey = `${fecha}__${contenedor}`;
       if (!usedListadoIds.has(usageKey)) {
         usedListadoIds.set(usageKey, new Set());
       }

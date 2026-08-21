@@ -378,7 +378,33 @@ class ProgramacionService {
       datosNuevos: actualizado ? actualizado.toJSON() : { ...datosAnteriores, ...nextChanges },
     });
 
+    // Si esta linea queda pendiente, sus hermanas (mismo contenedor+fecha)
+    // tambien deben quedar pendientes: la sincronizacion hacia Listado las
+    // trata como un grupo (compiten por las mismas lineas de Listado), asi
+    // que revisar solo una del grupo dejaria al resto con datos obsoletos.
+    // Se marca tanto el grupo nuevo (por si cambio contenedor/fecha) como el
+    // viejo (que ahora tiene una linea menos).
+    await this.marcarHermanosPendientes(item.contenedor, item.fecha, id);
+    if (actualizado && (actualizado.contenedor !== item.contenedor || actualizado.fecha !== item.fecha)) {
+      await this.marcarHermanosPendientes(actualizado.contenedor, actualizado.fecha, id);
+    }
+
     return { message: "El item fue actualizado", id };
+  }
+
+  async marcarHermanosPendientes(contenedor, fecha, excludeId) {
+    if (!contenedor || !fecha) return;
+    await db.programacion.update(
+      { estado_listado: ESTADO_LISTADO_PENDIENTE },
+      {
+        where: {
+          contenedor,
+          fecha,
+          id: { [Op.ne]: excludeId },
+          estado_listado: { [Op.ne]: ESTADO_LISTADO_PENDIENTE },
+        },
+      }
+    );
   }
 
   async bulkUpdate(rows = [], usuario = null) {
@@ -412,6 +438,13 @@ class ProgramacionService {
     });
 
     await db.programacion.destroy({ where: { id } });
+
+    // Si quedan otras lineas del mismo contenedor+fecha ya sincronizadas, las
+    // regresa a pendiente: al eliminar esta linea puede sobrar una linea en
+    // Listado (o cambiar cuantas hacen falta), y "Actualizar pendientes" solo
+    // revisa contenedores/fechas con lineas en estado pendiente.
+    await this.marcarHermanosPendientes(existe.contenedor, existe.fecha, id);
+
     return { message: "El item fue eliminado", id };
   }
 

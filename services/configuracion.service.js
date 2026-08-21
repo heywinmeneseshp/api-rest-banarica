@@ -277,67 +277,166 @@ class ConfigService {
       .map((key) => db[key]);
   }
 
-  // Exporta TODA la base de datos como JSON: { NombreModelo: [filas...] }.
-  // Se usa Sequelize (no mysqldump) porque la conexion real pasa por un bridge
-  // HTTP y no hay acceso directo al puerto de MySQL desde este servidor.
-  async exportarBaseDatos() {
-    const modelos = this._obtenerModelos();
-    const resultado = {};
-
-    for (const modelo of modelos) {
-      resultado[modelo.name] = await modelo.findAll({ raw: true });
-    }
-
-    return resultado;
+  // Nombre real de columna en la BD para un atributo de Sequelize (puede
+  // diferir del nombre del atributo si el modelo usa `field: '...'`).
+  _nombreColumna(modelo, atributo) {
+    return modelo.rawAttributes?.[atributo]?.field || atributo;
   }
 
-  // Restaura la base de datos desde un export generado por exportarBaseDatos().
-  // DESTRUCTIVO: por cada modelo presente en el archivo, borra todas sus filas
-  // actuales y las reemplaza por las del archivo. Los modelos que NO esten en
-  // el archivo no se tocan. Se desactivan temporalmente las FK para poder
-  // borrar/insertar sin preocuparse por el orden entre tablas relacionadas.
-  async importarBaseDatos(datos) {
-    if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
-      throw new Error('El archivo no tiene el formato esperado (debe ser un objeto {modelo: [filas]}).');
+  // Escapa un valor JS para insertarlo literal en SQL. Misma convencion que
+  // ya usa mysql-http-bridge.js para las fechas (UTC, 'YYYY-MM-DD HH:MM:SS'),
+  // asi el .sql exportado es coherente con como esta app ya guarda/lee fechas.
+  // permiteNull indica si la columna destino admite NULL: si no lo admite y
+  // el valor es invalido/nulo (datos corruptos preexistentes, p.ej. un
+  // "0000-00-00" de MySQL que Sequelize lee como Date NaN), se usa una fecha
+  // de reemplazo en vez de NULL para no romper el INSERT/REPLACE por una fila
+  // que ya venia mal antes de este export.
+  _escaparValorSql(valor, permiteNull = true) {
+    const nulo = () => (permiteNull ? 'NULL' : `'1970-01-01 00:00:00'`);
+
+    if (valor === null || valor === undefined) return nulo();
+    if (typeof valor === 'number') return Number.isFinite(valor) ? String(valor) : nulo();
+    if (typeof valor === 'boolean') return valor ? '1' : '0';
+    if (valor instanceof Date) {
+      if (Number.isNaN(valor.getTime())) return nulo();
+      return `'${valor.toISOString().slice(0, 19).replace('T', ' ')}'`;
     }
-
-    const modelosPorNombre = this._obtenerModelos().reduce((acc, modelo) => {
-      acc[modelo.name] = modelo;
-      return acc;
-    }, {});
-
-    const entradasValidas = Object.entries(datos).filter(([nombreModelo, filas]) => {
-      return modelosPorNombre[nombreModelo] && Array.isArray(filas);
-    });
-
-    if (entradasValidas.length === 0) {
-      throw new Error('El archivo no contiene ninguna tabla reconocida para importar.');
+    if (Buffer.isBuffer(valor)) {
+      return `0x${valor.toString('hex')}`;
     }
+    if (typeof valor === 'object') {
+      valor = JSON.stringify(valor);
+    }
+    return `'${String(valor).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+  }
 
-    const resumen = [];
-    const t = await db.sequelize.transaction();
-    try {
-      await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { transaction: t });
+  // Exporta TODA la base de datos como un archivo .sql estandar (DELETE +
+  // INSERT por tabla), ejecutable con cualquier cliente MySQL. Se genera con
+  // Sequelize (no mysqldump) porque la conexion real pasa por un bridge HTTP
+  // y no hay acceso directo al puerto de MySQL desde este servidor.
+  async exportarBaseDatosSql() {
+    const modelos = this._obtenerModelos();
+    const LOTE = 500;
+    const partes = [
+      `-- Backup de Bana Rica generado el ${new Date().toISOString()}`,
+      'SET FOREIGN_KEY_CHECKS=0;',
+      '',
+    ];
 
-      for (const [nombreModelo, filas] of entradasValidas) {
-        const modelo = modelosPorNombre[nombreModelo];
-        // DELETE en vez de TRUNCATE: mas compatible con el bridge HTTP y no
-        // requiere privilegios extra de TRUNCATE en el usuario de la BD.
-        await db.sequelize.query(`DELETE FROM \`${modelo.getTableName()}\``, { transaction: t });
+    for (const modelo of modelos) {
+      const tabla = modelo.getTableName();
+      try {
+        const filas = await modelo.findAll({ raw: true });
+
+        partes.push(`-- Tabla: ${tabla} (${filas.length} filas)`);
+        partes.push(`DELETE FROM \`${tabla}\`;`);
+
         if (filas.length > 0) {
-          await modelo.bulkCreate(filas, { transaction: t, validate: false, ignoreDuplicates: false });
+          const atributos = Object.keys(modelo.rawAttributes);
+          const columnas = atributos.map((a) => `\`${this._nombreColumna(modelo, a)}\``).join(',');
+          const permiteNullPorAtributo = atributos.map((a) => modelo.rawAttributes[a]?.allowNull !== false);
+
+          for (let i = 0; i < filas.length; i += LOTE) {
+            const lote = filas.slice(i, i + LOTE);
+            const valores = lote
+              .map((fila) => `(${atributos.map((a, idx) => this._escaparValorSql(fila[a], permiteNullPorAtributo[idx])).join(',')})`)
+              .join(',\n');
+            // REPLACE en vez de INSERT: si por cualquier motivo una fila con la
+            // misma clave ya existe (el DELETE de arriba no alcanzo a limpiarla,
+            // datos creados entre el export y el import, etc.), la sobrescribe
+            // en vez de fallar con "Duplicate entry".
+            partes.push(`REPLACE INTO \`${tabla}\` (${columnas}) VALUES\n${valores};`);
+          }
         }
-        resumen.push({ modelo: nombreModelo, filas: filas.length });
+
+        partes.push('');
+      } catch (error) {
+        // Sin esto, un problema en UNA tabla (columna con un tipo raro, fila
+        // corrupta, etc.) tumba el export completo con un mensaje generico y
+        // no hay forma de saber cual tabla lo causo.
+        error.message = `Error exportando la tabla "${tabla}": ${error.message}`;
+        throw error;
+      }
+    }
+
+    partes.push('SET FOREIGN_KEY_CHECKS=1;');
+    return partes.join('\n');
+  }
+
+  // Divide un script SQL en sentencias individuales, respetando ';' dentro de
+  // strings ('...' o "...", con escape por barra invertida o comilla doblada)
+  // para no cortar mal una fila cuyo texto contenga un punto y coma.
+  _dividirSentenciasSql(sql) {
+    const sentencias = [];
+    let actual = '';
+    let comilla = null; // "'" o '"' cuando estamos dentro de un string
+
+    for (let i = 0; i < sql.length; i++) {
+      const c = sql[i];
+
+      if (comilla) {
+        actual += c;
+        if (c === '\\') {
+          // Caracter escapado: copiar el siguiente tal cual sin evaluarlo.
+          i++;
+          if (i < sql.length) actual += sql[i];
+        } else if (c === comilla) {
+          comilla = null;
+        }
+        continue;
       }
 
-      await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { transaction: t });
+      if (c === "'" || c === '"') {
+        comilla = c;
+        actual += c;
+        continue;
+      }
+
+      if (c === '-' && sql[i + 1] === '-') {
+        // Comentario de linea: saltar hasta el siguiente salto de linea.
+        while (i < sql.length && sql[i] !== '\n') i++;
+        continue;
+      }
+
+      if (c === ';') {
+        if (actual.trim()) sentencias.push(actual.trim());
+        actual = '';
+        continue;
+      }
+
+      actual += c;
+    }
+
+    if (actual.trim()) sentencias.push(actual.trim());
+    return sentencias;
+  }
+
+  // Restaura la base de datos ejecutando un archivo .sql (generado por
+  // exportarBaseDatosSql, o cualquier dump compatible con INSERT/DELETE
+  // estandar). DESTRUCTIVO e irreversible: se ejecuta tal cual, sentencia por
+  // sentencia, dentro de una sola transaccion.
+  async importarBaseDatosSql(sqlTexto) {
+    if (typeof sqlTexto !== 'string' || !sqlTexto.trim()) {
+      throw new Error('El archivo esta vacio o no es un .sql valido.');
+    }
+
+    const sentencias = this._dividirSentenciasSql(sqlTexto);
+    if (sentencias.length === 0) {
+      throw new Error('El archivo no contiene ninguna sentencia SQL para ejecutar.');
+    }
+
+    const t = await db.sequelize.transaction();
+    try {
+      for (const sentencia of sentencias) {
+        await db.sequelize.query(sentencia, { transaction: t });
+      }
       await t.commit();
     } catch (error) {
       await t.rollback();
       throw error;
     }
 
-    return { message: 'Base de datos restaurada', tablas: resumen };
+    return { message: 'Base de datos restaurada', sentenciasEjecutadas: sentencias.length };
   }
 }
 

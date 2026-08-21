@@ -4,8 +4,36 @@ const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../../models');
 const env = require('../../config/env');
+const { toColombiaDate } = require('../../utils/dates');
 
 const MODULO_CONFIG = 'ProgramacionCorte';
+
+// programacionCorte.fecha se guarda como STRING "YYYY-MM-DD" (fecha calendario
+// pura, sin hora ni zona). El frontend ya la manda normalizada, pero se
+// re-valida/normaliza aca tambien (por si llega un serial de Excel crudo u
+// otro formato via API directa) para que SIEMPRE quede en ese formato: si
+// quedara con hora/zona mezclada, el comparativo contra Listado (que si
+// convierte a hora Bogota) dejaria de cuadrar aunque sea el mismo dia.
+function normalizarFechaProgramacion(valor) {
+  if (valor === null || valor === undefined || valor === '') return '';
+
+  if (typeof valor === 'number' && valor > 20000) {
+    // Serial de Excel: conteo de dias, sin zona horaria que aplicar.
+    const d = new Date(Math.round((valor - 25569) * 86400 * 1000));
+    return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+  }
+
+  const texto = String(valor).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(texto)) return texto.slice(0, 10);
+
+  const partes = texto.split(/[/.-]/);
+  if (partes.length === 3 && partes.every((p) => /^\d+$/.test(p))) {
+    const [a, b, c] = partes.map((p) => p.padStart(2, '0'));
+    return partes[0].length === 4 ? `${a}-${b}-${c}` : `${c}-${b}-${a}`;
+  }
+
+  return texto;
+}
 
 class ProgramacionCorteService {
   async obtenerConfigProcesos() {
@@ -49,7 +77,7 @@ class ProgramacionCorteService {
 
     const filasValidas = [];
     for (const fila of filas) {
-      const fecha = String(fila.fecha ?? '').trim();
+      const fecha = normalizarFechaProgramacion(fila.fecha);
       const booking = String(fila.booking ?? '').trim();
       const procesoEmpaque = String(fila.proceso_empaque ?? '').trim();
       const finca = String(fila.finca ?? '').trim();
@@ -125,7 +153,7 @@ class ProgramacionCorteService {
     for (let i = 0; i < filas.length; i++) {
       const fila = filas[i];
       const numeroFila = i + 2;
-      const fecha = String(fila.fecha ?? '').trim();
+      const fecha = normalizarFechaProgramacion(fila.fecha);
       const booking = String(fila.booking ?? '').trim();
       const procesoEmpaque = String(fila.proceso_empaque ?? '').trim();
       const finca = String(fila.finca ?? '').trim();
@@ -318,18 +346,26 @@ class ProgramacionCorteService {
     // agrupaba solo por fecha+booking+finca y el producto quedaba como un
     // desglose informativo aparte, lo que podía "coincidir" en cajas totales
     // aunque los productos programados y despachados fueran distintos.
+    // programacionCorte.fecha es STRING (texto tal cual se cargo, "YYYY-MM-DD").
+    // Listado.fecha es DATE (Sequelize la devuelve como objeto Date). Antes se
+    // hacia String(r.fecha).slice(0,10) sobre ese objeto Date, lo que llama a
+    // Date.prototype.toString() ("Fri Aug 21 2026...") en vez de convertirlo a
+    // fecha calendario, y ademas quedaba en la zona horaria del servidor. Con
+    // toColombiaDate ambos lados quedan en el mismo formato "YYYY-MM-DD" y en
+    // hora Bogota, sin importar donde corra el servidor.
     const progMap = new Map();
     for (const r of progRows) {
       const procesoKey = String(r.proceso_empaque || '').trim().toLowerCase();
       const fincaComparacion = procesoAAlmacen.get(procesoKey) || String(r.finca).trim();
       const producto = String(r.combo?.nombre || 'Sin producto').trim();
-      const key = `${r.fecha}|${String(r.booking).trim()}|${fincaComparacion}|${producto}`;
+      const fecha = String(r.fecha || '').trim().slice(0, 10);
+      const key = `${fecha}|${String(r.booking).trim()}|${fincaComparacion}|${producto}`;
       progMap.set(key, (progMap.get(key) || 0) + Number(r.cajas || 0));
     }
 
     const listMap = new Map();
     for (const r of listRows) {
-      const fecha = r.fecha ? String(r.fecha).slice(0, 10) : '';
+      const fecha = toColombiaDate(r.fecha) || '';
       const bl = String(r.Embarque?.bl || '').trim();
       const finca = String(r.almacen?.nombre || '').trim();
       const producto = String(r.combo?.nombre || 'Sin producto').trim();
