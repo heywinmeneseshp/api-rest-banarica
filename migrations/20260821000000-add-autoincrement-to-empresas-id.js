@@ -34,7 +34,16 @@ module.exports = {
         }
       }
 
-      await sequelize.query('ALTER TABLE `Empresas` MODIFY `id` INT NOT NULL AUTO_INCREMENT;');
+      // MySQL puede fallar con "ALTER TABLE causes auto_increment
+      // resequencing, resulting in duplicate entry" si no se le dice
+      // explicitamente desde donde arrancar el contador: por su cuenta
+      // intenta renumerar filas existentes y choca con un id ya usado.
+      // Especificar AUTO_INCREMENT = <maxId+1> en la misma sentencia evita
+      // ese renumerado automatico.
+      const arranqueAutoIncrement = siguienteId;
+      await sequelize.query(
+        `ALTER TABLE \`Empresas\` MODIFY \`id\` INT NOT NULL AUTO_INCREMENT, AUTO_INCREMENT = ${arranqueAutoIncrement};`
+      );
     } catch (error) {
       // Sin esto, sequelize-cli solo muestra "ERROR: Validation error" (el
       // nombre generico de la clase de error), sin decir que fallo
