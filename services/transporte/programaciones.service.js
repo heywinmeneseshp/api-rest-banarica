@@ -87,23 +87,34 @@ class ProgramacionService {
     return String(value || '').trim();
   }
 
+  // Acepta movimiento_id (fuente de verdad, preferida) o el texto "movimiento"
+  // (compatibilidad con codigo/reportes viejos que todavia solo mandan
+  // texto). Si llega movimiento_id se resuelve por ahi directo, sin pasar
+  // por texto — evita depender de que el texto siga coincidiendo exacto con
+  // el catalogo.
   async validateTipoMovimiento(data, fallback = {}) {
+    const movimientoIdCrudo = Object.prototype.hasOwnProperty.call(data || {}, 'movimiento_id')
+      ? data?.movimiento_id
+      : fallback?.movimiento_id;
     const movimiento = this.normalizeText(
       Object.prototype.hasOwnProperty.call(data || {}, 'movimiento')
         ? data?.movimiento
         : fallback?.movimiento
     );
 
-    if (!movimiento) {
+    let tipoMovimiento = null;
+    if (movimientoIdCrudo !== null && movimientoIdCrudo !== undefined && movimientoIdCrudo !== '') {
+      tipoMovimiento = await db.tipo_movimiento_vehiculos.findByPk(movimientoIdCrudo);
+      if (!tipoMovimiento) {
+        throw boom.notFound(`El tipo de movimiento con id "${movimientoIdCrudo}" no existe`);
+      }
+    } else if (movimiento) {
+      tipoMovimiento = await db.tipo_movimiento_vehiculos.findOne({ where: { movimiento } });
+      if (!tipoMovimiento) {
+        throw boom.notFound(`El tipo de movimiento "${movimiento}" no existe`);
+      }
+    } else {
       throw boom.badRequest('El movimiento es obligatorio');
-    }
-
-    const tipoMovimiento = await db.tipo_movimiento_vehiculos.findOne({
-      where: { movimiento },
-    });
-
-    if (!tipoMovimiento) {
-      throw boom.notFound(`El tipo de movimiento "${movimiento}" no existe`);
     }
 
     const contenedor = this.normalizeText(
@@ -113,7 +124,7 @@ class ProgramacionService {
     );
 
     if (tipoMovimiento.requiere_contenedor && !contenedor) {
-      throw boom.badRequest(`El movimiento ${movimiento} requiere numero de contenedor`);
+      throw boom.badRequest(`El movimiento ${tipoMovimiento.movimiento} requiere numero de contenedor`);
     }
 
     return tipoMovimiento;
@@ -293,6 +304,10 @@ class ProgramacionService {
     }
     const body = {
       ...data,
+      // El texto sigue siendo la fuente que leen reportes/exports viejos —
+      // si solo llego movimiento_id, se completa aca desde el catalogo para
+      // que ambos queden consistentes.
+      movimiento: data?.movimiento || tipoMovimiento.movimiento,
       movimiento_id: tipoMovimiento.id,
       eliminado: false,
       estado_listado: data?.estado_listado || ESTADO_LISTADO_PENDIENTE,
@@ -348,8 +363,9 @@ class ProgramacionService {
       await this.validateBl(changes.bl);
     }
 
-    // Solo validar tipo de movimiento si se está cambiando movimiento o contenedor
-    const movimientoOContenedorCambian = 'movimiento' in changes || 'contenedor' in changes;
+    // Solo validar tipo de movimiento si se está cambiando movimiento (texto
+    // o id) o contenedor
+    const movimientoOContenedorCambian = 'movimiento' in changes || 'movimiento_id' in changes || 'contenedor' in changes;
     let tipoMovimiento = null;
     if (movimientoOContenedorCambian) {
       tipoMovimiento = await this.validateTipoMovimiento(changes, item);
@@ -373,9 +389,12 @@ class ProgramacionService {
     if (!Object.prototype.hasOwnProperty.call(nextChanges, 'estado_listado')) {
       nextChanges.estado_listado = ESTADO_LISTADO_PENDIENTE;
     }
-    // Solo se toca movimiento_id cuando el texto de movimiento realmente
+    // Solo se tocan movimiento/movimiento_id cuando el movimiento realmente
     // cambio (no cuando el unico cambio en este patch fue el contenedor).
-    if ('movimiento' in changes && tipoMovimiento) {
+    // Se mantienen ambos sincronizados sin importar cual de los dos mando el
+    // cliente (texto viejo o id nuevo).
+    if (('movimiento' in changes || 'movimiento_id' in changes) && tipoMovimiento) {
+      nextChanges.movimiento = tipoMovimiento.movimiento;
       nextChanges.movimiento_id = tipoMovimiento.id;
     }
     await db.programacion.update(nextChanges, { where: { id } });
@@ -619,13 +638,24 @@ class ProgramacionService {
 
     // Usar igualdad exacta cuando hay valor; omitir el filtro si está vacío
     if (restBody?.semana) whereCondition.semana = restBody.semana;
-    if (Array.isArray(restBody?.movimiento) && restBody.movimiento.length > 0) {
+    // movimiento_id es preferido (id real, no depende de que el texto siga
+    // coincidiendo con el catalogo); movimiento (texto) se mantiene por
+    // compatibilidad con filtros/exports viejos que todavia lo mandan.
+    if (Array.isArray(restBody?.movimiento_id) && restBody.movimiento_id.length > 0) {
+      whereCondition.movimiento_id = { [Op.in]: restBody.movimiento_id };
+    } else if (!Array.isArray(restBody?.movimiento_id) && restBody?.movimiento_id) {
+      // Un array vacio ([]) es truthy en JS — sin el chequeo de arriba, "sin
+      // filtro seleccionado" terminaba armando un IN () que no calza con
+      // nada, en vez de mostrar todo.
+      whereCondition.movimiento_id = restBody.movimiento_id;
+    } else if (Array.isArray(restBody?.movimiento) && restBody.movimiento.length > 0) {
       whereCondition.movimiento = { [Op.in]: restBody.movimiento };
     } else if (typeof restBody?.movimiento === 'string' && restBody.movimiento) {
       whereCondition.movimiento = restBody.movimiento;
     }
     if (fecha) whereCondition.fecha = fecha;
     if (restBody?.bl) whereCondition.bl = { [Op.like]: `%${restBody.bl}%` };
+    if (restBody?.contenedor) whereCondition.contenedor = { [Op.like]: `%${restBody.contenedor}%` };
     if (restBody?.estado_listado) whereCondition.estado_listado = restBody.estado_listado;
     if (restBody?.eliminado) whereCondition.eliminado = restBody.eliminado;
 
@@ -670,6 +700,9 @@ class ProgramacionService {
           include: [{ model: db.transportadoras, as: 'transportadora' }],
           ...(Object.keys(vehiculoWhere).length ? { where: vehiculoWhere } : {}),
         },
+        // Solo para mostrar el nombre real del catalogo en pantalla sin
+        // tocar el texto "quemado" que ya esta guardado en movimiento.
+        { model: db.tipo_movimiento_vehiculos, as: 'tipoMovimiento', required: false },
       ],
     };
 

@@ -35,6 +35,15 @@ router.get('/comparativa', passport.authenticate('jwt', { session: false }), asy
   }
 });
 
+router.get('/:id/listado-relacionado', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
+  try {
+    const resultado = await service.lineasListadoRelacionadas(req.params.id);
+    res.json(resultado);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.delete('/:id', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const result = await service.eliminar(req.params.id);

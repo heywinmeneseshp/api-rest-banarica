@@ -34,6 +34,22 @@ function normalizarFechaProgramacion(valor) {
   return texto;
 }
 
+// Compara texto ignorando mayusculas/tildes/espacios — se usa para calzar
+// "finca" (Programacion de Corte) contra el nombre real del almacen
+// (Listado) cuando el proceso de empaque no tiene un almacen mapeado en la
+// configuracion.
+const ACENTOS = { a: 'áàäâ', e: 'éèëê', i: 'íìïî', o: 'óòöô', u: 'úùüû', n: 'ñ' };
+const MAPA_ACENTOS = new Map();
+Object.entries(ACENTOS).forEach(([plano, variantes]) => {
+  [...variantes].forEach((c) => MAPA_ACENTOS.set(c, plano));
+});
+function normalizarTexto(valor) {
+  return [...String(valor || '').trim().toLowerCase()]
+    .map((c) => MAPA_ACENTOS.get(c) || c)
+    .join('')
+    .replace(/\s+/g, ' ');
+}
+
 class ProgramacionCorteService {
   async obtenerConfigProcesos() {
     const [config] = await db.configuracion.findOrCreate({
@@ -386,16 +402,6 @@ class ProgramacionCorteService {
     // nombre del almacen (Listado). Sin normalizar, diferencias de
     // mayusculas/tildes/espacios ("Finca La Union" vs "finca la union ")
     // hacian que nunca calzaran aunque fueran el mismo lugar.
-    const acentos = { a: 'áàäâ', e: 'éèëê', i: 'íìïî', o: 'óòöô', u: 'úùüû', n: 'ñ' };
-    const mapaAcentos = new Map();
-    Object.entries(acentos).forEach(([plano, variantes]) => {
-      [...variantes].forEach((c) => mapaAcentos.set(c, plano));
-    });
-    const normalizarTexto = (valor) => [...String(valor || '').trim().toLowerCase()]
-      .map((c) => mapaAcentos.get(c) || c)
-      .join('')
-      .replace(/\s+/g, ' ');
-
     // labelsPorKey guarda el texto original (sin normalizar) para mostrarlo
     // en la tabla, priorizando el de Programacion de Corte.
     const labelsPorKey = new Map();
@@ -485,6 +491,76 @@ class ProgramacionCorteService {
       totalProgramacion: [...progMap.values()].reduce((acc, v) => acc + v, 0),
       totalListado: [...listMap.values()].reduce((acc, v) => acc + v, 0),
       filas
+    };
+  }
+
+  // Lineas reales de Listado que se relacionan con una fila puntual de
+  // Programacion de Corte (misma fecha+booking+almacen+producto), usando la
+  // MISMA resolucion de finca->almacen (config de procesos) que ya usa la
+  // comparativa — para que "las lineas relacionadas" sean consistentes con
+  // lo que la comparativa marca como coincide/difiere.
+  async lineasListadoRelacionadas(id) {
+    const fila = await db.programacionCorte.findByPk(id, {
+      include: [
+        { model: db.Embarque, required: false, as: 'Embarque' },
+        { model: db.combos, required: false, as: 'combo' },
+      ],
+    });
+    if (!fila) {
+      throw boom.notFound('La fila de programacion no existe.');
+    }
+
+    const procesosConfig = await this.obtenerConfigProcesos();
+    const procesoAAlmacen = new Map(
+      procesosConfig
+        .filter((p) => p && p.proceso && p.almacen)
+        .map((p) => [normalizarTexto(p.proceso), String(p.almacen).trim()])
+    );
+    const procesoKey = normalizarTexto(fila.proceso_empaque);
+    const fincaTexto = procesoAAlmacen.get(procesoKey) || String(fila.finca || '').trim();
+
+    const almacenes = await db.almacenes.findAll();
+    const almacen = almacenes.find((a) => normalizarTexto(a.nombre) === normalizarTexto(fincaTexto)) || null;
+
+    const fecha = String(fila.fecha || '').trim().slice(0, 10);
+    // Listado.fecha se guarda como fecha calendario en UTC (medianoche, sin
+    // hora real de evento). Comparar contra un string "YYYY-MM-DD" hace que
+    // Sequelize interprete la fecha en la zona horaria local del servidor y
+    // el filtro nunca calza (mismo tipo de bug ya resuelto en comparativa) —
+    // por eso se usa un rango explicito en UTC para ese dia completo.
+    const inicioUtc = new Date(`${fecha}T00:00:00Z`);
+    const finUtc = new Date(`${fecha}T23:59:59Z`);
+    const where = {
+      id_embarque: fila.id_embarque,
+      fecha: { [Op.between]: [inicioUtc, finUtc] },
+      habilitado: { [Op.ne]: false },
+    };
+    if (almacen) where.id_lugar_de_llenado = almacen.id;
+    if (fila.id_combo) where.id_producto = fila.id_combo;
+
+    const listado = await db.Listado.findAll({
+      where,
+      include: [
+        { model: db.Contenedor, required: false },
+        { model: db.almacenes, required: false, as: 'almacen' },
+        { model: db.combos, required: false },
+      ],
+      order: [['id', 'ASC']],
+    });
+
+    return {
+      fecha,
+      booking: fila.booking,
+      finca: fincaTexto,
+      almacenEncontrado: Boolean(almacen),
+      producto: fila.combo?.nombre || 'Sin producto',
+      lineas: listado.map((row) => ({
+        id: row.id,
+        contenedor: row.Contenedor?.contenedor || '',
+        almacen: row.almacen?.nombre || '',
+        producto: row.combo?.nombre || '',
+        cajas_unidades: row.cajas_unidades,
+      })),
     };
   }
 
