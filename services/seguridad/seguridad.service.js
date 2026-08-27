@@ -1452,7 +1452,7 @@ class SeguridadService {
       });
 
       if (kitsInventario.length === 0) {
-        throw new Error("Ã¢ÂÅ’ No se encontraron artÃƒÂ­culos asociados al kit de inventario.");
+        throw boom.badRequest(`No se encontraron articulos disponibles para el kit "${formulario.bolsa}".`);
       }
 
       // Ã°Å¸â€Â¹ Contar cuÃƒÂ¡ntas veces aparece cada cons_producto
@@ -1489,81 +1489,76 @@ class SeguridadService {
         transaction
       );
 
-      // Ã°Å¸â€Â¹ 1. PRIMERO: Actualizar cada artÃƒÂ­culo individualmente
-      await Promise.all(
-        kitsInventario.map(async ({ dataValues: article }) => {
-          const updateResult = await db.serial_de_articulos.update(
-            {
-              available: false,
-              revisado: false,
-              fecha_de_uso: formulario.fecha,
-              id_contenedor: formulario.contenedorId,
-              cons_movimiento: movimiento.consecutivo,
-              ubicacion_en_contenedor: "Exterior",
-              id_usuario: resolvedUserId,
-              id_motivo_de_uso: cons_motivo_de_uso,
-            },
-            {
-              where: { id: article.id, available: true },
-              transaction,
-            }
-          );
-
-          if (updateResult[0] === 0) {
-            throw new Error(`Ã¢ÂÅ’ No se pudo actualizar el artÃƒÂ­culo con ID: ${article.id}`);
+      // 1. PRIMERO: Actualizar cada articulo individualmente.
+      // Secuencial: varias queries concurrentes sobre la MISMA transaccion
+      // (misma conexion) via Promise.all no es seguro, igual que paso 2.
+      for (const { dataValues: article } of kitsInventario) {
+        const updateResult = await db.serial_de_articulos.update(
+          {
+            available: false,
+            revisado: false,
+            fecha_de_uso: formulario.fecha,
+            id_contenedor: formulario.contenedorId,
+            cons_movimiento: movimiento.consecutivo,
+            ubicacion_en_contenedor: "Exterior",
+            id_usuario: resolvedUserId,
+            id_motivo_de_uso: cons_motivo_de_uso,
+          },
+          {
+            where: { id: article.id, available: true },
+            transaction,
           }
-        })
-      );
+        );
+
+        if (updateResult[0] === 0) {
+          throw boom.badRequest(`No se pudo actualizar el articulo con ID: ${article.id}`);
+        }
+      }
 
       // Ã°Å¸â€Â¹ 2. SEGUNDO: Restar del stock (SOLO UNA VEZ POR PRODUCTO)
       // Obtener productos ÃƒÂºnicos
       const productosUnicos = [...new Set(kitsInventario.map(item => item.dataValues.cons_producto))];
 
-      await Promise.all(
-        productosUnicos.map(async (cons_producto) => {
-          // Encontrar el primer artÃƒÂ­culo de este producto para obtener su almacÃƒÂ©n
-          const primerArticulo = kitsInventario.find(
-            item => item.dataValues.cons_producto === cons_producto
-          );
+      // Secuencial y compartiendo la transaccion — igual que en
+      // inspeccionAntinarcoticos, hacerlo en paralelo sin pasar la
+      // transaccion abria una transaccion nueva por cada producto y varias
+      // corrian al mismo tiempo sobre las mismas filas de stock, causando
+      // deadlocks en MySQL (que salian como "Internal server error").
+      for (const cons_producto of productosUnicos) {
+        const primerArticulo = kitsInventario.find(
+          (item) => item.dataValues.cons_producto === cons_producto
+        );
 
-          if (!primerArticulo) return;
-          console.log(
-            primerArticulo.dataValues.cons_almacen,  // primer parÃƒÂ¡metro: cons_almacen
-            cons_producto,                          // segundo parÃƒÂ¡metro: cons_producto
-            { cantidad: productosCantidad[cons_producto] }, "heywin")
-          // Llamar a subtractAmounts con los parÃƒÂ¡metros correctos
-          await stockService.subtractAmounts(
-            primerArticulo.dataValues.cons_almacen,  // primer parÃƒÂ¡metro: cons_almacen
-            cons_producto,                          // segundo parÃƒÂ¡metro: cons_producto
-            { cantidad: productosCantidad[cons_producto] }  // tercer parÃƒÂ¡metro: body con cantidad
-          );
+        if (!primerArticulo) continue;
 
-          console.log(`Ã¢Å“â€¦ Restado stock: ${cons_producto}, cantidad: ${productosCantidad[cons_producto]}, almacÃƒÂ©n: ${primerArticulo.dataValues.cons_almacen}`);
-        })
-      );
+        await stockService.subtractAmounts(
+          primerArticulo.dataValues.cons_almacen,
+          cons_producto,
+          { cantidad: productosCantidad[cons_producto] },
+          transaction
+        );
+      }
 
       // Ã°Å¸â€Â¹ 3. Registrar movimientos en historial
-      await Promise.all(
-        Object.entries(productosCantidad).map(async ([cons_producto, cantidad]) => {
-          const primerArticulo = kitsInventario.find(
-            item => item.dataValues.cons_producto === cons_producto
-          );
+      for (const [cons_producto, cantidad] of Object.entries(productosCantidad)) {
+        const primerArticulo = kitsInventario.find(
+          (item) => item.dataValues.cons_producto === cons_producto
+        );
 
-          await historialMovimientoService.create(
-            {
-              cons_movimiento: movimiento.consecutivo,
-              cons_producto,
-              cons_almacen_gestor: primerArticulo.dataValues.cons_almacen,
-              cons_almacen_receptor: primerArticulo.dataValues.cons_almacen,
-              cons_lista_movimientos: "EX",
-              tipo_movimiento: "Salida",
-              razon_movimiento: "Inspeccion antinarcoticos",
-              cantidad: cantidad.toString(),
-            },
-            transaction
-          );
-        })
-      );
+        await historialMovimientoService.create(
+          {
+            cons_movimiento: movimiento.consecutivo,
+            cons_producto,
+            cons_almacen_gestor: primerArticulo.dataValues.cons_almacen,
+            cons_almacen_receptor: primerArticulo.dataValues.cons_almacen,
+            cons_lista_movimientos: "EX",
+            tipo_movimiento: "Salida",
+            razon_movimiento: "Inspeccion antinarcoticos",
+            cantidad: cantidad.toString(),
+          },
+          transaction
+        );
+      }
 
       // Ã°Å¸â€Â¹ Confirmar transacciÃƒÂ³n
       await transaction.commit();
