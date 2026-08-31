@@ -332,7 +332,12 @@ class ProgramacionCorteService {
           model: db.Embarque,
           required: false,
           as: 'Embarque',
-          include: [{ model: db.semanas, required: false }]
+          include: [
+            { model: db.semanas, required: false },
+            { model: db.Buque, required: false, attributes: ['buque'] },
+            { model: db.Destino, required: false, attributes: ['cod', 'destino'] },
+            { model: db.clientes, required: false, attributes: ['cod', 'razon_social'] }
+          ]
         },
         { model: db.almacenes, required: false, as: 'almacen' },
         { model: db.combos, required: false, as: 'combo' }

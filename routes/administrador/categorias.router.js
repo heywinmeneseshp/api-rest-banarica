@@ -7,6 +7,16 @@ const { crearcategoria, actualizarCategoria } = require('../../schema/categoria.
 const router = express.Router();
 const service = new CategoriasServices();
 
+/**
+ * @swagger
+ * /categorias:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Categorias]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const categorias = await service.find();
@@ -19,6 +29,16 @@ router.get("/", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /categorias/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Categorias]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit, nombre } = req.query;
@@ -29,6 +49,21 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /categorias/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Categorias]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -39,15 +74,57 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /categorias/masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Categorias]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/masivo", async (req, res, next) => {
   try { res.json(await service.bulkCreate(req.body)); } catch (e) { next(e); }
 });
 
+/**
+ * @swagger
+ * /categorias/masivo-actualizar:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Categorias]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/masivo-actualizar", async (req, res, next) => {
   try { res.json(await service.bulkUpdate(req.body)); } catch (e) { next(e); }
 });
 
 //Crear
+/**
+ * @swagger
+ * /categorias:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Categorias]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
 validatorHandler(crearcategoria, "body"),
 async (req, res, next) => {
@@ -65,6 +142,25 @@ async (req, res, next) => {
 });
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /categorias/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Categorias]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
 validatorHandler(actualizarCategoria, "body"),
 async (req, res, next) => {
@@ -83,6 +179,21 @@ async (req, res, next) => {
 });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /categorias/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Categorias]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

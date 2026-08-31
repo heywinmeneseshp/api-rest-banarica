@@ -87,6 +87,20 @@ const validarSolicitud = (req, res, archivos) => {
     return true;
 };
 
+/**
+ * @swagger
+ * /googleDrive/subir-evidencias:
+ *   post:
+ *     summary: POST /subir-evidencias
+ *     tags: [GoogleDrive]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/subir-evidencias', upload.array('fotos', 20), async (req, res, next) => {
     try {
         const { semana, fecha, item, carpetaID, programacion_id, listado_id, traslado_id } = req.body;
@@ -118,6 +132,20 @@ router.post('/subir-evidencias', upload.array('fotos', 20), async (req, res, nex
     }
 });
 
+/**
+ * @swagger
+ * /googleDrive/subir-evidencia:
+ *   post:
+ *     summary: POST /subir-evidencia
+ *     tags: [GoogleDrive]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/subir-evidencia', upload.single('foto'), async (req, res, next) => {
     try {
         const { semana, fecha, item, carpetaID, programacion_id, listado_id, traslado_id } = req.body;
@@ -149,6 +177,21 @@ router.post('/subir-evidencia', upload.single('foto'), async (req, res, next) =>
     }
 });
 
+/**
+ * @swagger
+ * /googleDrive/listar-evidencias/{carpetaId}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [GoogleDrive]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: carpetaId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/listar-evidencias/:carpetaId', async (req, res, next) => {
     try {
         const { carpetaId } = req.params;
@@ -165,6 +208,21 @@ router.get('/listar-evidencias/:carpetaId', async (req, res, next) => {
     }
 });
 
+/**
+ * @swagger
+ * /googleDrive/imagen/{fileId}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [GoogleDrive]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/imagen/:fileId', async (req, res, next) => {
     try {
         const { fileId } = req.params;
@@ -181,6 +239,16 @@ router.get('/imagen/:fileId', async (req, res, next) => {
     }
 });
 
+/**
+ * @swagger
+ * /googleDrive/test-drive:
+ *   get:
+ *     summary: GET /test-drive
+ *     tags: [GoogleDrive]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/test-drive', async (req, res, next) => {
     try {
         res.json({

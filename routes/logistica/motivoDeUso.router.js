@@ -5,6 +5,16 @@ const router = express.Router();
 const service = new motivoDeUsoService();
 
 // Obtener todas las motivoDeUsoS
+/**
+ * @swagger
+ * /motivoDeUso:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [MotivoDeUso]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const motivoDeUsoS = await service.find();
@@ -16,6 +26,16 @@ router.get('/', async (req, res, next) => {
 
 // Paginar motivoDeUsoS
 // Ejemplo: http://localhost:3000/api/v1/motivoDeUso/paginar?offset=1&limit=4&MotivoDeUso=SAE1
+/**
+ * @swagger
+ * /motivoDeUso/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [MotivoDeUso]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/paginar', async (req, res, next) => {
   try {
     const { offset, limit, MotivoDeUso } = req.query;
@@ -27,6 +47,21 @@ router.get('/paginar', async (req, res, next) => {
 });
 
 // Obtener una SAE por ID
+/**
+ * @swagger
+ * /motivoDeUso/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [MotivoDeUso]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -38,6 +73,20 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Crear una nueva SAE
+/**
+ * @swagger
+ * /motivoDeUso:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [MotivoDeUso]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/', async (req, res, next) => {
   try {
     const body = req.body;
@@ -52,6 +101,25 @@ router.post('/', async (req, res, next) => {
 });
 
 // Actualizar una SAE
+/**
+ * @swagger
+ * /motivoDeUso/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [MotivoDeUso]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -64,6 +132,21 @@ router.patch('/:id', async (req, res, next) => {
 });
 
 // Eliminar una SAE
+/**
+ * @swagger
+ * /motivoDeUso/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [MotivoDeUso]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {

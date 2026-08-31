@@ -8,6 +8,16 @@ const { crearDeuda, actualizarDeuda } = require('../schema/deuda.schema');
 const router = express.Router();
 const service = new DeudasService();
 
+/**
+ * @swagger
+ * /deudas:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Deudas]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
@@ -19,6 +29,16 @@ router.get("/", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /deudas/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Deudas]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit } = req.query;
@@ -30,6 +50,16 @@ router.get("/paginar", async (req, res, next) => {
 });
 
 // Ejemplo localhost:3000/productos/filter?prestador=200&deudor=300
+/**
+ * @swagger
+ * /deudas/filter:
+ *   get:
+ *     summary: GET /filter
+ *     tags: [Deudas]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/filter", async (req, res, next) => {
   try {
     const { prestador, deudor } = req.query;
@@ -40,6 +70,21 @@ router.get("/filter", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /deudas/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Deudas]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -51,6 +96,20 @@ router.get("/:id", async (req, res, next) => {
 });
 
 //Crear
+/**
+ * @swagger
+ * /deudas:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Deudas]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
 validatorHandler(crearDeuda, "body"),
 async (req, res, next) => {
@@ -68,6 +127,25 @@ async (req, res, next) => {
 });
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /deudas/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Deudas]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
 validatorHandler(actualizarDeuda, "body"),
 async (req, res, next) => {
@@ -86,6 +164,21 @@ async (req, res, next) => {
 });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /deudas/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Deudas]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

@@ -6,6 +6,16 @@ const router = express.Router();
 const service = new ContenedorService();
 
 // Obtener todos los contenedores
+/**
+ * @swagger
+ * /contenedor:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Contenedor]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const contenedores = await service.find();
@@ -17,6 +27,20 @@ router.get('/', async (req, res, next) => {
 
 // Paginar contenedores
 // Ejemplo: http://localhost:3000/api/v1/contenedores/paginar?offset=1&limit=4
+/**
+ * @swagger
+ * /contenedor/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Contenedor]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/paginar', async (req, res, next) => {
   try {
     const { offset, limit } = req.query;
@@ -29,6 +53,21 @@ router.post('/paginar', async (req, res, next) => {
 });
 
 // Obtener un contenedor por ID
+/**
+ * @swagger
+ * /contenedor/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Contenedor]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -40,6 +79,20 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Crear un nuevo contenedor
+/**
+ * @swagger
+ * /contenedor:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Contenedor]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/', async (req, res, next) => {
   try {
     const body = req.body;
@@ -54,6 +107,25 @@ router.post('/', async (req, res, next) => {
 });
 
 // Actualizar un contenedor
+/**
+ * @swagger
+ * /contenedor/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Contenedor]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -66,6 +138,21 @@ router.patch('/:id', passport.authenticate('jwt', { session: false }), async (re
 });
 
 // Eliminar un contenedor
+/**
+ * @swagger
+ * /contenedor/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Contenedor]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {

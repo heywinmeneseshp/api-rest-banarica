@@ -8,6 +8,16 @@ const { crearNotificacion, actualizarNotificacion } = require('../../schema/noti
 const router = express.Router();
 const service = new NotificacionesService();
 
+/**
+ * @swagger
+ * /notificaciones:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Notificaciones]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
@@ -19,6 +29,20 @@ router.get("/", async (req, res, next) => {
 
 
 
+/**
+ * @swagger
+ * /notificaciones/filter:
+ *   post:
+ *     summary: POST /filter
+ *     tags: [Notificaciones]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/filter",
 async (req, res, next) => {
   try {
@@ -30,6 +54,21 @@ async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /notificaciones/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Notificaciones]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -41,6 +80,20 @@ router.get("/:id", async (req, res, next) => {
 });
 
 //Crear
+/**
+ * @swagger
+ * /notificaciones:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Notificaciones]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
 validatorHandler(crearNotificacion, "body"),
 async (req, res, next) => {
@@ -58,6 +111,25 @@ async (req, res, next) => {
 });
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /notificaciones/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Notificaciones]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
 validatorHandler(actualizarNotificacion, "body"),
 async (req, res, next) => {
@@ -76,6 +148,21 @@ async (req, res, next) => {
 });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /notificaciones/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Notificaciones]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {
@@ -88,6 +175,20 @@ router.delete("/:id", async (req, res, next) => {
 
 //PAGINAR
 // Ejemplo http://localhost:3000/api/v1/notificaciones/paginar?page=1&limit=4
+/**
+ * @swagger
+ * /notificaciones/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Notificaciones]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/paginar", async (req, res, next) => {
   const body = req.body
   const { page, limit } = req.query

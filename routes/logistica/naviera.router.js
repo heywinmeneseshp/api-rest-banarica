@@ -5,6 +5,16 @@ const router = express.Router();
 const service = new NavieraService();
 
 // Obtener todas las navieras
+/**
+ * @swagger
+ * /naviera:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Naviera]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const navieras = await service.find();
@@ -16,6 +26,20 @@ router.get('/', async (req, res, next) => {
 
 // Paginar navieras
 // Ejemplo: http://localhost:3000/api/v1/navieras/paginar?offset=1&limit=4&navieras=naviera1
+/**
+ * @swagger
+ * /naviera/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Naviera]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/paginar', async (req, res, next) => {
   try {
     const { offset, limit } = req.query;
@@ -28,6 +52,21 @@ router.post('/paginar', async (req, res, next) => {
 });
 
 // Obtener una naviera por ID
+/**
+ * @swagger
+ * /naviera/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Naviera]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -39,6 +78,20 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Crear una nueva naviera
+/**
+ * @swagger
+ * /naviera:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Naviera]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/', async (req, res, next) => {
   try {
     const body = req.body;
@@ -53,6 +106,20 @@ router.post('/', async (req, res, next) => {
 });
 
 //Cargue Masivo
+/**
+ * @swagger
+ * /naviera/masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Naviera]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/masivo', async (req, res, next) => {
   try {
     const dataList = req.body;
@@ -71,6 +138,25 @@ router.post('/masivo', async (req, res, next) => {
 });
 
 // Actualizar una naviera
+/**
+ * @swagger
+ * /naviera/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Naviera]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -83,6 +169,21 @@ router.patch('/:id', async (req, res, next) => {
 });
 
 // Eliminar una naviera
+/**
+ * @swagger
+ * /naviera/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Naviera]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {

@@ -7,6 +7,16 @@ const { crearProducto, actualizarProducto } = require('../../schema/product.sche
 const router = express.Router();
 const service = new ProductosService();
 
+/**
+ * @swagger
+ * /productos:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Productos]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const productos = await service.find();
@@ -16,6 +26,20 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /productos/filter:
+ *   post:
+ *     summary: POST /filter
+ *     tags: [Productos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/filter", async (req, res, next) => {
   try {
     const body = req.body
@@ -26,6 +50,21 @@ router.post("/filter", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /productos/categoria/{categoria}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Productos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: categoria
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/categoria/:categoria', async (req, res, next) => {
   try {
     const { categoria } = req.params
@@ -38,6 +77,16 @@ router.get('/categoria/:categoria', async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /productos/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Productos]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit, name } = req.query;
@@ -48,6 +97,21 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /productos/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Productos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -59,6 +123,20 @@ router.get("/:id", async (req, res, next) => {
 });
 
 //Crear
+/**
+ * @swagger
+ * /productos:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Productos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
   validatorHandler(crearProducto, "body"),
   async (req, res, next) => {
@@ -76,6 +154,25 @@ router.post("/",
   });
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /productos/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Productos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
   validatorHandler(actualizarProducto, "body"),
   async (req, res, next) => {
@@ -94,6 +191,21 @@ router.patch("/:id",
   });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /productos/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Productos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

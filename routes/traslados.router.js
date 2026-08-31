@@ -7,6 +7,16 @@ const { realizarTraslado, modificarTraslado, recibirTraslado, ejecutarTraslado }
 const router = express.Router();
 const service = new TrasladosService();
 
+/**
+ * @swagger
+ * /traslados:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Traslados]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
@@ -19,6 +29,20 @@ router.get("/", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /traslados/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Traslados]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/paginar", async (req, res, next) => {
   try {
     const { almacenes } = req.body;
@@ -30,6 +54,20 @@ router.post("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /traslados/filter:
+ *   post:
+ *     summary: POST /filter
+ *     tags: [Traslados]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/filter", async (req, res, next) => {
   try {
     const body = req.body;
@@ -40,6 +78,20 @@ router.post("/filter", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /traslados/ejecutar:
+ *   post:
+ *     summary: POST /ejecutar
+ *     tags: [Traslados]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/ejecutar",
   validatorHandler(ejecutarTraslado, "body"),
   async (req, res, next) => {
@@ -51,6 +103,20 @@ router.post("/ejecutar",
     }
   });
 
+/**
+ * @swagger
+ * /traslados/pendiente:
+ *   post:
+ *     summary: POST /pendiente
+ *     tags: [Traslados]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/pendiente",
   validatorHandler(ejecutarTraslado, "body"),
   async (req, res, next) => {
@@ -62,6 +128,16 @@ router.post("/pendiente",
     }
   });
 
+/**
+ * @swagger
+ * /traslados/pendientes/listar:
+ *   get:
+ *     summary: GET /pendientes/listar
+ *     tags: [Traslados]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/pendientes/listar", async (req, res, next) => {
   try {
     const almacenes = String(req.query.almacenes || "").split(",").map((item) => item.trim()).filter(Boolean);
@@ -73,6 +149,16 @@ router.get("/pendientes/listar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /traslados/pendientes/contar:
+ *   get:
+ *     summary: GET /pendientes/contar
+ *     tags: [Traslados]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/pendientes/contar", async (req, res, next) => {
   try {
     const almacenes = String(req.query.almacenes || "").split(",").map((item) => item.trim()).filter(Boolean);
@@ -83,6 +169,25 @@ router.get("/pendientes/contar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /traslados/{id}/aceptar:
+ *   patch:
+ *     summary: PATCH /:id/aceptar
+ *     tags: [Traslados]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id/aceptar", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -94,6 +199,25 @@ router.patch("/:id/aceptar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /traslados/{id}/rechazar:
+ *   patch:
+ *     summary: PATCH /:id/rechazar
+ *     tags: [Traslados]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id/rechazar", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -105,6 +229,25 @@ router.patch("/:id/rechazar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /traslados/{id}/evidencias/listar:
+ *   post:
+ *     summary: POST /:id/evidencias/listar
+ *     tags: [Traslados]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/:id/evidencias/listar", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -116,6 +259,25 @@ router.post("/:id/evidencias/listar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /traslados/{id}/articulos/listar:
+ *   post:
+ *     summary: POST /:id/articulos/listar
+ *     tags: [Traslados]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/:id/articulos/listar", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -129,6 +291,25 @@ router.post("/:id/articulos/listar", async (req, res, next) => {
 
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /traslados/modificar/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Traslados]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/modificar/:id",
   validatorHandler(modificarTraslado, "body"),
   async (req, res, next) => {
@@ -146,6 +327,25 @@ router.patch("/modificar/:id",
     }
   });
 
+/**
+ * @swagger
+ * /traslados/recibir/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Traslados]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/recibir/:id",
   validatorHandler(recibirTraslado, "body"),
   async (req, res, next) => {
@@ -167,6 +367,21 @@ router.patch("/recibir/:id",
   });
 
 
+/**
+ * @swagger
+ * /traslados/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Traslados]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -178,6 +393,20 @@ router.get("/:id", async (req, res, next) => {
 });
 
 //Crear
+/**
+ * @swagger
+ * /traslados:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Traslados]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
   validatorHandler(realizarTraslado, "body"),
   async (req, res, next) => {
@@ -198,6 +427,21 @@ router.post("/",
   });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /traslados/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Traslados]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

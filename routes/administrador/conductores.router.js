@@ -8,6 +8,16 @@ const { crearConductor, actualizarConductor } = require('../../schema/conductor.
 const router = express.Router();
 const service = new ConductoresServices();
 
+/**
+ * @swagger
+ * /conductores:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Conductores]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res) => {
   try {
     const items = await service.find();
@@ -19,6 +29,16 @@ router.get("/", async (req, res) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /conductores/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Conductores]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit, nombre, transportadoraId } = req.query;
@@ -29,6 +49,21 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /conductores/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Conductores]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -40,6 +75,20 @@ router.get("/:id", async (req, res, next) => {
 });
 
 //Crear
+/**
+ * @swagger
+ * /conductores:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Conductores]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
   validatorHandler(crearConductor, "body"),
   async (req, res, next) => {
@@ -57,6 +106,25 @@ router.post("/",
   });
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /conductores/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Conductores]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
   validatorHandler(actualizarConductor, "body"),
   async (req, res, next) => {
@@ -75,6 +143,21 @@ router.patch("/:id",
   });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /conductores/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Conductores]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

@@ -5,6 +5,16 @@ const itemService = require("../../services/transporte/vehiculos.service");
 const router = express.Router();
 const service = new itemService();
 
+/**
+ * @swagger
+ * /vehiculos:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Vehiculos]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const result = await service.find(req.user, req.query);
@@ -14,6 +24,16 @@ router.get("/", passport.authenticate('jwt', { session: false }), async (req, re
   }
 });
 
+/**
+ * @swagger
+ * /vehiculos/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Vehiculos]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const { page, limit, item, transportadoraId, includeUnassigned } = req.query;
@@ -24,6 +44,21 @@ router.get("/paginar", passport.authenticate('jwt', { session: false }), async (
   }
 });
 
+/**
+ * @swagger
+ * /vehiculos/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Vehiculos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -34,6 +69,20 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /vehiculos:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Vehiculos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/", async (req, res, next) => {
   try {
     const body = req.body;
@@ -47,6 +96,20 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /vehiculos/masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Vehiculos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/masivo", async (req, res, next) => {
   try {
     const body = req.body;
@@ -60,6 +123,20 @@ router.post("/masivo", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /vehiculos/actualizar-masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Vehiculos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/actualizar-masivo", async (req, res, next) => {
   try {
     const body = req.body;
@@ -73,6 +150,25 @@ router.post("/actualizar-masivo", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /vehiculos/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Vehiculos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -87,6 +183,21 @@ router.patch("/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /vehiculos/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Vehiculos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {

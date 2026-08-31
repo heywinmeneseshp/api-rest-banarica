@@ -9,6 +9,16 @@ const {
 
 const router = express.Router();
 const service = new RegistroTemperaturaService();
+/**
+ * @swagger
+ * /registro-temperatura:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const registros = await service.find();
@@ -18,6 +28,20 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /registro-temperatura/cargar-masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/cargar-masivo', async (req, res, next) => {
   try {
     const body = req.body;
@@ -28,6 +52,20 @@ router.post('/cargar-masivo', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /registro-temperatura/actualizar-masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/actualizar-masivo', async (req, res, next) => {
   try {
     const body = req.body;
@@ -38,6 +76,20 @@ router.post('/actualizar-masivo', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /registro-temperatura/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/paginar', async (req, res, next) => {
   try {
     const { offset, limit } = req.query;
@@ -49,6 +101,20 @@ router.post('/paginar', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /registro-temperatura/resumen:
+ *   post:
+ *     summary: POST /resumen
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/resumen', async (req, res, next) => {
   try {
     const { offset, limit } = req.query;
@@ -60,6 +126,21 @@ router.post('/resumen', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /registro-temperatura/grafica/{idSerial}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: idSerial
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/grafica/:idSerial', async (req, res, next) => {
   try {
     const { idSerial } = req.params;
@@ -70,6 +151,21 @@ router.get('/grafica/:idSerial', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /registro-temperatura/contexto/{idSerial}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: idSerial
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/contexto/:idSerial', async (req, res, next) => {
   try {
     const { idSerial } = req.params;
@@ -80,6 +176,21 @@ router.get('/contexto/:idSerial', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /registro-temperatura/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/:id',
   validatorHandler(getRegistroTemperatura, 'params'),
   async (req, res, next) => {
@@ -93,6 +204,20 @@ router.get('/:id',
   }
 );
 
+/**
+ * @swagger
+ * /registro-temperatura:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/',
   validatorHandler(crearRegistroTemperatura, 'body'),
   async (req, res, next) => {
@@ -109,6 +234,25 @@ router.post('/',
   }
 );
 
+/**
+ * @swagger
+ * /registro-temperatura/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id',
   validatorHandler(getRegistroTemperatura, 'params'),
   validatorHandler(actualizarRegistroTemperatura, 'body'),
@@ -124,6 +268,21 @@ router.patch('/:id',
   }
 );
 
+/**
+ * @swagger
+ * /registro-temperatura/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Registro-temperatura]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id',
   validatorHandler(getRegistroTemperatura, 'params'),
   async (req, res, next) => {

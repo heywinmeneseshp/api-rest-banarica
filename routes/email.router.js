@@ -8,6 +8,20 @@ const router = express.Router();
 const service = new EmailService();
 
 
+/**
+ * @swagger
+ * /email/send:
+ *   post:
+ *     summary: POST /send
+ *     tags: [Email]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/send",
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -20,6 +34,16 @@ router.post("/send",
   }
 });
 
+/**
+ * @swagger
+ * /email/config:
+ *   get:
+ *     summary: GET /config
+ *     tags: [Email]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/config",
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {

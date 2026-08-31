@@ -3,6 +3,21 @@ const db = require('../models');
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /carrusel/por-transportadora/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Carrusel]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/por-transportadora/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -16,6 +31,21 @@ router.get('/por-transportadora/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /carrusel/por-contenedor/{contenedorId}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Carrusel]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: contenedorId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/por-contenedor/:contenedorId', async (req, res, next) => {
   try {
     const { contenedorId } = req.params;

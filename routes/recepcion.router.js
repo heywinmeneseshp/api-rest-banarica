@@ -8,6 +8,16 @@ const { ingresarRemision, actualizarRemision } = require('../schema/recepcion.sc
 const router = express.Router();
 const service = new RecepcionService();
 
+/**
+ * @swagger
+ * /recepcion:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Recepcion]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
@@ -19,6 +29,16 @@ router.get("/", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /recepcion/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Recepcion]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit } = req.query;
@@ -29,6 +49,21 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /recepcion/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Recepcion]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -40,6 +75,20 @@ router.get("/:id", async (req, res, next) => {
 });
 
 //Crear
+/**
+ * @swagger
+ * /recepcion:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Recepcion]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
 validatorHandler(ingresarRemision, "body"),
 async (req, res, next) => {
@@ -58,6 +107,25 @@ async (req, res, next) => {
 });
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /recepcion/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Recepcion]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
 validatorHandler(actualizarRemision, "body"),
 async (req, res, next) => {
@@ -76,6 +144,21 @@ async (req, res, next) => {
 });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /recepcion/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Recepcion]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

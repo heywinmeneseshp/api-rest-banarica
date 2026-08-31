@@ -11,6 +11,16 @@ const service = new combosService();
 // Antes público. Ahora exige login JWT (panel admin propio) o el header
 // `api` para integraciones servidor-a-servidor (ej. api-rest-corbana),
 // mismo criterio que almacenes/programacion-corte — ver checkApiKeyOrJwt.
+/**
+ * @swagger
+ * /combos:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Combos]
+ *     description: Acepta login JWT o el header `api` con la API key.
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", checkApiKeyOrJwt, async (req, res, next) => {
   try {
     const items = await service.find();
@@ -22,6 +32,20 @@ router.get("/", checkApiKeyOrJwt, async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /combos/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Combos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/paginar", async (req, res, next) => {
   try {
     const { page, limit, nombre } = req.query;
@@ -33,6 +57,16 @@ router.post("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /combos/listar:
+ *   get:
+ *     summary: GET /listar
+ *     tags: [Combos]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/listar", async (req, res, next) => {
   try {
     const result = await service.findAllCombos();
@@ -43,6 +77,21 @@ router.get("/listar", async (req, res, next) => {
 
 })
 
+/**
+ * @swagger
+ * /combos/listar/{id_combo}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Combos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id_combo
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/listar/:id_combo", async (req, res, next) => {
   try {
     const { id_combo } = req.params
@@ -55,6 +104,21 @@ router.get("/listar/:id_combo", async (req, res, next) => {
 
 })
 
+/**
+ * @swagger
+ * /combos/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Combos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -68,6 +132,20 @@ router.get("/:id", async (req, res, next) => {
 
 
 //Crear
+/**
+ * @swagger
+ * /combos:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Combos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
   validatorHandler(crearCombo, "body"),
   async (req, res, next) => {
@@ -84,10 +162,38 @@ router.post("/",
   });
 
   //Cargue Masivo y Actualización Masiva
+  /**
+   * @swagger
+   * /combos/masivo-actualizar:
+   *   post:
+   *     summary: Operacion masiva (POST)
+   *     tags: [Combos]
+   *     security: []
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema: { type: object }
+   *     responses:
+   *       200: { description: OK }
+   */
   router.post("/masivo-actualizar", async (req, res, next) => {
     try { res.json(await service.bulkUpdate(req.body)); } catch (e) { next(e); }
   });
 
+  /**
+   * @swagger
+   * /combos/masivo:
+   *   post:
+   *     summary: Operacion masiva (POST)
+   *     tags: [Combos]
+   *     security: []
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema: { type: object }
+   *     responses:
+   *       200: { description: OK }
+   */
   router.post("/masivo",
     async (req, res, next) => {
       try {
@@ -103,6 +209,20 @@ router.post("/",
     });
   
 
+/**
+ * @swagger
+ * /combos/listar:
+ *   post:
+ *     summary: POST /listar
+ *     tags: [Combos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/listar",
   validatorHandler(armarCombo, "body"),
   async (req, res, next) => {
@@ -119,6 +239,25 @@ router.post("/listar",
   })
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /combos/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Combos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
   validatorHandler(actualizarCombo, "body"),
   async (req, res, next) => {
@@ -137,6 +276,21 @@ router.patch("/:id",
   });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /combos/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Combos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

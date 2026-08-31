@@ -21,6 +21,16 @@ const router = express.Router();
 
 // Endpoints usados por el modal de configuracion del frontend.
 
+/**
+ * @swagger
+ * /confi/listar:
+ *   get:
+ *     summary: GET /listar
+ *     tags: [Confi]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/listar',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -34,6 +44,21 @@ router.get('/listar',
   });
 
 
+/**
+ * @swagger
+ * /confi/encontrar/{modulo}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Confi]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: modulo
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/encontrar/:modulo',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -48,6 +73,20 @@ router.get('/encontrar/:modulo',
     }
   });
 
+/**
+ * @swagger
+ * /confi/actualizar:
+ *   patch:
+ *     summary: PATCH /actualizar
+ *     tags: [Confi]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/actualizar',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -60,6 +99,16 @@ router.patch('/actualizar',
     }
   });
 
+/**
+ * @swagger
+ * /confi/email:
+ *   get:
+ *     summary: GET /email
+ *     tags: [Confi]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/email',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -71,6 +120,20 @@ router.get('/email',
     }
   });
 
+/**
+ * @swagger
+ * /confi/email:
+ *   patch:
+ *     summary: PATCH /email
+ *     tags: [Confi]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/email',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -85,6 +148,16 @@ router.patch('/email',
 
 
 // Exportar toda la base de datos como un archivo .sql descargable.
+/**
+ * @swagger
+ * /confi/exportar-db:
+ *   get:
+ *     summary: GET /exportar-db
+ *     tags: [Confi]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/exportar-db',
   passport.authenticate('jwt', { session: false }),
   requireSuperAdmin,
@@ -103,6 +176,20 @@ router.get('/exportar-db',
 // Restaurar la base de datos desde un archivo .sql generado por /exportar-db
 // (o cualquier dump compatible con INSERT/DELETE estandar).
 // DESTRUCTIVO: ejecuta el archivo tal cual, sentencia por sentencia.
+/**
+ * @swagger
+ * /confi/importar-db:
+ *   post:
+ *     summary: POST /importar-db
+ *     tags: [Confi]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/importar-db',
   passport.authenticate('jwt', { session: false }),
   requireSuperAdmin,

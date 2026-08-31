@@ -8,6 +8,16 @@ const { crearMovimiento, actualizarMovimiento } = require('../schema/movimiento.
 const router = express.Router();
 const service = new MovimientosService();
 
+/**
+ * @swagger
+ * /movimientos:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Movimientos]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
@@ -17,6 +27,20 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /movimientos/document:
+ *   post:
+ *     summary: POST /document
+ *     tags: [Movimientos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/document", async (req, res, next) => {
   try {
     const body = req.body;
@@ -30,6 +54,16 @@ router.post("/document", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /movimientos/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Movimientos]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit } = req.query;
@@ -40,6 +74,21 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /movimientos/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Movimientos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -51,6 +100,20 @@ router.get("/:id", async (req, res, next) => {
 });
 
 //Crear
+/**
+ * @swagger
+ * /movimientos:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Movimientos]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
 validatorHandler(crearMovimiento, "body"),
 async (req, res, next) => {
@@ -71,6 +134,25 @@ async (req, res, next) => {
 });
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /movimientos/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Movimientos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
 validatorHandler(actualizarMovimiento, "body"),
 async (req, res, next) => {
@@ -89,6 +171,21 @@ async (req, res, next) => {
 });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /movimientos/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Movimientos]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

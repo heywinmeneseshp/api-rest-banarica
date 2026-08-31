@@ -5,6 +5,16 @@ const router = express.Router();
 const service = new MotivoDeRechazoService();
 
 // Obtener todos los motivos de rechazo
+/**
+ * @swagger
+ * /motivoDeRechazo:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [MotivoDeRechazo]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const motivos = await service.find();
@@ -14,6 +24,20 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /motivoDeRechazo/masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [MotivoDeRechazo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/masivo', async (req, res, next) => {
   try {
     const dataList = req.body;
@@ -33,6 +57,16 @@ router.post('/masivo', async (req, res, next) => {
 
 // Paginar motivos de rechazo
 // Ejemplo: http://localhost:3000/api/v1/motivos-de-rechazo/paginar?offset=1&limit=4&motivo_rechazo=motivo1
+/**
+ * @swagger
+ * /motivoDeRechazo/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [MotivoDeRechazo]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/paginar', async (req, res, next) => {
   try {
     const { offset, limit, motivo_rechazo } = req.query;
@@ -44,6 +78,21 @@ router.get('/paginar', async (req, res, next) => {
 });
 
 // Obtener un motivo de rechazo por ID
+/**
+ * @swagger
+ * /motivoDeRechazo/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [MotivoDeRechazo]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -55,6 +104,20 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Crear un nuevo motivo de rechazo
+/**
+ * @swagger
+ * /motivoDeRechazo:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [MotivoDeRechazo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/', async (req, res, next) => {
   try {
     const body = req.body;
@@ -69,6 +132,25 @@ router.post('/', async (req, res, next) => {
 });
 
 // Actualizar un motivo de rechazo
+/**
+ * @swagger
+ * /motivoDeRechazo/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [MotivoDeRechazo]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -81,6 +163,21 @@ router.patch('/:id', async (req, res, next) => {
 });
 
 // Eliminar un motivo de rechazo
+/**
+ * @swagger
+ * /motivoDeRechazo/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [MotivoDeRechazo]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {

@@ -5,6 +5,16 @@ const ProgramacionSerialesService = require('../../services/transporte/programac
 const router = express.Router();
 const service = new ProgramacionSerialesService();
 
+/**
+ * @swagger
+ * /programacion-seriales:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Programacion-seriales]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const result = await service.findAll(req.query || {});
@@ -14,6 +24,20 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /programacion-seriales/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Programacion-seriales]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/paginar', async (req, res, next) => {
   try {
     const { page, limit } = req.query;
@@ -24,6 +48,20 @@ router.post('/paginar', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /programacion-seriales/masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Programacion-seriales]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/masivo',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -35,6 +73,20 @@ router.post('/masivo',
   }
 });
 
+/**
+ * @swagger
+ * /programacion-seriales/vincular-contenedores:
+ *   post:
+ *     summary: POST /vincular-contenedores
+ *     tags: [Programacion-seriales]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/vincular-contenedores',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -46,6 +98,20 @@ router.post('/vincular-contenedores',
   }
 });
 
+/**
+ * @swagger
+ * /programacion-seriales:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Programacion-seriales]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -60,6 +126,25 @@ router.post('/',
   }
 });
 
+/**
+ * @swagger
+ * /programacion-seriales/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Programacion-seriales]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {
@@ -72,6 +157,21 @@ router.patch('/:id',
   }
 });
 
+/**
+ * @swagger
+ * /programacion-seriales/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Programacion-seriales]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id',
   passport.authenticate('jwt', { session: false }),
   async (req, res, next) => {

@@ -8,6 +8,16 @@ const { crearSemana, actualizarSemana } = require('../../schema/semana.schema');
 const router = express.Router();
 const service = new SemanasService();
 
+/**
+ * @swagger
+ * /semanas:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Semanas]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
@@ -17,6 +27,21 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /semanas/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Semanas]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -27,6 +52,20 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /semanas/filter:
+ *   post:
+ *     summary: POST /filter
+ *     tags: [Semanas]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/filter", async (req, res, next) => {
   const body = req.body;
   try {
@@ -37,6 +76,20 @@ router.post("/filter", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /semanas/rango:
+ *   post:
+ *     summary: POST /rango
+ *     tags: [Semanas]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/rango", async (req, res, next) => {
   try {
     const items = await service.rangoSemana(req.body);
@@ -47,6 +100,20 @@ router.post("/rango", async (req, res, next) => {
 });
 
 // Ejemplo: http://localhost:3000/api/v1/semanas/paginar?offset=1&limit=4
+/**
+ * @swagger
+ * /semanas/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Semanas]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/paginar', async (req, res, next) => {
   try {
     const { offset, limit, consecutivo } = req.query;
@@ -59,6 +126,20 @@ router.post('/paginar', async (req, res, next) => {
 });
 
 //Crear
+/**
+ * @swagger
+ * /semanas:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Semanas]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
   validatorHandler(crearSemana, "body"),
   async (req, res, next) => {
@@ -76,6 +157,25 @@ router.post("/",
   });
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /semanas/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Semanas]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
   validatorHandler(actualizarSemana, "body"),
   async (req, res, next) => {
@@ -94,6 +194,21 @@ router.patch("/:id",
   });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /semanas/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Semanas]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

@@ -4,6 +4,16 @@ const itemService = require("../../services/transporte/galonesPorRuta.service");
 const router = express.Router();
 const service = new itemService();
 
+/**
+ * @swagger
+ * /galonesPorRuta:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [GalonesPorRuta]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const result = await service.find();
@@ -15,6 +25,16 @@ router.get("/", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /galonesPorRuta/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [GalonesPorRuta]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit, item } = req.query;
@@ -25,6 +45,16 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /galonesPorRuta/consultar:
+ *   get:
+ *     summary: GET /consultar
+ *     tags: [GalonesPorRuta]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/consultar", async (req, res, next) => {
   try {
     const result = await service.consultarIndefinidos();
@@ -34,6 +64,21 @@ router.get("/consultar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /galonesPorRuta/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [GalonesPorRuta]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -44,6 +89,20 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /galonesPorRuta:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [GalonesPorRuta]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
   async (req, res, next) => {
     try {
@@ -58,6 +117,25 @@ router.post("/",
     }
   });
 
+/**
+ * @swagger
+ * /galonesPorRuta/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [GalonesPorRuta]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
   async (req, res, next) => {
     try {
@@ -73,6 +151,21 @@ router.patch("/:id",
     }
   });
 
+/**
+ * @swagger
+ * /galonesPorRuta/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [GalonesPorRuta]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {

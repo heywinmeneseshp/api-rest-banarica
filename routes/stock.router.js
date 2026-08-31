@@ -11,6 +11,20 @@ const service = new StockService();
 
 
 //Crear
+/**
+ * @swagger
+ * /stock:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Stock]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
   validatorHandler(crearProductoEnAlmacen, "body"),
   async (req, res, next) => {
@@ -28,6 +42,20 @@ router.post("/",
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /stock/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Stock]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/paginar", async (req, res, next) => {
   try {
     const { almacenes } = req.body;
@@ -39,6 +67,16 @@ router.post("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /stock:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Stock]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
@@ -48,6 +86,20 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /stock/export:
+ *   post:
+ *     summary: POST /export
+ *     tags: [Stock]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/export", async (req, res, next) => {
   try {
     const body = req.body;
@@ -58,6 +110,21 @@ router.post("/export", async (req, res, next) => {
   }
 })
 
+/**
+ * @swagger
+ * /stock/filter/{cons_almacen}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Stock]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: cons_almacen
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/filter/:cons_almacen", async (req, res, next) => {
   try {
     const { cons_almacen } = req.params;
@@ -69,6 +136,20 @@ router.get("/filter/:cons_almacen", async (req, res, next) => {
 }
 )
 
+/**
+ * @swagger
+ * /stock/filter:
+ *   post:
+ *     summary: POST /filter
+ *     tags: [Stock]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/filter", async (req, res, next) => {
   try {
     const body = req.body;
@@ -79,6 +160,21 @@ router.post("/filter", async (req, res, next) => {
   }
 })
 
+/**
+ * @swagger
+ * /stock/filter/product/{cons_producto}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Stock]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: cons_producto
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/filter/product/:cons_producto", async (req, res, next) => {
   try {
     const { cons_producto } = req.params;
@@ -92,6 +188,25 @@ router.get("/filter/product/:cons_producto", async (req, res, next) => {
 
 //findOneProductInAll
 
+/**
+ * @swagger
+ * /stock/filter/{cons_almacen}/{cons_producto}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Stock]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: cons_almacen
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cons_producto
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/filter/:cons_almacen/:cons_producto", async (req, res, next) => {
   try {
     const { cons_almacen, cons_producto } = req.params;
@@ -103,6 +218,29 @@ router.get("/filter/:cons_almacen/:cons_producto", async (req, res, next) => {
 })
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /stock/habilitar/{cons_almacen}/{cons_producto}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Stock]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: cons_almacen
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cons_producto
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/habilitar/:cons_almacen/:cons_producto",
   validatorHandler(habilitarDeshabilitar, "body"),
   async (req, res, next) => {
@@ -120,6 +258,29 @@ router.patch("/habilitar/:cons_almacen/:cons_producto",
   });
 
 
+  /**
+   * @swagger
+   * /stock/actualizar/{cons_almacen}/{cons_producto}:
+   *   post:
+   *     summary: POST /actualizar/:cons_almacen/:cons_producto
+   *     tags: [Stock]
+   *     security: []
+   *     parameters:
+   *       - in: path
+   *         name: cons_almacen
+   *         required: true
+   *         schema: { type: string }
+   *       - in: path
+   *         name: cons_producto
+   *         required: true
+   *         schema: { type: string }
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema: { type: object }
+   *     responses:
+   *       200: { description: OK }
+   */
   router.post("/actualizar/:cons_almacen/:cons_producto",
   async (req, res, next) => {
     try {
@@ -135,6 +296,29 @@ router.patch("/habilitar/:cons_almacen/:cons_producto",
     }
   });
 
+/**
+ * @swagger
+ * /stock/actualizar/{cons_almacen}/{cons_producto}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Stock]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: cons_almacen
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cons_producto
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/actualizar/:cons_almacen/:cons_producto",
   async (req, res, next) => {
     try {
@@ -150,6 +334,29 @@ router.patch("/actualizar/:cons_almacen/:cons_producto",
     }
   });
 
+/**
+ * @swagger
+ * /stock/sumar/{cons_almacen}/{cons_producto}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Stock]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: cons_almacen
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cons_producto
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/sumar/:cons_almacen/:cons_producto",
   validatorHandler(addAndSubtract, "body"),
   async (req, res, next) => {
@@ -167,6 +374,29 @@ router.patch("/sumar/:cons_almacen/:cons_producto",
     }
   });
 
+/**
+ * @swagger
+ * /stock/restar/{cons_almacen}/{cons_producto}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Stock]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: cons_almacen
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cons_producto
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/restar/:cons_almacen/:cons_producto",
   validatorHandler(addAndSubtract, "body"),
   async (req, res, next) => {
@@ -183,6 +413,29 @@ router.patch("/restar/:cons_almacen/:cons_producto",
     }
   });
 
+  /**
+   * @swagger
+   * /stock/disponible/{cons_almacen}/{cons_producto}:
+   *   patch:
+   *     summary: Actualiza un registro
+   *     tags: [Stock]
+   *     security: []
+   *     parameters:
+   *       - in: path
+   *         name: cons_almacen
+   *         required: true
+   *         schema: { type: string }
+   *       - in: path
+   *         name: cons_producto
+   *         required: true
+   *         schema: { type: string }
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema: { type: object }
+   *     responses:
+   *       200: { description: OK }
+   */
   router.patch("/disponible/:cons_almacen/:cons_producto",
   validatorHandler(noDispoble, "body"),
   async (req, res, next) => {
@@ -199,6 +452,21 @@ router.patch("/restar/:cons_almacen/:cons_producto",
     }
   });
 
+/**
+ * @swagger
+ * /stock/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Stock]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -210,6 +478,25 @@ router.get("/:id", async (req, res, next) => {
 });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /stock/{cons_almacen}/{cons_producto}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Stock]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: cons_almacen
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cons_producto
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:cons_almacen/:cons_producto", async (req, res, next) => {
   const { cons_almacen, cons_producto } = req.params
   try {

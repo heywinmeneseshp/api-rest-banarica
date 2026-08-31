@@ -8,6 +8,16 @@ const { crearTransportadora, actualizarTransportadora } = require('../../schema/
 const router = express.Router();
 const service = new transportadorasService();
 
+/**
+ * @swagger
+ * /transportadoras:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Transportadoras]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
@@ -19,6 +29,16 @@ router.get("/", async (req, res, next) => {
 
 // Ejemplo http://localhost:3000/api/v1/usuarios/paginar?page=1&limit=4
 //Paginar
+/**
+ * @swagger
+ * /transportadoras/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Transportadoras]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit, nombre } = req.query;
@@ -29,6 +49,21 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /transportadoras/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Transportadoras]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -40,6 +75,20 @@ router.get("/:id", async (req, res, next) => {
 });
 
 //Crear
+/**
+ * @swagger
+ * /transportadoras:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Transportadoras]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/",
 validatorHandler(crearTransportadora, "body"),
 async (req, res, next) => {
@@ -57,6 +106,25 @@ async (req, res, next) => {
 });
 
 //ACTUALIZACIONES PARCIALES
+/**
+ * @swagger
+ * /transportadoras/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Transportadoras]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id",
 validatorHandler(actualizarTransportadora, "body"),
 async (req, res, next) => {
@@ -75,6 +143,21 @@ async (req, res, next) => {
 });
 
 //ELIMINAR
+/**
+ * @swagger
+ * /transportadoras/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Transportadoras]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params
   try {

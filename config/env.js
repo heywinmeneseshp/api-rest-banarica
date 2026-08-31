@@ -22,6 +22,10 @@ const env = {
   // de nuestro propio API_KEY, pero para el sentido inverso.
   corbanaApiUrl: process.env.CORBANA_API_URL || '',
   corbanaApiKey: process.env.CORBANA_API_KEY || '',
+  // Docs de Swagger en /api-docs. Prendidas por defecto fuera de produccion;
+  // en produccion quedan apagadas salvo que se ponga SWAGGER_ENABLED=true
+  // explicitamente (evita exponer el mapa completo de endpoints por defecto).
+  swaggerEnabled: process.env.SWAGGER_ENABLED === 'true',
 };
 
 module.exports = env;

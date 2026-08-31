@@ -5,6 +5,16 @@ const router = express.Router();
 const service = new CaidaService();
 
 // Obtener todos los registros de caída
+/**
+ * @swagger
+ * /caida:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Caida]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const caidas = await service.find();
@@ -16,6 +26,16 @@ router.get('/', async (req, res, next) => {
 
 // Paginar registros de caída
 // Ejemplo: http://localhost:3000/api/v1/caidas/paginar?offset=1&limit=4&cod_almacen=almacen1
+/**
+ * @swagger
+ * /caida/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Caida]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/paginar', async (req, res, next) => {
   try {
     const { offset, limit, cod_almacen } = req.query;
@@ -27,6 +47,21 @@ router.get('/paginar', async (req, res, next) => {
 });
 
 // Obtener un registro de caída por ID
+/**
+ * @swagger
+ * /caida/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Caida]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -38,6 +73,20 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Crear un nuevo registro de caída
+/**
+ * @swagger
+ * /caida:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Caida]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/', async (req, res, next) => {
   try {
     const body = req.body;
@@ -52,6 +101,25 @@ router.post('/', async (req, res, next) => {
 });
 
 // Actualizar un registro de caída
+/**
+ * @swagger
+ * /caida/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Caida]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -64,6 +132,21 @@ router.patch('/:id', async (req, res, next) => {
 });
 
 // Eliminar un registro de caída
+/**
+ * @swagger
+ * /caida/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Caida]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {

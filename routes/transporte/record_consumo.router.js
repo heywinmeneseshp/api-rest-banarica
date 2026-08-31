@@ -4,6 +4,16 @@ const itemService = require("../../services/transporte/record_consumo.service");
 const router = express.Router();
 const service = new itemService();
 
+/**
+ * @swagger
+ * /record_consumo:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Record_consumo]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const result = await service.find();
@@ -13,6 +23,20 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Record_consumo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/paginar", async (req, res, next) => {
   try {
     const item = req.body;
@@ -24,6 +48,20 @@ router.post("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/encontrar-uno:
+ *   post:
+ *     summary: POST /encontrar-uno
+ *     tags: [Record_consumo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/encontrar-uno", async (req, res, next) => {
   try {
     const body = req.body;
@@ -34,6 +72,16 @@ router.post("/encontrar-uno", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/sin-liquidar:
+ *   get:
+ *     summary: GET /sin-liquidar
+ *     tags: [Record_consumo]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/sin-liquidar", async (req, res, next) => {
   try {
     const result = await service.sinLiquidar();
@@ -43,6 +91,20 @@ router.get("/sin-liquidar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/preview-liquidacion-ruta:
+ *   post:
+ *     summary: POST /preview-liquidacion-ruta
+ *     tags: [Record_consumo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/preview-liquidacion-ruta", async (req, res, next) => {
   try {
     const body = req.body;
@@ -56,6 +118,20 @@ router.post("/preview-liquidacion-ruta", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/liquidar-ruta:
+ *   post:
+ *     summary: POST /liquidar-ruta
+ *     tags: [Record_consumo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/liquidar-ruta", async (req, res, next) => {
   try {
     const body = req.body;
@@ -69,6 +145,20 @@ router.post("/liquidar-ruta", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Record_consumo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/", async (req, res, next) => {
   try {
     const body = req.body;
@@ -82,6 +172,20 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/consultar-consumo:
+ *   post:
+ *     summary: POST /consultar-consumo
+ *     tags: [Record_consumo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/consultar-consumo", async (req, res, next) => {
   try {
     const body = req.body;
@@ -95,6 +199,16 @@ router.post("/consultar-consumo", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/consultar-consumo:
+ *   get:
+ *     summary: GET /consultar-consumo
+ *     tags: [Record_consumo]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/consultar-consumo", async (req, res, next) => {
   try {
     const body = req.body;
@@ -108,6 +222,20 @@ router.get("/consultar-consumo", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/liquidar:
+ *   post:
+ *     summary: POST /liquidar
+ *     tags: [Record_consumo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/liquidar", async (req, res, next) => {
   try {
     const body = req.body;
@@ -121,6 +249,25 @@ router.post("/liquidar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Record_consumo]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -135,6 +282,21 @@ router.patch("/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /record_consumo/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Record_consumo]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {

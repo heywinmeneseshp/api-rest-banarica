@@ -1,9 +1,11 @@
 const express = require("express");
 const cors = require('cors');
 const path = require('path');
+const swaggerUi = require('swagger-ui-express');
 const routerApi = require('./routes');
 const { checkApiKey } = require('./middlewares/auth.handler');
 const env = require('./config/env');
+const { swaggerSpec, swaggerUiEnabled } = require('./config/swagger');
 const { sequelize } = require('./models');
 const { bootstrapInitialData } = require('./utils/bootstrap');
 const { PasswordPolicyService } = require('./services/password-policy.service');
@@ -37,6 +39,12 @@ app.use(cors(corsOptions));
 app.use('/static', express.static(path.join(__dirname, 'public')));
 
 require('./utils/auth');
+
+if (swaggerUiEnabled) {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: 'API Bana Rica — Docs',
+  }));
+}
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));

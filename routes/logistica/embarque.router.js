@@ -5,6 +5,16 @@ const router = express.Router();
 const service = new EmbarqueService();
 
 // Catálogo liviano para dropdowns y datalists (solo campos esenciales)
+/**
+ * @swagger
+ * /embarque/catalogo:
+ *   get:
+ *     summary: GET /catalogo
+ *     tags: [Embarque]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/catalogo', async (req, res, next) => {
   try {
     const items = await service.getCatalogo();
@@ -15,6 +25,16 @@ router.get('/catalogo', async (req, res, next) => {
 });
 
 // Obtener todos los embarques
+/**
+ * @swagger
+ * /embarque:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Embarque]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const embarques = await service.find();
@@ -26,6 +46,20 @@ router.get('/', async (req, res, next) => {
 
 // Paginar embarques
 // Ejemplo: http://localhost:3000/api/v1/embarques/paginar?offset=1&limit=4&filters={"nombre":"embarque1"}
+/**
+ * @swagger
+ * /embarque/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Embarque]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/paginar', async (req, res, next) => {
   try {
     const { offset, limit} = req.query;
@@ -38,6 +72,21 @@ router.post('/paginar', async (req, res, next) => {
 });
 
 // Obtener un embarque por ID
+/**
+ * @swagger
+ * /embarque/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Embarque]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -49,6 +98,20 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Crear un nuevo embarque
+/**
+ * @swagger
+ * /embarque:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Embarque]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/', async (req, res, next) => {
   try {
     const body = req.body;
@@ -63,6 +126,20 @@ router.post('/', async (req, res, next) => {
 });
 
 // Crear embarques masivos
+/**
+ * @swagger
+ * /embarque/masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Embarque]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/masivo', async (req, res, next) => {
   try {
     const body = req.body;
@@ -76,6 +153,20 @@ router.post('/masivo', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /embarque/actualizar-masivo:
+ *   post:
+ *     summary: Operacion masiva (POST)
+ *     tags: [Embarque]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/actualizar-masivo', async (req, res, next) => {
   try {
     const body = req.body;
@@ -91,6 +182,25 @@ router.post('/actualizar-masivo', async (req, res, next) => {
 
 
 // Actualizar un embarque
+/**
+ * @swagger
+ * /embarque/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Embarque]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -103,6 +213,21 @@ router.patch('/:id', async (req, res, next) => {
 });
 
 // Eliminar un embarque
+/**
+ * @swagger
+ * /embarque/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Embarque]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -114,6 +239,20 @@ router.delete('/:id', async (req, res, next) => {
 });
 
 // Exporte plano para Excel
+/**
+ * @swagger
+ * /embarque/exportar:
+ *   post:
+ *     summary: POST /exportar
+ *     tags: [Embarque]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/exportar', async (req, res, next) => {
   try {
     const { offset, limit } = req.query;

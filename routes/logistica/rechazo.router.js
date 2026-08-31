@@ -14,6 +14,16 @@ const requireSuperAdmin = (req, res, next) => {
 };
 
 // Obtener todos los rechazos
+/**
+ * @swagger
+ * /rechazo:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Rechazo]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const rechazos = await service.find();
@@ -25,6 +35,20 @@ router.get('/', async (req, res, next) => {
 
 // Paginar rechazos
 // Ejemplo: http://localhost:3000/api/v1/rechazos/paginar?offset=1&limit=4&id_producto=123
+/**
+ * @swagger
+ * /rechazo/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Rechazo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/paginar', async (req, res, next) => {
   try {
     const { offset, limit } = req.query;
@@ -37,6 +61,21 @@ router.post('/paginar', async (req, res, next) => {
 });
 
 // Obtener un rechazo por ID
+/**
+ * @swagger
+ * /rechazo/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Rechazo]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -48,6 +87,20 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Crear un nuevo rechazo
+/**
+ * @swagger
+ * /rechazo:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Rechazo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/', async (req, res, next) => {
   try {
     const body = req.body;
@@ -62,6 +115,25 @@ router.post('/', async (req, res, next) => {
 });
 
 // Actualizar un rechazo
+/**
+ * @swagger
+ * /rechazo/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Rechazo]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -74,6 +146,25 @@ router.patch('/:id', passport.authenticate('jwt', { session: false }), async (re
 });
 
 // Aprobar un rechazo (transacción con SELECT FOR UPDATE)
+/**
+ * @swagger
+ * /rechazo/{id}/aprobar:
+ *   post:
+ *     summary: POST /:id/aprobar
+ *     tags: [Rechazo]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/:id/aprobar', passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -86,6 +177,21 @@ router.post('/:id/aprobar', passport.authenticate('jwt', { session: false }), as
 
 // Eliminar un rechazo (solo Super administrador; si ya estaba aprobado, devuelve
 // las cajas descontadas al inventario)
+/**
+ * @swagger
+ * /rechazo/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Rechazo]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id', passport.authenticate('jwt', { session: false }), requireSuperAdmin, async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -98,6 +204,25 @@ router.delete('/:id', passport.authenticate('jwt', { session: false }), requireS
 
 // Restaurar un rechazo eliminado (solo Super administrador; si estaba aprobado
 // al eliminarse, vuelve a descontar el inventario)
+/**
+ * @swagger
+ * /rechazo/{id}/restaurar:
+ *   post:
+ *     summary: POST /:id/restaurar
+ *     tags: [Rechazo]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/:id/restaurar', passport.authenticate('jwt', { session: false }), requireSuperAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -114,6 +239,20 @@ router.post('/:id/restaurar', passport.authenticate('jwt', { session: false }), 
 // O la API key servidor-a-servidor (llamado por Corbana cada vez que
 // alguien le da "Sincronizar" a Programación de Corte de esa semana — ver
 // programacionCorteService.syncFromBanarica en api-rest-corbana).
+/**
+ * @swagger
+ * /rechazo/backfill:
+ *   post:
+ *     summary: POST /backfill
+ *     tags: [Rechazo]
+ *     description: Acepta login JWT o el header `api` con la API key.
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/backfill', checkApiKeyOrJwt, async (req, res, next) => {
   try {
     if (req.user && req.user.id_rol !== 'Super administrador') {
@@ -129,6 +268,20 @@ router.post('/backfill', checkApiKeyOrJwt, async (req, res, next) => {
 });
 
 // Exporte plano para Excel
+/**
+ * @swagger
+ * /rechazo/exportar:
+ *   post:
+ *     summary: POST /exportar
+ *     tags: [Rechazo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/exportar', async (req, res, next) => {
   try {
     const { offset, limit } = req.query;

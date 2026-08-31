@@ -5,6 +5,16 @@ const router = express.Router();
 const service = new InspeccionService();
 
 // Obtener todas las inspecciones
+/**
+ * @swagger
+ * /inspeccion:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Inspeccion]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/', async (req, res, next) => {
   try {
     const inspecciones = await service.find();
@@ -16,6 +26,20 @@ router.get('/', async (req, res, next) => {
 
 // Paginar inspecciones
 // Ejemplo: http://localhost:3000/api/v1/inspeccion/paginar?offset=1&limit=4&filters={"nombre":"inspeccion1"}
+/**
+ * @swagger
+ * /inspeccion/paginar:
+ *   post:
+ *     summary: Pagina y filtra registros
+ *     tags: [Inspeccion]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/paginar', async (req, res, next) => {
   try {
     const { offset, limit } = req.query;
@@ -29,6 +53,16 @@ router.post('/paginar', async (req, res, next) => {
 
 // Estadisticas de inspeccionados vs exportados (por anio, destino, naviera, cliente o combinaciones)
 // Ejemplo: /api/v1/inspeccion/estadisticas?groupBy=anio,destino&anio=2026
+/**
+ * @swagger
+ * /inspeccion/estadisticas:
+ *   get:
+ *     summary: GET /estadisticas
+ *     tags: [Inspeccion]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/estadisticas', async (req, res, next) => {
   try {
     const { groupBy, anio } = req.query;
@@ -41,6 +75,21 @@ router.get('/estadisticas', async (req, res, next) => {
 });
 
 // Obtener una inspección por ID
+/**
+ * @swagger
+ * /inspeccion/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Inspeccion]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -52,6 +101,20 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Crear una nueva inspección
+/**
+ * @swagger
+ * /inspeccion:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Inspeccion]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post('/', async (req, res, next) => {
   try {
     const body = req.body;
@@ -66,6 +129,25 @@ router.post('/', async (req, res, next) => {
 });
 
 // Actualizar una inspección
+/**
+ * @swagger
+ * /inspeccion/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Inspeccion]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -78,6 +160,21 @@ router.patch('/:id', async (req, res, next) => {
 });
 
 // Eliminar una inspección
+/**
+ * @swagger
+ * /inspeccion/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Inspeccion]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
   try {

@@ -4,6 +4,16 @@ const itemService = require("../../services/transporte/tanqueos.service");
 const router = express.Router();
 const service = new itemService();
 
+/**
+ * @swagger
+ * /tanqueo:
+ *   get:
+ *     summary: Lista todos los registros
+ *     tags: [Tanqueo]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/", async (req, res, next) => {
   try {
     const result = await service.find();
@@ -13,6 +23,16 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /tanqueo/paginar:
+ *   get:
+ *     summary: Pagina y filtra registros
+ *     tags: [Tanqueo]
+ *     security: []
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/paginar", async (req, res, next) => {
   try {
     const { page, limit } = req.query;
@@ -23,6 +43,20 @@ router.get("/paginar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /tanqueo/cargar-combustible:
+ *   post:
+ *     summary: POST /cargar-combustible
+ *     tags: [Tanqueo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/cargar-combustible", async (req, res, next) => {
   try {
     const body = req.body;
@@ -36,6 +70,20 @@ router.post("/cargar-combustible", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /tanqueo/ajustar-saldo:
+ *   post:
+ *     summary: POST /ajustar-saldo
+ *     tags: [Tanqueo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/ajustar-saldo", async (req, res, next) => {
   try {
     const body = req.body;
@@ -49,6 +97,21 @@ router.post("/ajustar-saldo", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /tanqueo/{id}:
+ *   get:
+ *     summary: Trae un registro por id
+ *     tags: [Tanqueo]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -59,6 +122,20 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /tanqueo:
+ *   post:
+ *     summary: Crea un registro
+ *     tags: [Tanqueo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/", async (req, res, next) => {
   try {
     const body = req.body;
@@ -72,6 +149,20 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /tanqueo/encontrar:
+ *   post:
+ *     summary: POST /encontrar
+ *     tags: [Tanqueo]
+ *     security: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.post("/encontrar", async (req, res, next) => {
   try {
     const body = req.body;
@@ -85,6 +176,25 @@ router.post("/encontrar", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /tanqueo/{id}:
+ *   patch:
+ *     summary: Actualiza un registro
+ *     tags: [Tanqueo]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.patch("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -99,6 +209,21 @@ router.patch("/:id", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /tanqueo/{id}:
+ *   delete:
+ *     summary: Elimina un registro
+ *     tags: [Tanqueo]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
 router.delete("/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
