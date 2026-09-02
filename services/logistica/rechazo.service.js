@@ -531,6 +531,18 @@ async paginate(offset, limit, body) {
       params.push(`%${body.booking}%`);
     }
 
+    const joins = `
+      FROM Rechazos r
+      LEFT JOIN Contenedors ct ON r.id_contenedor = ct.id
+      LEFT JOIN Listados l ON ct.id = l.id_contenedor AND l.id_producto = r.id_producto
+      LEFT JOIN Embarques e ON l.id_embarque = e.id
+      LEFT JOIN semanas s ON e.id_semana = s.id
+      LEFT JOIN combos cp ON r.id_producto = cp.id
+      LEFT JOIN MotivoDeRechazos mdr ON r.id_motivo_de_rechazo = mdr.id
+      LEFT JOIN almacenes a ON r.cod_productor = a.consecutivo
+      LEFT JOIN usuarios u ON r.id_usuario = u.id
+    `;
+
     const sql = `
       SELECT
         r.id, r.fecha_rechazo, r.cantidad, r.serial_palet, r.observaciones,
@@ -542,15 +554,7 @@ async paginate(offset, limit, body) {
         l.fecha AS fecha_listado,
         e.booking,
         s.consecutivo AS sem
-      FROM Rechazos r
-      LEFT JOIN Contenedors ct ON r.id_contenedor = ct.id
-      LEFT JOIN Listados l ON ct.id = l.id_contenedor
-      LEFT JOIN Embarques e ON l.id_embarque = e.id
-      LEFT JOIN semanas s ON e.id_semana = s.id
-      LEFT JOIN combos cp ON r.id_producto = cp.id
-      LEFT JOIN MotivoDeRechazos mdr ON r.id_motivo_de_rechazo = mdr.id
-      LEFT JOIN almacenes a ON r.cod_productor = a.consecutivo
-      LEFT JOIN usuarios u ON r.id_usuario = u.id
+      ${joins}
       WHERE ${where.join(' AND ')}
       ORDER BY r.id DESC
       LIMIT ? OFFSET ?
@@ -559,7 +563,7 @@ async paginate(offset, limit, body) {
     const [rows, countRows] = await Promise.all([
       sequelize.query(sql + ';', { replacements: [...params, pLimit, pOffset], type: sequelize.QueryTypes.SELECT }),
       sequelize.query(
-        `SELECT COUNT(*) AS total FROM Rechazos r WHERE ${where.join(' AND ')}`,
+        `SELECT COUNT(*) AS total ${joins} WHERE ${where.join(' AND ')}`,
         { replacements: params, type: sequelize.QueryTypes.SELECT }
       )
     ]);
