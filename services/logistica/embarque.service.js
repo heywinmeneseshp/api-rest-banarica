@@ -184,7 +184,7 @@ class EmbarqueService {
 
       if (updatesRealizados.length === 0) {
         await t.rollback(); // Si no se actualizÃ³ nada, revertimos la transacciÃ³n
-        throw new Error("NingÃºn registro fue actualizado. Verifique que los 'bl' sean correctos.");
+        throw boom.badRequest("NingÃºn registro fue actualizado. Verifique que los 'bl' sean correctos.");
       }
 
       await t.commit();
@@ -194,8 +194,14 @@ class EmbarqueService {
         blsActualizados: updatesRealizados
       };
     } catch (error) {
-      // En caso de error, aseguramos que la transacciÃ³n sea revertida si no se ha confirmado.
-      // Nota: Sequelize maneja esto implÃ­citamente, pero es buena prÃ¡ctica tenerlo en cuenta.
+      // La transacciÃ³n NO se revierte sola: si algo falla a mitad del loop (antes de
+      // llegar al commit/rollback de arriba), hay que revertirla explÃ­citamente o queda
+      // abierta colgada en MySQL sosteniendo locks (mismo patrÃ³n de bug ya visto en
+      // seguridad.service.js).
+      if (!t.finished) {
+        await t.rollback();
+      }
+      if (error.isBoom) throw error;
       throw boom.badRequest(error.message || "Error al realizar la actualizaciÃ³n masiva.");
     }
   }
