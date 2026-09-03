@@ -275,53 +275,67 @@ class StockServices {
   async exportCombo(body) {
     const almacen = body.cons_almacen;
     const comboList = body.comboList;
-    const movimiento = {
-      prefijo: "EX", pendiente: false,
-      cons_semana: body.cons_semana,
-      fecha: body.fecha,
-      realizado_por: body.realizado_por,
-      aprobado_por: body.aprobado_por,
-      observaciones: body.observaciones,
-      vehiculo: body?.vehiculo
-    };
-    const movimientoR = await serviceMovimiento.create(movimiento);
 
-    const comboCons = comboList.map(c => c.cons_combo);
-    const tablaCombos = await db.tabla_combos.findAll({
-      where: { cons_combo: { [Op.in]: comboCons } }
-    });
+    // Todo el movimiento (crear el "EX", restar stock producto por
+    // producto, dejar el historial) queda en UNA sola transaccion. Antes
+    // cada paso confirmaba por su cuenta: si el producto 2 de 3 fallaba, el
+    // movimiento y el descuento del producto 1 ya habian quedado guardados
+    // y no se podian deshacer.
+    const t = await db.sequelize.transaction();
+    try {
+      const movimiento = {
+        prefijo: "EX", pendiente: false,
+        cons_semana: body.cons_semana,
+        fecha: body.fecha,
+        realizado_por: body.realizado_por,
+        aprobado_por: body.aprobado_por,
+        observaciones: body.observaciones,
+        vehiculo: body?.vehiculo
+      };
+      const movimientoR = await serviceMovimiento.create(movimiento, t);
 
-    const comboQuantities = new Map(comboList.map(c => [c.cons_combo, c.cantidad]));
+      const comboCons = comboList.map(c => c.cons_combo);
+      const tablaCombos = await db.tabla_combos.findAll({
+        where: { cons_combo: { [Op.in]: comboCons } },
+        transaction: t,
+      });
 
-    const productMap = new Map();
-    for (const tc of tablaCombos) {
-      const qty = comboQuantities.get(tc.cons_combo);
-      if (qty) {
-        const key = tc.cons_producto;
-        productMap.set(key, (productMap.get(key) || 0) + parseFloat(qty));
+      const comboQuantities = new Map(comboList.map(c => [c.cons_combo, c.cantidad]));
+
+      const productMap = new Map();
+      for (const tc of tablaCombos) {
+        const qty = comboQuantities.get(tc.cons_combo);
+        if (qty) {
+          const key = tc.cons_producto;
+          productMap.set(key, (productMap.get(key) || 0) + parseFloat(qty));
+        }
       }
-    }
 
-    for (const [cons_producto, cantidad] of productMap) {
-      await this.subtractAmounts(almacen, cons_producto, { cantidad });
-      const historial = {
-        cons_movimiento: movimientoR.consecutivo,
-        cons_producto,
-        cons_almacen_gestor: almacen,
-        cons_lista_movimientos: "EX",
+      for (const [cons_producto, cantidad] of productMap) {
+        await this.subtractAmounts(almacen, cons_producto, { cantidad }, t);
+        const historial = {
+          cons_movimiento: movimientoR.consecutivo,
+          cons_producto,
+          cons_almacen_gestor: almacen,
+          cons_lista_movimientos: "EX",
+          tipo_movimiento: "Salida",
+          razon_movimiento: "Exportacion",
+          cantidad,
+        };
+        await serviceHistorial.create(historial, t);
+      }
+
+      await t.commit();
+      return {
+        cons_almacen: almacen,
         tipo_movimiento: "Salida",
         razon_movimiento: "Exportacion",
-        cantidad,
+        movimiento: movimientoR
       };
-      await serviceHistorial.create(historial);
+    } catch (error) {
+      await t.rollback();
+      throw error;
     }
-
-    return {
-      cons_almacen: almacen,
-      tipo_movimiento: "Salida",
-      razon_movimiento: "Exportacion",
-      movimiento: movimientoR
-    };
   }
 
   async deleteStock(cons_almacen, cons_producto) {

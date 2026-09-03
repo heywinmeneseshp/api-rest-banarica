@@ -7,11 +7,27 @@ class RecepcionService {
   constructor() {}
 
   async create(data) {
-    const { count } = await db.movimientos.findAndCountAll();
-    let consecutivo = "RC-" + count;
-    const itemNuevo = { consecutivo, ...data }
-    await db.movimientos.create(itemNuevo);
-    return itemNuevo;
+    const t = await db.sequelize.transaction();
+    try {
+      // MAX(id) con lock, no COUNT(*): dos recepciones creadas al mismo
+      // tiempo con un COUNT(*) sin lock pueden leer el mismo total y generar
+      // el mismo consecutivo (mismo bug que ya se corrigio en
+      // movimientos.service.js create(), que usa este mismo patron).
+      const maxResult = await db.movimientos.findOne({
+        attributes: [[db.sequelize.fn('MAX', db.sequelize.col('id')), 'maxId']],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      const nextNum = (Number(maxResult?.dataValues?.maxId) || 0) + 1;
+      const consecutivo = "RC-" + nextNum;
+      const itemNuevo = { consecutivo, ...data };
+      await db.movimientos.create(itemNuevo, { transaction: t });
+      await t.commit();
+      return itemNuevo;
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
   }
 
   async find() {

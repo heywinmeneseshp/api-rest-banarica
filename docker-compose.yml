@@ -6,6 +6,7 @@ services:
   api-rest-banarica:
     build: .
     image: ghcr.io/heywinmeneseshp/api-rest-banarica:latest
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "3001:3000"

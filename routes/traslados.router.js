@@ -1,4 +1,5 @@
 const express = require("express");
+const passport = require('passport');
 const TrasladosService = require('../services/traslados.service');
 const validatorHandler = require('../middlewares/validator.handler');
 const { realizarTraslado, modificarTraslado, recibirTraslado, ejecutarTraslado } = require('../schema/traslado.schema');
@@ -6,6 +7,8 @@ const { realizarTraslado, modificarTraslado, recibirTraslado, ejecutarTraslado }
 
 const router = express.Router();
 const service = new TrasladosService();
+
+router.use(passport.authenticate('jwt', { session: false }));
 
 /**
  * @swagger
@@ -191,7 +194,9 @@ router.get("/pendientes/contar", async (req, res, next) => {
 router.patch("/:id/aceptar", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { usuario } = req.body;
+    // La identidad viene del JWT, nunca del body: aceptar un traslado ajeno
+    // solo con mandar {usuario:{username:"otro"}} en el body ya no es posible.
+    const usuario = { username: req.user.username };
     const result = await service.aceptarTraslado(id, usuario);
     res.json(result);
   } catch (error) {
@@ -221,7 +226,8 @@ router.patch("/:id/aceptar", async (req, res, next) => {
 router.patch("/:id/rechazar", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { usuario, motivo } = req.body;
+    const { motivo } = req.body;
+    const usuario = { username: req.user.username };
     const result = await service.rechazarTraslado(id, usuario, motivo);
     res.json(result);
   } catch (error) {
@@ -251,7 +257,7 @@ router.patch("/:id/rechazar", async (req, res, next) => {
 router.post("/:id/evidencias/listar", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { usuario } = req.body;
+    const usuario = { username: req.user.username };
     const result = await service.listarEvidenciasTraslado(id, usuario);
     res.json({ success: true, data: result.fotos, carpetaUrl: result.carpetaUrl });
   } catch (error) {
@@ -281,7 +287,7 @@ router.post("/:id/evidencias/listar", async (req, res, next) => {
 router.post("/:id/articulos/listar", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { usuario } = req.body;
+    const usuario = { username: req.user.username };
     const result = await service.listarArticulosTraslado(id, usuario);
     res.json({ success: true, data: result });
   } catch (error) {

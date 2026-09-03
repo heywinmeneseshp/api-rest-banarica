@@ -14,8 +14,9 @@ class EmbarqueService {
 
 
   async cargueMasivo(data) {
+    let t;
     try {
-      const t = await db.sequelize.transaction();
+      t = await db.sequelize.transaction();
 
       // Obtener todas las semanas vÃ¡lidas en la base de datos
       const semanasValidas = await db.semanas.findAll({ attributes: ["consecutivo", "id"] });
@@ -97,6 +98,13 @@ class EmbarqueService {
         registrosInvalidos: datosInvalidos
       };
     } catch (error) {
+      // t nunca se revertia si algo fallaba a mitad del loop (antes de llegar
+      // al commit) — quedaba abierta colgada en MySQL, mismo patron ya
+      // corregido en actualizarMasivo/otros servicios esta sesion.
+      if (t && !t.finished) {
+        await t.rollback();
+      }
+      if (error.isBoom) throw error;
       throw boom.badRequest(error.message || "Error al crear el embarque");
     }
   }
@@ -136,8 +144,20 @@ class EmbarqueService {
           throw boom.badRequest('Falta el campo identificador "bl" en uno de los registros de actualizaciÃ³n.');
         }
 
+        // bl/booking son VARCHAR, pero si la fila del Excel tiene una celda que
+        // parece solo numeros (ej. "275896938" sin comillas), la libreria que
+        // lo lee la entrega como number de JS, no string. Eso llega crudo al
+        // WHERE de mas abajo (bl es indice unico), y MySQL en modo estricto
+        // revienta con "Truncated incorrect DOUBLE value" al intentar comparar
+        // ese numero contra otras filas de bl que si son alfanumericas
+        // (BGA...) — mismo tipo de error que ya se vio con la columna sae.
+        const blNormalizado = String(item.bl).trim();
+
         // 3. Preparar los cambios
         const changes = { ...item };
+        if (changes.booking !== undefined && changes.booking !== null) {
+          changes.booking = String(changes.booking).trim();
+        }
         delete changes.bl; // El 'bl' se usa solo para el WHERE, no debe actualizarse si es la clave de bÃºsqueda.
         const semanaConsecutivo = getSemanaConsecutivo(changes);
         delete changes.semana;
@@ -172,12 +192,12 @@ class EmbarqueService {
 
         // 4. Ejecutar la actualizaciÃ³n (uso de update en lugar de bulkCreate)
         const [affectedRows] = await db.Embarque.update(changes, {
-          where: { bl: item.bl },
+          where: { bl: blNormalizado },
           transaction: t
         });
 
         if (affectedRows > 0) {
-          updatesRealizados.push(item.bl);
+          updatesRealizados.push(blNormalizado);
         }
         // Si affectedRows es 0, significa que el registro con ese BL no se encontrÃ³.
       }

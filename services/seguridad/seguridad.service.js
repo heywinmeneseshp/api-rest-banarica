@@ -1924,6 +1924,23 @@ class SeguridadService {
     const transaction = await db.sequelize.transaction();
 
     try {
+      // Re-verificar disponibilidad con lock DENTRO de la transaccion. El
+      // findAll de arriba (linea ~1907) corre ANTES de abrir la
+      // transaccion, sin lock — dos solicitudes de baja para los mismos
+      // seriales en paralelo (doble clic, reintento de red) pueden pasar
+      // ambas esa validacion antes de que cualquiera confirme, y terminar
+      // dando de baja el mismo serial dos veces y descontando el stock dos
+      // veces por un solo articulo fisico.
+      const serialesLock = await db.serial_de_articulos.findAll({
+        where: { id: { [Op.in]: seriales.map((s) => s.id) }, available: true, dado_de_baja: false },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (serialesLock.length !== seriales.length) {
+        throw boom.conflict('Uno o mas de los seriales seleccionados ya fueron procesados por otra solicitud.');
+      }
+
       const movimiento = await movimientoService.create(
         {
           prefijo: 'AJ',
@@ -1939,7 +1956,11 @@ class SeguridadService {
         transaction
       );
 
-      await Promise.all(seriales.map(async (serial) => {
+      // Secuencial, no Promise.all: varias llamadas concurrentes compartiendo
+      // la misma transaccion/conexion pueden pisarse (lecturas obsoletas en
+      // subtractAmounts, deadlocks) — mismo patron ya corregido antes en
+      // inspeccionAntinarcoticos/usarSeriales.
+      for (const serial of seriales) {
         await db.serial_de_articulos.update(
           {
             dado_de_baja: true,
@@ -1968,7 +1989,7 @@ class SeguridadService {
         );
 
         await stockService.subtractAmounts(serial.cons_almacen, serial.cons_producto, { cantidad: 1 }, transaction);
-      }));
+      }
 
       await transaction.commit();
 
@@ -1979,6 +2000,13 @@ class SeguridadService {
       };
     } catch (error) {
       await transaction.rollback();
+      // Preservar el tipo de error real (conflict/notFound/etc) en vez de
+      // aplanar todo a badRequest. Nota: boom.badImplementation (500)
+      // oculta el mensaje real en produccion por diseno de @hapi/boom, asi
+      // que para un error inesperado seguimos usando badRequest — pierde
+      // precision en el codigo HTTP pero mantiene visible el mensaje real,
+      // que es lo que de verdad hace falta para diagnosticar.
+      if (error.isBoom) throw error;
       throw boom.badRequest(error.message || 'Error al dar de baja los seriales');
     }
   }

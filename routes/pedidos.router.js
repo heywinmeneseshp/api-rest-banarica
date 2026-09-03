@@ -1,4 +1,5 @@
 const express = require("express");
+const passport = require('passport');
 
 const PedidosService = require('../services/pedidos.service');
 const validatorHandler = require('../middlewares/validator.handler');
@@ -7,6 +8,8 @@ const { crearPedido, editarPedido, ingresarConsPedido, recibirPedido } = require
 
 const router = express.Router();
 const service = new PedidosService();
+
+router.use(passport.authenticate('jwt', { session: false }));
 
 /**
  * @swagger

@@ -43,7 +43,11 @@ class HistorialMovimientosService {
   }
 
  
-  async sendAdjustmentAlert(data) {
+  // eslint-disable-next-line no-unused-vars -- se acepta `transaction` para
+  // que la firma coincida con el call site (create() se lo pasa); no se usa
+  // porque este metodo solo manda un correo, no toca la base de datos, pero
+  // si algun dia empieza a leer algo aca hace falta para no leer sucio.
+  async sendAdjustmentAlert(data, transaction) {
     const recipients = [
       'hmeneses@banarica.com',
       'ydavila@banarica.com',

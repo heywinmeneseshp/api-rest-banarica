@@ -15,11 +15,28 @@ class TrasladosService {
   }
 
   async create(data, transaction = null) {
-    const { count } = await db.traslados.findAndCountAll();
-    const consecutivo = "TR-" + count;
-    const itemNuevo = { consecutivo, ...data }
-    const res = await db.traslados.create(itemNuevo, transaction ? { transaction } : undefined);
-    return res
+    // MAX(id) con lock en vez de COUNT(*): evita que dos traslados creados
+    // al mismo tiempo lean el mismo total y generen el mismo consecutivo
+    // (consecutivo es la primary key de esta tabla, asi que antes esto
+    // terminaba en un error de clave duplicada para uno de los dos).
+    const ownTransaction = !transaction;
+    const t = transaction || await db.sequelize.transaction();
+    try {
+      const maxResult = await db.traslados.findOne({
+        attributes: [[db.sequelize.fn('MAX', db.sequelize.col('id')), 'maxId']],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      const nextNum = (Number(maxResult?.dataValues?.maxId) || 0) + 1;
+      const consecutivo = "TR-" + nextNum;
+      const itemNuevo = { consecutivo, ...data };
+      const res = await db.traslados.create(itemNuevo, { transaction: t });
+      if (ownTransaction) await t.commit();
+      return res;
+    } catch (error) {
+      if (ownTransaction) await t.rollback();
+      throw error;
+    }
   }
 
   async executeTransfer(data) {
@@ -539,11 +556,44 @@ class TrasladosService {
     }
   }
 
+  // Usado solo por PATCH /traslados/modificar/:id, que a su vez solo llama
+  // RecibirTraslado.jsx (tanto para "Completar" como para "Rechazar" un
+  // traslado del flujo legacy por cantidades — el de seriales usa
+  // aceptarTraslado/rechazarTraslado arriba). Antes: sin transaccion, sin
+  // guarda contra reprocesar el mismo traslado dos veces, y el movimiento de
+  // stock lo hacia el frontend con dos llamadas sueltas (restar/sumar) sin
+  // esperar y sin ninguna relacion entre si — si una fallaba y la otra no,
+  // el stock quedaba mal sin que nadie se enterara. Ahora todo el
+  // movimiento de stock queda adentro de esta unica transaccion.
   async update(id, changes) {
-    const traslados = await db.traslados.findByPk(id);
-    if (!traslados) throw boom.notFound('El item no existe');
-    await traslados.update(changes)
-    return traslados
+    const t = await db.sequelize.transaction();
+    try {
+      const traslado = await db.traslados.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!traslado) throw boom.notFound('El item no existe');
+
+      if (changes.estado && traslado.estado !== 'Pendiente') {
+        throw boom.conflict(`Este traslado ya fue procesado (estado actual: ${traslado.estado}).`);
+      }
+
+      if (changes.estado === 'Completado') {
+        const lineas = await db.historial_movimientos.findAll({
+          where: { cons_movimiento: traslado.consecutivo },
+          transaction: t,
+        });
+
+        for (const linea of lineas) {
+          await stockService.subtractAmounts(traslado.origen, linea.cons_producto, { cantidad: linea.cantidad }, t);
+          await stockService.addAmounts(traslado.destino, linea.cons_producto, { cantidad: linea.cantidad }, t);
+        }
+      }
+
+      await traslado.update(changes, { transaction: t });
+      await t.commit();
+      return traslado;
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
   }
 
   async delete(id) {

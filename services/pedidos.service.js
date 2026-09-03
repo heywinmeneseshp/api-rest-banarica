@@ -62,11 +62,25 @@ class pedidosService {
   }
 
   async createCons(data) {
-    const { count } = await db.tabla_pedidos.findAndCountAll();
-    let consecutivo = "PD-" + count;
-    const itemNuevo = { ...data, consecutivo };
-    await db.tabla_pedidos.create(itemNuevo)
-    return itemNuevo
+    const t = await db.sequelize.transaction();
+    try {
+      // MAX(id) con lock en vez de COUNT(*): evita que dos pedidos creados
+      // al mismo tiempo lean el mismo total y generen el mismo consecutivo.
+      const maxResult = await db.tabla_pedidos.findOne({
+        attributes: [[db.sequelize.fn('MAX', db.sequelize.col('id')), 'maxId']],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      const nextNum = (Number(maxResult?.dataValues?.maxId) || 0) + 1;
+      const consecutivo = "PD-" + nextNum;
+      const itemNuevo = { ...data, consecutivo };
+      await db.tabla_pedidos.create(itemNuevo, { transaction: t });
+      await t.commit();
+      return itemNuevo;
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
   }
 
   async receiveOrder(id, changes) {

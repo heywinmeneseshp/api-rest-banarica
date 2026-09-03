@@ -1,12 +1,16 @@
 const express = require("express");
+const passport = require('passport');
 
 const MovimientosService = require('../services/movimientos.service');
 const validatorHandler = require('../middlewares/validator.handler');
 const { crearMovimiento, actualizarMovimiento } = require('../schema/movimiento.schema');
+const { checkSuperAdminRole } = require('../middlewares/auth.handler');
 
 
 const router = express.Router();
 const service = new MovimientosService();
+
+router.use(passport.authenticate('jwt', { session: false }));
 
 /**
  * @swagger
@@ -125,9 +129,6 @@ async (req, res, next) => {
       data: itemNuevo
     })
   } catch (error) {
-    res.json({
-      message: error.message
-    })
     next(error);
   }
 
@@ -159,6 +160,14 @@ async (req, res, next) => {
   try {
     const { id } = req.params
     const body = req.body;
+    // Aprobar/rechazar una Liquidacion o Devolucion pendiente es una accion
+    // privilegiada (el frontend solo la ofrece a Super administrador); un
+    // Ajuste corriente tambien usa este mismo PATCH para editar fecha/semana
+    // y esa parte debe seguir abierta a cualquier usuario autenticado, asi
+    // que el gateo es por los campos que llegan, no por la ruta entera.
+    if (('pendiente' in body || 'aprobado_por' in body)) {
+      checkSuperAdminRole(req, res, (err) => { if (err) throw err; });
+    }
     const item = await service.update(id, body)
     res.json({
       message: 'El item fue actualizado',
