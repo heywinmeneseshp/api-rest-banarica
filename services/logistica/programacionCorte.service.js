@@ -292,25 +292,37 @@ class ProgramacionCorteService {
 
     const creados = await db.programacionCorte.bulkCreate(filasParaCrear);
 
-    // Best-effort: avisa a Corbana que ya cargamos esta semana, para que la
-    // traiga sola (evita que alguien tenga que apretar "Sincronizar" allá a
-    // mano). Nunca debe hacer fallar el cargue de acá — por eso no se
-    // espera (`await`) y cualquier error solo se loguea.
-    this.avisarCorbana(semana.consecutivo).catch((error) => {
+    // Se espera (await) el aviso a Corbana para poder devolverle al frontend
+    // si la sincronizacion realmente funciono o no — pero un fallo o timeout
+    // de Corbana NUNCA debe tumbar el cargue de aca (por eso el try/catch
+    // propio, separado del resto del metodo): la fila ya quedo guardada en
+    // Banarica pase lo que pase del lado de Corbana.
+    let corbana;
+    try {
+      const resultadoCorbana = await this.avisarCorbana(semana.consecutivo);
+      corbana = resultadoCorbana === null
+        ? { ok: null, message: 'No configurado (falta CORBANA_API_URL o CORBANA_API_KEY).' }
+        : { ok: true, ...resultadoCorbana };
+    } catch (error) {
       console.error('No se pudo avisar a Corbana del cargue de Programacion de Corte:', error.message);
-    });
+      corbana = { ok: false, message: error.message };
+    }
 
     return {
       creados: creados.length,
       borrados,
       abortado: false,
       message: `Se borraron ${borrados} registros de la semana "${semana.consecutivo}" y se cargaron ${creados.length} nuevos.`,
-      errores: []
+      errores: [],
+      corbana
     };
   }
 
+  // Devuelve el resultado que manda Corbana ({totalFilas, creados, borrados,
+  // advertencias}), o null si la integracion no esta configurada. Tira si
+  // Corbana responde con error o no responde — el llamador decide que hacer.
   async avisarCorbana(semanaConsecutivo) {
-    if (!env.corbanaApiUrl || !env.corbanaApiKey) return;
+    if (!env.corbanaApiUrl || !env.corbanaApiKey) return null;
 
     const response = await fetch(`${env.corbanaApiUrl.replace(/\/$/, '')}/api/v1/programacion-corte/webhook-sync-banarica`, {
       method: 'POST',
@@ -319,9 +331,13 @@ class ProgramacionCorteService {
       signal: AbortSignal.timeout(20000)
     });
 
+    const payload = await response.json().catch(() => null);
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(payload?.message || `HTTP ${response.status}`);
     }
+
+    return payload?.data || null;
   }
 
   async listar() {
