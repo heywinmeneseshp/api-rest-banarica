@@ -9,6 +9,9 @@ module.exports = (sequelize, DataTypes) => {
   tipo_movimiento_vehiculos.init({
     movimiento: DataTypes.STRING,
     requiere_contenedor: DataTypes.BOOLEAN,
+    // Donde va la finca del proceso de empaque en el viaje sugerido —
+    // independiente de requiere_contenedor (ver ProgramadorSugeridoTransporte.jsx).
+    finca_en: DataTypes.ENUM('origen', 'destino'),
     activo: DataTypes.BOOLEAN,
   }, {
     sequelize,

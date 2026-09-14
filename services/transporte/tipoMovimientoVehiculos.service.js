@@ -2,10 +2,22 @@ const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../../models');
 
+const FINCA_EN_VALORES = ['origen', 'destino'];
+
 class tipoMovimientoVehiculosService {
   normalizeMovimiento(value) {
     return String(value || '').trim();
   }
+
+  normalizeFincaEn(value, fallback = 'origen') {
+    const normalizado = String(value || '').trim().toLowerCase();
+    if (!normalizado) return fallback;
+    if (!FINCA_EN_VALORES.includes(normalizado)) {
+      throw boom.badRequest(`finca_en debe ser "origen" o "destino" (recibido: "${value}")`);
+    }
+    return normalizado;
+  }
+
   async create(data) {
     const movimiento = this.normalizeMovimiento(data?.movimiento);
     if (!movimiento) {
@@ -22,6 +34,7 @@ class tipoMovimientoVehiculosService {
     return db.tipo_movimiento_vehiculos.create({
       movimiento,
       requiere_contenedor: Boolean(data?.requiere_contenedor),
+      finca_en: this.normalizeFincaEn(data?.finca_en),
       activo: typeof data?.activo === 'boolean' ? data.activo : true,
     });
   }
@@ -62,6 +75,10 @@ class tipoMovimientoVehiculosService {
 
     if (Object.prototype.hasOwnProperty.call(payload, 'requiere_contenedor')) {
       payload.requiere_contenedor = Boolean(payload.requiere_contenedor);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'finca_en')) {
+      payload.finca_en = this.normalizeFincaEn(payload.finca_en, item.finca_en);
     }
 
     await db.tipo_movimiento_vehiculos.update(payload, { where: { id } });
