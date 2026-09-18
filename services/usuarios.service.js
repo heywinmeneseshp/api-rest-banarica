@@ -1,9 +1,21 @@
 
 const boom = require('@hapi/boom');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { Op } = require('sequelize');
 const db = require('../models');
 const { normalizeRole, ROLES } = require('../middlewares/auth.handler');
+
+const PASSWORD_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+
+function generarPasswordAleatoria(length = 10) {
+  const bytes = crypto.randomBytes(length);
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += PASSWORD_CHARS[bytes[i] % PASSWORD_CHARS.length];
+  }
+  return password;
+}
 
 
 class UsuariosService {
@@ -99,6 +111,28 @@ class UsuariosService {
       return await db.transportadoras_por_usuario.create({ username, id_transportadora, habilitado: changes });
     }
     return await db.transportadoras_por_usuario.update({ habilitado: changes }, { where: { username, id_transportadora } });
+  }
+
+  async regeneratePasswordsBulk(usernames) {
+    const resultados = [];
+    for (const username of usernames) {
+      const user = await db.usuarios.findOne({ where: { username } });
+      if (!user) {
+        resultados.push({ username, error: 'El usuario no existe' });
+        continue;
+      }
+      const nuevaPassword = generarPasswordAleatoria();
+      const password = await bcrypt.hash(nuevaPassword, 10);
+      await db.usuarios.update({
+        password,
+        password_changed_at: new Date(),
+        password_reminder_sent_at: null,
+        password_blocked_at: null,
+        isBlock: user.password_blocked_at ? false : user.isBlock,
+      }, { where: { username } });
+      resultados.push({ username, password: nuevaPassword });
+    }
+    return resultados;
   }
 
   async delete(username) {

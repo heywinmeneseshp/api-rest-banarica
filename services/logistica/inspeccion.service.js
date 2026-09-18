@@ -170,6 +170,11 @@ class InspeccionService {
                 model: db.movimientos,
                 as: 'movimiento',
                 required: false
+              },
+              {
+                model: db.productos,
+                as: 'producto',
+                required: false
               }
             ],
             order: [['updatedAt', 'DESC'], ['id', 'DESC']]
@@ -195,6 +200,11 @@ class InspeccionService {
             model: db.movimientos,
             as: 'movimiento',
             required: false
+          },
+          {
+            model: db.productos,
+            as: 'producto',
+            required: false
           }
         ],
         order: [['updatedAt', 'DESC'], ['id', 'DESC']]
@@ -207,14 +217,24 @@ class InspeccionService {
         : [],
       db.Listado.findAll({
         where: {
-          id_contenedor: { [Op.in]: containerIds }
+          id_contenedor: { [Op.in]: containerIds },
+          // Una linea deshabilitada esta borrada logicamente (mismo criterio
+          // que listado.service.js): no debe contar como almacen/fecha de
+          // llenado, fruta ni cajas reales del contenedor.
+          habilitado: { [Op.ne]: false }
         },
-        include: [{
-          model: db.Embarque,
-          include: [{
-            model: db.semanas
-          }]
-        }],
+        include: [
+          {
+            model: db.Embarque,
+            include: [
+              { model: db.semanas },
+              { model: db.Destino },
+              { model: db.Naviera }
+            ]
+          },
+          { model: db.almacenes, as: 'almacen' },
+          { model: db.combos }
+        ],
         order: [['updatedAt', 'DESC'], ['id', 'DESC']]
       }),
       inspectionUserIds.length > 0
@@ -245,11 +265,15 @@ class InspeccionService {
     }
 
     const listadoPorContenedorMap = new Map();
+    const todosListadosPorContenedorMap = new Map();
     for (const listado of listados) {
       const current = listadoPorContenedorMap.get(listado.id_contenedor);
       if (!current) {
         listadoPorContenedorMap.set(listado.id_contenedor, listado);
       }
+      const lista = todosListadosPorContenedorMap.get(listado.id_contenedor) || [];
+      lista.push(listado);
+      todosListadosPorContenedorMap.set(listado.id_contenedor, lista);
     }
 
     return rows.map((item) => {
@@ -280,9 +304,11 @@ class InspeccionService {
         bag_pack: serialReferencia?.bag_pack || null,
         serial_referencia: serialReferencia?.serial || null,
         total_seriales: serialesInspeccion.length,
+        todosSeriales: serialesInspeccion.map((s) => s.toJSON?.() || s),
         usuario,
         MotivoDeUso: motivoDeUso,
         listado: listadoRelacionado?.toJSON?.() || null,
+        todosListados: (todosListadosPorContenedorMap.get(item.id_contenedor) || []).map((l) => l.toJSON()),
         Embarque: embarque,
         semana: embarque?.semana || null,
         movimiento,
@@ -361,6 +387,94 @@ class InspeccionService {
 
     const data = await this.enrichInspectionRows(rows);
     return { data, total: count };
+  }
+
+  // Exportacion a Excel de Unidades Inspeccionadas por rango de fechas (sin
+  // paginar) — mismo filtro de "visibles" que ya aplica la pantalla
+  // (Inspeccionados.jsx#fetchSeriales), para que el archivo coincida con lo
+  // que se ve en tabla: oculta inspecciones de movimientos rechazados y las
+  // de zona "vacio".
+  async exportar({ fecha_inspeccion_inicio, fecha_inspeccion_fin } = {}) {
+    const where = {};
+    const dateRange = this.buildDateRange(fecha_inspeccion_inicio, fecha_inspeccion_fin);
+    if (dateRange) {
+      where.fecha_inspeccion = dateRange;
+    }
+
+    const rows = await db.Inspeccion.findAll({
+      where,
+      order: [['fecha_inspeccion', 'DESC'], ['hora_inicio', 'DESC'], ['id', 'DESC']]
+    });
+
+    const enriched = await this.enrichInspectionRows(rows);
+
+    const visibles = enriched.filter((item) => {
+      const respuestaMovimiento = String(item?.movimiento?.respuesta || '').toLowerCase();
+      const zona = String(item?.Inspeccion?.zona || item?.zona || '').toLowerCase();
+      return !respuestaMovimiento.includes('rechazada') && !zona.includes('vacio');
+    });
+
+    // Solo los campos planos que consume el Excel: el objeto enriquecido
+    // trae adjuntos Contenedor/Embarque/listado/todosListados/todosSeriales
+    // completos (necesarios para calcular estas columnas), pero devolverlos
+    // tal cual infla la respuesta a varios MB por nada (ej. 788 filas -> ~12MB).
+    const inspecciones = visibles.map((item) => {
+      const todosListados = item.todosListados || [];
+      const almacenesLlenado = [...new Set(todosListados.map((l) => l.almacen?.nombre).filter(Boolean))].join(', ');
+      const fechasLlenado = [...new Set(todosListados.map((l) => l.fecha).filter(Boolean))].join(', ');
+      const fruta = [...new Set(todosListados.map((l) => l.combo?.nombre).filter(Boolean))].join(', ');
+      const cantidadCajas = todosListados.reduce((total, l) => total + (Number(l.cajas_unidades) || 0), 0);
+      const semanaConsecutivo = item.Embarque?.semana?.consecutivo
+        || item.listado?.Embarque?.semana?.consecutivo
+        || item.semana?.consecutivo
+        || null;
+
+      return {
+        contenedor: { contenedor: item.contenedor?.contenedor || null },
+        serial: item.serial || null,
+        MotivoDeUso: { motivo_de_uso: item.MotivoDeUso?.motivo_de_uso || null },
+        usuario: item.usuario ? { nombre: item.usuario.nombre || '', apellido: item.usuario.apellido || '' } : null,
+        Embarque: { semana: { consecutivo: semanaConsecutivo } },
+        Inspeccion: {
+          fecha_inspeccion: item.Inspeccion?.fecha_inspeccion || null,
+          agente: item.Inspeccion?.agente || null,
+          hora_inicio: item.Inspeccion?.hora_inicio || null,
+          hora_fin: item.Inspeccion?.hora_fin || null,
+          habilitado: Boolean(item.Inspeccion?.habilitado),
+        },
+        almacenesLlenado,
+        fechasLlenado,
+        fruta,
+        cantidadCajas,
+        booking: item.Embarque?.booking || null,
+        destino: item.Embarque?.Destino?.destino || item.Embarque?.Destino?.cod || null,
+        naviera: item.Embarque?.Naviera?.navieras || item.Embarque?.Naviera?.cod || null,
+      };
+    });
+
+    // Detalle de seriales usados por cada contenedor inspeccionado, para la
+    // segunda pestaña del Excel — un contenedor puede tener varios seriales
+    // (uno por cada precinto/insumo usado en esa inspeccion).
+    const seriales = [];
+    for (const item of visibles) {
+      const contenedor = item.contenedor?.contenedor || null;
+      const semana = item.Embarque?.semana?.consecutivo || null;
+      for (const s of (item.todosSeriales || [])) {
+        seriales.push({
+          contenedor,
+          semana,
+          fecha_inspeccion: item.Inspeccion?.fecha_inspeccion || null,
+          serial: s.serial || null,
+          bag_pack: s.bag_pack || null,
+          producto: s.producto?.name || null,
+          almacen: s.cons_almacen || null,
+          fecha_de_uso: s.fecha_de_uso || null,
+          usuario: s.usuario ? `${s.usuario.nombre || ''} ${s.usuario.apellido || ''}`.trim() : null,
+        });
+      }
+    }
+
+    return { inspecciones, seriales };
   }
 
   // Estadisticas de inspeccionados vs exportados, agrupables por anio,

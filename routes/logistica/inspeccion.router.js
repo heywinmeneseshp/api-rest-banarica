@@ -1,5 +1,7 @@
 const express = require('express');
+const passport = require('passport');
 const InspeccionService = require('../../services/logistica/inspeccion.service.js');
+const { checkSuperAdminRole } = require('../../middlewares/auth.handler');
 
 const router = express.Router();
 const service = new InspeccionService();
@@ -73,6 +75,34 @@ router.get('/estadisticas', async (req, res, next) => {
     next(error);
   }
 });
+
+// Exportar Unidades Inspeccionadas por rango de fechas (solo Super administrador)
+// Ejemplo: /api/v1/inspeccion/exportar?fecha_inicio=2026-01-01&fecha_fin=2026-01-31
+/**
+ * @swagger
+ * /inspeccion/exportar:
+ *   get:
+ *     summary: Exporta las unidades inspeccionadas en un rango de fechas
+ *     tags: [Inspeccion]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
+router.get('/exportar',
+  passport.authenticate('jwt', { session: false }),
+  checkSuperAdminRole,
+  async (req, res, next) => {
+    try {
+      const { fecha_inicio, fecha_fin } = req.query;
+      const { inspecciones, seriales } = await service.exportar({
+        fecha_inspeccion_inicio: fecha_inicio,
+        fecha_inspeccion_fin: fecha_fin
+      });
+      res.json({ data: inspecciones, seriales });
+    } catch (error) {
+      next(error);
+    }
+  });
 
 // Obtener una inspección por ID
 /**

@@ -7,7 +7,8 @@ const {
   agregarAlmacenParaUsuario,
   actualizarUsuarioPorAlmacen,
   agregarTransportadoraParaUsuario,
-  actualizarUsuarioPorTransportadora
+  actualizarUsuarioPorTransportadora,
+  regenerarPasswordLote
 } = require('../../schema/usuario.schema');
 
 const passport = require("passport");
@@ -413,6 +414,43 @@ router.get("/:username", async (req, res, next) => {
   }
 });
 
+
+//REGENERAR CONTRASEÑAS EN LOTE
+/**
+ * @swagger
+ * /usuarios/regenerar-password-lote:
+ *   patch:
+ *     summary: Regenera la contraseña de varios usuarios a la vez
+ *     tags: [Usuarios]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               usernames:
+ *                 type: array
+ *                 items: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
+router.patch("/regenerar-password-lote",
+  passport.authenticate('jwt', { session: false }),
+  checkSuperAdminRole,
+  validatorHandler(regenerarPasswordLote, "body"),
+  async (req, res, next) => {
+    try {
+      const { usernames } = req.body;
+      const resultados = await service.regeneratePasswordsBulk(usernames);
+      res.json({
+        message: 'Contraseñas regeneradas',
+        data: resultados
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
 //ACTUALIZACIONES PARCIALES
 /**

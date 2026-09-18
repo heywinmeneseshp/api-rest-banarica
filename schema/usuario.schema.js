@@ -60,11 +60,16 @@ const actualizarUsuarioPorTransportadora = Joi.object({
   habilitado: habilitado
 })
 
+const regenerarPasswordLote = Joi.object({
+  usernames: Joi.array().items(username.required()).min(1).required(),
+});
+
 module.exports = {
   crearUsuario,
   actualizarUsuario,
   agregarAlmacenParaUsuario,
   actualizarUsuarioPorAlmacen,
   agregarTransportadoraParaUsuario,
-  actualizarUsuarioPorTransportadora
+  actualizarUsuarioPorTransportadora,
+  regenerarPasswordLote
 };
