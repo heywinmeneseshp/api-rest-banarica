@@ -18,7 +18,7 @@ const service = new ConductoresServices();
  *     responses:
  *       200: { description: OK }
  */
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
   try {
     const items = await service.find();
     res.json(items);
