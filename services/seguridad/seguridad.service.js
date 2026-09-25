@@ -808,9 +808,35 @@ class SeguridadService {
       where: producto
     }]
     delete data.producto
-    return await db.serial_de_articulos.findAll({
+    const seriales = await db.serial_de_articulos.findAll({
       where: data,
       include: include
+    })
+
+    // Un serial "no disponible" por estar reservado en un traslado que
+    // todavia no fue aceptado (estado Pendiente) no es un uso real todavia
+    // -- se anota el estado del traslado para que el caller (ej. validacion
+    // de "seriales ya usados" en Inspeccion vacio) no lo trate como bloqueo.
+    const movimientosTraslado = [...new Set(
+      seriales.map((s) => s.cons_movimiento).filter((c) => c && c.startsWith('TR-'))
+    )];
+    if (movimientosTraslado.length === 0) {
+      return seriales
+    }
+
+    const traslados = await db.traslados.findAll({
+      where: { consecutivo: { [Op.in]: movimientosTraslado } },
+      attributes: ['consecutivo', 'estado'],
+      raw: true,
+    });
+    const estadoPorConsecutivo = new Map(traslados.map((t) => [t.consecutivo, t.estado]));
+
+    return seriales.map((s) => {
+      const json = s.toJSON();
+      if (json.cons_movimiento && estadoPorConsecutivo.has(json.cons_movimiento)) {
+        json.traslado_estado = estadoPorConsecutivo.get(json.cons_movimiento);
+      }
+      return json;
     })
   }
 
