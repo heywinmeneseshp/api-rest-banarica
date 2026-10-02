@@ -92,6 +92,21 @@ router.patch('/actualizar',
   async (req, res, next) => {
     try {
       const body = req.body;
+      // Configuraciones guardadas de columnas del Programador: las globales
+      // solo las escribe un Super administrador y las personales solo su
+      // dueño (el sufijo del modulo es el username).
+      const esSuperAdmin = req.user?.id_rol === 'Super administrador';
+      if (body?.modulo === 'ProgramadorColumnasGlobales' && !esSuperAdmin) {
+        return res.status(403).json({ message: 'Solo un Super administrador puede guardar configuraciones globales.' });
+      }
+      if (
+        typeof body?.modulo === 'string'
+        && body.modulo.startsWith('ProgramadorColumnasUsuario_')
+        && !esSuperAdmin
+        && body.modulo !== `ProgramadorColumnasUsuario_${req.user?.username}`
+      ) {
+        return res.status(403).json({ message: 'No puede modificar configuraciones de otro usuario.' });
+      }
       const result = await service.update(body)
       res.json(result);
     } catch (err) {
