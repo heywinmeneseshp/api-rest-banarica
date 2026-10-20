@@ -304,6 +304,7 @@ class ProgramacionService {
     }
     const body = {
       ...data,
+      ...('vehiculos_recogida' in data ? { vehiculos_recogida: this.normalizarVehiculosRecogida(data.vehiculos_recogida) } : {}),
       // El texto sigue siendo la fuente que leen reportes/exports viejos —
       // si solo llego movimiento_id, se completa aca desde el catalogo para
       // que ambos queden consistentes.
@@ -325,6 +326,66 @@ class ProgramacionService {
     return creado;
   }
 
+
+  // "vehiculos_recogida" se guarda como texto JSON: lista de
+  // { vehiculo_id, conductor_id, observacion }. Cada vehiculo adicional
+  // exige su conductor y una observacion (pedido explicito). Acepta un
+  // arreglo o un texto JSON; devuelve texto JSON o null si queda vacio.
+  normalizarVehiculosRecogida(valor) {
+    let items = valor;
+    if (typeof items === 'string') {
+      try { items = JSON.parse(items); } catch { items = []; }
+    }
+    if (!Array.isArray(items) || items.length === 0) return null;
+    const limpios = items.map((item) => ({
+      vehiculo_id: String(item?.vehiculo_id ?? '').trim(),
+      conductor_id: String(item?.conductor_id ?? '').trim(),
+      observacion: String(item?.observacion ?? '').trim(),
+    }));
+    if (limpios.some((item) => !item.vehiculo_id || !item.conductor_id || !item.observacion)) {
+      throw boom.badRequest('Cada vehiculo adicional necesita vehiculo, conductor y una observacion.');
+    }
+    return JSON.stringify(limpios);
+  }
+
+  // Agrega a cada fila "vehiculos_recogida_detalle" con la placa y el nombre
+  // del conductor, para que el front los muestre aunque el vehiculo/conductor
+  // no este en su catalogo filtrado por transportadora.
+  async adjuntarVehiculosRecogida(rows) {
+    const itemsPorFila = new Map();
+    const vehiculoIds = new Set();
+    const conductorIds = new Set();
+    for (const row of rows) {
+      let items = [];
+      try { items = JSON.parse(row.vehiculos_recogida || '[]'); } catch { items = []; }
+      items = Array.isArray(items) ? items : [];
+      itemsPorFila.set(row, items);
+      items.forEach((item) => {
+        if (item?.vehiculo_id) vehiculoIds.add(String(item.vehiculo_id));
+        if (item?.conductor_id) conductorIds.add(String(item.conductor_id));
+      });
+    }
+    const placaPorId = new Map();
+    const conductorPorId = new Map();
+    if (vehiculoIds.size) {
+      const vehiculos = await db.vehiculo.findAll({ where: { id: { [Op.in]: [...vehiculoIds] } }, attributes: ['id', 'placa'] });
+      vehiculos.forEach((v) => placaPorId.set(String(v.id), v.placa));
+    }
+    if (conductorIds.size) {
+      const conductores = await db.conductores.findAll({ where: { id: { [Op.in]: [...conductorIds] } }, attributes: ['id', 'conductor'] });
+      conductores.forEach((c) => conductorPorId.set(String(c.id), c.conductor));
+    }
+    for (const row of rows) {
+      row.dataValues.vehiculos_recogida_detalle = (itemsPorFila.get(row) || []).map((item) => ({
+        vehiculo_id: String(item.vehiculo_id),
+        placa: placaPorId.get(String(item.vehiculo_id)) || '',
+        conductor_id: String(item.conductor_id),
+        conductor: conductorPorId.get(String(item.conductor_id)) || '',
+        observacion: item.observacion || '',
+      }));
+    }
+    return rows;
+  }
 
   async find() {
     return await db.programacion.findAll({
@@ -386,6 +447,9 @@ class ProgramacionService {
     const datosAnteriores = item.toJSON();
 
     const nextChanges = { ...changes };
+    if ('vehiculos_recogida' in nextChanges) {
+      nextChanges.vehiculos_recogida = this.normalizarVehiculosRecogida(nextChanges.vehiculos_recogida);
+    }
     if (!Object.prototype.hasOwnProperty.call(nextChanges, 'estado_listado')) {
       nextChanges.estado_listado = ESTADO_LISTADO_PENDIENTE;
     }
@@ -580,6 +644,8 @@ class ProgramacionService {
       }
     }
 
+    await this.adjuntarVehiculosRecogida(rows);
+
     return rows.map((row) => {
       const entry = contenedorMap.get(`${row.contenedor}|${row.semana}`) || null;
       return {
@@ -592,6 +658,7 @@ class ProgramacionService {
         movimiento: row.movimiento || '',
         conductor: row.conductor?.conductor || '',
         vehiculo: row.vehiculo?.placa || '',
+        vehiculos_recogida: (row.dataValues.vehiculos_recogida_detalle || []).map((v) => `${v.placa} (${v.conductor}) - ${v.observacion}`).join(' | '),
         transportadora: row.vehiculo?.transportadora?.razon_social || '',
         origen: row.ruta?.ubicacion_1?.ubicacion || '',
         destino: row.ruta?.ubicacion_2?.ubicacion || '',
@@ -771,6 +838,7 @@ class ProgramacionService {
       }
     }
 
+    await this.adjuntarVehiculosRecogida(result);
     const data = result.map((row) => {
       const key = `${row.contenedor}|${row.semana}`;
       return Object.assign(row, { hora_revision_puerto: revisionMap.get(key) ?? null });

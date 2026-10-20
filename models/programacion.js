@@ -61,6 +61,8 @@ module.exports = (sequelize, DataTypes) => {
     movimiento_id: DataTypes.INTEGER,
     conductor_id: DataTypes.STRING,
     vehiculo_id: DataTypes.STRING,
+    // Lista JSON de ids de vehiculos de recogida (ver migracion).
+    vehiculos_recogida: DataTypes.TEXT,
     contenedor: DataTypes.STRING,
     bl: DataTypes.STRING,
     semana: DataTypes.STRING,
