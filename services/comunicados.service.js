@@ -1,6 +1,7 @@
 const boom = require('@hapi/boom');
 const { Op } = require('sequelize');
 const db = require('../models');
+const sanitizeHtml = require('sanitize-html');
 const EmailService = require('./email.service');
 
 const emailService = new EmailService();
@@ -18,6 +19,47 @@ function escaparHtml(texto) {
 // meterlo al HTML y los saltos de linea pasan a <br>.
 function escaparYFormatearMensaje(texto) {
   return escaparHtml(texto).replace(/\n/g, '<br>');
+}
+
+const MAX_MENSAJE_TEXTO = 5000;
+
+// El mensaje se escribe con una barra de formato (negrita, cursiva,
+// subrayado, color, listas y enlaces) y llega como HTML: SOLO se aceptan esas
+// etiquetas y atributos; cualquier otra cosa (scripts, estilos arbitrarios,
+// eventos, imagenes...) se descarta antes de guardar y de enviar.
+const OPCIONES_SANITIZAR = {
+  allowedTags: ['b', 'strong', 'i', 'em', 'u', 'br', 'p', 'div', 'span', 'ul', 'ol', 'li', 'a', 'font'],
+  allowedAttributes: {
+    a: ['href', 'target', 'rel'],
+    span: ['style'],
+    font: ['color'],
+  },
+  allowedStyles: {
+    span: { color: [/^#[0-9a-f]{3,8}$/i, /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/i] },
+  },
+  allowedSchemes: ['http', 'https', 'mailto'],
+  allowedSchemesAppliedToAttributes: ['href'],
+  transformTags: {
+    a: (tagName, attribs) => ({ tagName, attribs: { href: attribs.href, target: '_blank', rel: 'noopener noreferrer' } }),
+  },
+};
+
+// Texto plano de un mensaje (para vistas previas y para validar que no quede
+// vacio): saltos de bloque a salto de linea y sin etiquetas.
+function aTextoPlano(html) {
+  const conSaltos = String(html || '').replace(/<\/(p|div|li)>|<br\s*\/?>/gi, '\n');
+  return sanitizeHtml(conSaltos, { allowedTags: [], allowedAttributes: {} })
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// Un mensaje sin etiquetas (texto plano) se convierte a HTML seguro; uno con
+// etiquetas se limpia con la lista blanca.
+function limpiarMensaje(mensaje) {
+  const texto = String(mensaje || '');
+  if (!/<[a-z][\s\S]*>/i.test(texto)) return escaparYFormatearMensaje(texto.trim());
+  return sanitizeHtml(texto, OPCIONES_SANITIZAR).trim();
 }
 
 class ComunicadosService {
@@ -93,7 +135,7 @@ class ComunicadosService {
           <p style="margin: 0 0 16px; color: #374151; font-size: 15px; line-height: 1.5;">${saludo}</p>
           <p style="margin: 0 0 4px; color: #166534; font-weight: 700; font-size: 15px;">${escaparYFormatearMensaje(asunto)}</p>
           <div style="color: #374151; font-size: 14px; line-height: 1.6;">
-            ${escaparYFormatearMensaje(mensaje)}
+            ${mensaje}
           </div>
         </div>
         <div style="background: #f9fafb; padding: 16px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
@@ -105,13 +147,15 @@ class ComunicadosService {
 
   async enviar(payload, actor, archivos = []) {
     const asunto = String(payload?.asunto || '').trim();
-    const mensaje = String(payload?.mensaje || '').trim();
+    const mensaje = limpiarMensaje(payload?.mensaje);
     const correos = Array.isArray(payload?.correos) ? payload.correos : [];
     const roles = Array.isArray(payload?.roles) ? payload.roles.map(String) : [];
     const usuarios = Array.isArray(payload?.usuarios) ? payload.usuarios.map(String) : [];
 
     if (!asunto) throw boom.badRequest('El asunto es obligatorio');
-    if (!mensaje) throw boom.badRequest('El mensaje es obligatorio');
+    const textoMensaje = aTextoPlano(mensaje);
+    if (!textoMensaje) throw boom.badRequest('El mensaje es obligatorio');
+    if (textoMensaje.length > MAX_MENSAJE_TEXTO) throw boom.badRequest(`El mensaje no puede superar ${MAX_MENSAJE_TEXTO} caracteres`);
     if (asunto.length > 200) throw boom.badRequest('El asunto no puede superar 200 caracteres');
 
     const destinatarios = await this.resolverDestinatarios({ correos, roles, usuarios });
@@ -211,6 +255,7 @@ class ComunicadosService {
         recibido: r.createdAt,
         asunto: r.comunicado?.asunto || '',
         mensaje: r.comunicado?.mensaje || '',
+        mensaje_texto: aTextoPlano(r.comunicado?.mensaje),
         adjuntos: (r.comunicado?.adjuntos || []).map((a) => ({ nombre: a.nombre, tamanioBytes: a.tamanioBytes })),
         enviado_por: r.comunicado?.created_by || '',
       })),
@@ -256,5 +301,9 @@ class ComunicadosService {
     return item;
   }
 }
+
+// Expuestos para pruebas del sanitizador.
+ComunicadosService.limpiarMensaje = limpiarMensaje;
+ComunicadosService.aTextoPlano = aTextoPlano;
 
 module.exports = ComunicadosService;
