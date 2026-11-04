@@ -508,13 +508,52 @@ class CostosLogisticosService {
       LEFT JOIN costos_terceros t ON t.id = c.tercero_id
       WHERE i.factura_id IN (:ids) ORDER BY i.factura_id, i.id
     `, { ids: filas.map((f) => f.id) });
+    const clientes = await this.clientesDeItems(items);
     const porFactura = {};
     for (const it of items) {
       (porFactura[it.factura_id] = porFactura[it.factura_id] || []).push({
-        ...it, cantidad: num(it.cantidad), valor_unitario: num(it.valor_unitario),
+        ...it, cantidad: num(it.cantidad), valor_unitario: num(it.valor_unitario), ...clientes(it),
       });
     }
     return filas.map((f) => ({ ...f, total: num(f.total), items: porFactura[f.id] || [] }));
+  }
+
+  // Cliente de cada item segun la operacion: por contenedor (cliente de su embarque) o por booking.
+  // Los items de semana, mes o año cubren varios clientes y quedan sin cliente (null).
+  async clientesDeItems(items) {
+    const conts = [...new Set(items.map((i) => i.id_contenedor).filter((c) => c && c !== 'N/A'))];
+    const books = [...new Set(items.map((i) => i.booking).filter((b) => b && b !== 'N/A'))];
+    const porCont = new Map();
+    const porBook = new Map();
+    const agregar = (m, k, cod, nombre) => {
+      if (!k || !(cod || nombre)) return;
+      if (!m.has(k)) m.set(k, new Map());
+      m.get(k).set(cod || nombre, nombre || cod);
+    };
+    if (conts.length) {
+      const filas = await select(`
+        SELECT DISTINCT ct.contenedor AS k, c.cod, c.razon_social AS cliente
+        FROM Contenedors ct
+        JOIN Listados l ON l.id_contenedor = ct.id
+        JOIN Embarques e ON e.id = l.id_embarque
+        JOIN clientes c ON c.id = e.id_cliente
+        WHERE ct.contenedor IN (:conts)`, { conts });
+      filas.forEach((f) => agregar(porCont, f.k, f.cod, f.cliente));
+    }
+    if (books.length) {
+      const filas = await select(`
+        SELECT DISTINCT e.booking AS k, c.cod, c.razon_social AS cliente
+        FROM Embarques e
+        JOIN clientes c ON c.id = e.id_cliente
+        WHERE e.booking IN (:books)`, { books });
+      filas.forEach((f) => agregar(porBook, f.k, f.cod, f.cliente));
+    }
+    return (it) => {
+      const a = it.id_contenedor && it.id_contenedor !== 'N/A' ? porCont.get(it.id_contenedor) : null;
+      const b = !a && it.booking && it.booking !== 'N/A' ? porBook.get(it.booking) : null;
+      const m = a || b;
+      return m ? { cliente: [...m.keys()].join(', '), cliente_nombre: [...m.values()].join(', ') } : { cliente: null, cliente_nombre: null };
+    };
   }
 
   totalYEstado(calculado, declarado) {
