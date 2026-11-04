@@ -85,6 +85,8 @@ router.get('/trm', ruta(async (req, res) => {
   if (req.query.fecha) return res.json({ valor: await service.trmParaFecha(req.query.fecha) });
   return res.json(await service.listarTrm());
 }));
+router.post('/trm/sincronizar-diaria', ruta(async (req, res) => res.json(await service.sincronizarTrmDiaria())));
+router.post('/trm/sincronizar', ruta(async (req, res) => res.json(await service.sincronizarTrmBanrep({ desde: req.body?.desde, hasta: req.body?.hasta }))));
 router.delete('/trm', ruta(async (req, res) => { await service.borrarTrm(); res.json({ ok: true }); }));
 router.post('/trm-bulk', ruta(async (req, res) => {
   if (!Array.isArray(req.body)) throw boom.badRequest('Se esperaba un array');

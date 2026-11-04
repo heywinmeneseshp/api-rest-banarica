@@ -62,6 +62,14 @@ function normalizarNivel(valor) {
   return ['anho', 'anio'].includes(t) ? 'año' : t;
 }
 
+// TRM oficial (la certifica la Superfinanciera con datos del Banco de la Republica),
+// publicada en datos abiertos de Colombia. Cada registro trae el rango de fechas en
+// que esta vigente (un fin de semana o festivo queda cubierto por la del ultimo dia
+// habil): se guarda en la fecha "vigenciadesde" y trmParaFecha() usa la mas reciente
+// anterior a la fecha de cada factura.
+const URL_TRM_BANREP = 'https://www.datos.gov.co/resource/32sa-8pi3.json';
+const TRM_DESDE_POR_DEFECTO = '2024-01-01';
+
 class CostosLogisticosService {
   // ───────────────────────── Catalogos simples ─────────────────────────
   async listarEstados() {
@@ -252,6 +260,90 @@ class CostosLogisticosService {
       total += 1;
     }
     return total;
+  }
+
+  // Trae la TRM oficial desde `desde` (AAAA-MM-DD). Sin fecha: desde 7 dias antes de la
+  // ultima TRM guardada (para corregir ajustes recientes) o, si no hay ninguna, desde 2024.
+  async sincronizarTrmBanrep({ desde, hasta } = {}) {
+    const fechaValida = (f) => typeof f === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f);
+    if (hasta && !fechaValida(hasta)) throw boom.badRequest('La fecha final no es válida');
+    if (desde && !fechaValida(desde)) throw boom.badRequest('La fecha inicial no es válida');
+    if (desde && hasta && desde > hasta) throw boom.badRequest('La fecha inicial no puede ser mayor que la final');
+    let inicio = desde || null;
+    if (!inicio) {
+      const [ultima] = await select('SELECT MAX(fecha) AS fecha FROM costos_trm');
+      if (ultima?.fecha) {
+        const d = new Date(`${ultima.fecha}T00:00:00`);
+        d.setDate(d.getDate() - 7);
+        inicio = ymd(d);
+      } else {
+        inicio = TRM_DESDE_POR_DEFECTO;
+      }
+    }
+
+    const pagina = 1000;
+    let offset = 0;
+    let guardados = 0;
+    let ultimaFecha = null;
+    let ultimoValor = null;
+    // Socrata: paginado por $limit/$offset, ordenado por fecha para que el offset sea estable.
+    for (;;) {
+      const params = new URLSearchParams({
+        $select: 'valor,vigenciadesde',
+        $where: `vigenciadesde >= '${inicio}T00:00:00'${hasta ? ` AND vigenciadesde <= '${hasta}T23:59:59'` : ''}`,
+        $order: 'vigenciadesde ASC',
+        $limit: String(pagina),
+        $offset: String(offset),
+      });
+      let respuesta;
+      try {
+        respuesta = await fetch(`${URL_TRM_BANREP}?${params.toString()}`, { signal: AbortSignal.timeout(20000) });
+      } catch (error) {
+        throw boom.badGateway('No fue posible conectar con el servicio de datos abiertos de la TRM. Intente más tarde.');
+      }
+      if (!respuesta.ok) throw boom.badGateway(`El servicio de la TRM respondió ${respuesta.status}. Intente más tarde.`);
+      const filas = await respuesta.json();
+      if (!Array.isArray(filas) || filas.length === 0) break;
+
+      const validas = filas
+        .map((f) => ({ fecha: ymd(f.vigenciadesde), valor: Number(f.valor) }))
+        .filter((f) => f.fecha && Number.isFinite(f.valor) && f.valor > 0);
+      if (validas.length) {
+        await exec(
+          `INSERT INTO costos_trm (fecha, valor) VALUES ${validas.map((_, i) => `(:f${i}, :v${i})`).join(', ')}
+           ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,
+          Object.fromEntries(validas.flatMap((f, i) => [[`f${i}`, f.fecha], [`v${i}`, f.valor]])),
+        );
+        guardados += validas.length;
+        ultimaFecha = validas[validas.length - 1].fecha;
+        ultimoValor = validas[validas.length - 1].valor;
+      }
+      if (filas.length < pagina) break;
+      offset += pagina;
+    }
+    return { ok: true, desde: inicio, hasta: hasta || null, guardados, ultimaFecha, ultimoValor };
+  }
+
+  // Se llama al abrir el modulo de Facturas: sincroniza SOLO la primera vez de cada dia
+  // (fecha de Colombia). Si la consulta falla no se marca el dia, asi el siguiente
+  // ingreso lo vuelve a intentar.
+  async sincronizarTrmDiaria() {
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    const modulo = 'CostosTrmUltimaSync';
+    const registro = await db.configuracion.findOne({ where: { modulo } });
+    let ultima = null;
+    try {
+      ultima = JSON.parse(registro?.detalles || '{}').fecha || null;
+    } catch {
+      ultima = null;
+    }
+    if (ultima === hoy) return { ok: true, omitida: true, fecha: hoy };
+
+    const resultado = await this.sincronizarTrmBanrep();
+    const detalles = JSON.stringify({ fecha: hoy });
+    if (registro) await db.configuracion.update({ detalles }, { where: { modulo } });
+    else await db.configuracion.create({ modulo, habilitado: false, detalles });
+    return { ...resultado, omitida: false, fecha: hoy };
   }
 
   async borrarTrm() {
