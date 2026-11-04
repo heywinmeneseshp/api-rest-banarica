@@ -133,6 +133,10 @@ router.post('/contenedores-cache', ruta(async (req, res) => {
   if (!Array.isArray(req.body)) throw boom.badRequest('Se esperaba un array');
   res.json({ mismatches: await service.validarContenedores(req.body) });
 }));
+router.post('/bookings-sin-contenedor', ruta(async (req, res) => {
+  if (!Array.isArray(req.body?.bookings)) throw boom.badRequest('Se esperaba bookings[]');
+  res.json({ sinContenedor: await service.bookingsSinContenedor(req.body.bookings) });
+}));
 router.get('/bookings-cache', ruta(async (req, res) => res.json(await service.buscarBookings(req.query.q || ''))));
 
 module.exports = router;

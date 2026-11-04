@@ -681,6 +681,20 @@ class CostosLogisticosService {
     `, { t: `%${q}%` });
   }
 
+  // De una lista de bookings devuelve los que NO tienen ningun contenedor asociado.
+  async bookingsSinContenedor(bookings = []) {
+    const unicos = [...new Set(bookings.map((b) => String(b || '').trim()).filter((b) => b && b !== 'N/A'))];
+    if (!unicos.length) return [];
+    const filas = await select(`
+      SELECT DISTINCT e.booking
+      FROM Embarques e
+      JOIN Listados l ON l.id_embarque = e.id
+      WHERE l.id_contenedor IS NOT NULL AND e.booking IN (:unicos)
+    `, { unicos });
+    const con = new Set(filas.map((f) => String(f.booking).trim().toUpperCase()));
+    return unicos.filter((b) => !con.has(b.toUpperCase()));
+  }
+
   // Valida [{contenedor, booking, semana}] contra la operacion y devuelve los
   // indices que NO coinciden (contenedor desconocido = no se puede validar).
   async validarContenedores(items = []) {
