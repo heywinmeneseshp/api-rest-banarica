@@ -46,6 +46,22 @@ router.get('/estados-factura', ruta(async (req, res) => res.json(await service.l
 router.post('/estados-factura', ruta(async (req, res) => { await service.guardarEstado(req.body); res.json({ ok: true }); }));
 router.delete('/estados-factura', ruta(async (req, res) => { await service.eliminarEstado(Number(req.query.id)); res.json({ ok: true }); }));
 
+// ── Terceros y cobros pendientes ──
+router.get('/terceros', ruta(async (req, res) => res.json(await service.listarTerceros())));
+router.post('/terceros', ruta(async (req, res) => res.json({ ok: true, id: await service.guardarTercero(req.body) })));
+router.delete('/terceros', ruta(async (req, res) => { await service.eliminarTercero(Number(req.query.id)); res.json({ ok: true }); }));
+router.get('/estados-cobro', ruta(async (req, res) => res.json(await service.listarEstadosCobro())));
+router.post('/estados-cobro', ruta(async (req, res) => { await service.guardarEstadoCobro(req.body); res.json({ ok: true }); }));
+router.delete('/estados-cobro', ruta(async (req, res) => { await service.eliminarEstadoCobro(Number(req.query.id)); res.json({ ok: true }); }));
+router.get('/pendiente-por-cobrar', ruta(async (req, res) => res.json(await service.listarPendientePorCobrar(req.query))));
+router.patch('/pendiente-por-cobrar', ruta(async (req, res) => {
+  const { id, ids, ...data } = req.body || {};
+  if (Array.isArray(ids)) return res.json({ ok: true, total: await service.cambiarEstadoCobroMasivo(ids, data.estado) });
+  if (!id) throw boom.badRequest('id requerido');
+  await service.actualizarCobro(id, data);
+  return res.json({ ok: true });
+}));
+
 // ── Tipos de documento ──
 router.get('/tipos-documento', ruta(async (req, res) => res.json(await service.listarTiposDocumento())));
 router.post('/tipos-documento', ruta(async (req, res) => { await service.guardarTipoDocumento(req.body); res.json({ ok: true }); }));
@@ -122,6 +138,7 @@ router.delete('/facturas', ruta(async (req, res) => {
   res.json({ ok: true });
 }));
 router.delete('/facturas-clear', ruta(async (req, res) => res.json({ ok: true, total: await service.eliminarTodasFacturas() })));
+router.post('/facturas-completar-bookings', ruta(async (req, res) => res.json({ ok: true, ...(await service.completarBookingsExistentes()) })));
 router.post('/facturas-bulk', ruta(async (req, res) => res.json(await service.cargarFacturas(req.body))));
 
 // ── Consultas sobre la operacion (semanas, meses, contenedores, bookings) ──
@@ -133,7 +150,7 @@ router.post('/contenedores-cache', ruta(async (req, res) => {
   if (!Array.isArray(req.body)) throw boom.badRequest('Se esperaba un array');
   res.json({ mismatches: await service.validarContenedores(req.body) });
 }));
-router.get('/costo-por-cliente', ruta(async (req, res) => res.json(await service.costoPorCliente({ desde: req.query.desde, hasta: req.query.hasta }))));
+router.get('/costo-por-cliente', ruta(async (req, res) => res.json(await service.costoPorCliente({ desde: req.query.desde, hasta: req.query.hasta, semana: req.query.semana, concepto: req.query.concepto }))));
 router.post('/bookings-sin-contenedor', ruta(async (req, res) => {
   if (!Array.isArray(req.body?.bookings)) throw boom.badRequest('Se esperaba bookings[]');
   res.json({ sinContenedor: await service.bookingsSinContenedor(req.body.bookings) });

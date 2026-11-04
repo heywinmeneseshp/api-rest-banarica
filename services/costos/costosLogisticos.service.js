@@ -93,6 +93,61 @@ class CostosLogisticosService {
     await exec('DELETE FROM costos_estados_factura WHERE id=:id', { id });
   }
 
+  // ───────────────────────── Cobros a terceros ─────────────────────────
+  async listarTerceros() {
+    return select('SELECT id, tipo, nombre, nit, updatedAt AS updated_at FROM costos_terceros ORDER BY nombre');
+  }
+
+  async guardarTercero(data) {
+    const nombre = texto(data?.nombre);
+    if (!nombre) throw boom.badRequest('nombre requerido');
+    const tipo = ['cliente', 'finca', 'proveedor', 'otro'].includes(data.tipo) ? data.tipo : 'otro';
+    if (data.id) {
+      await exec('UPDATE costos_terceros SET tipo=:tipo, nombre=:nombre, nit=:nit WHERE id=:id', { tipo, nombre, nit: texto(data.nit), id: data.id });
+      return data.id;
+    }
+    const [id] = await sequelize.query('INSERT INTO costos_terceros (tipo, nombre, nit) VALUES (:tipo, :nombre, :nit)',
+      { replacements: { tipo, nombre, nit: texto(data.nit) } });
+    return id;
+  }
+
+  async eliminarTercero(id) {
+    const [{ n }] = await select('SELECT COUNT(*) AS n FROM costos_cobros WHERE tercero_id=:id', { id });
+    if (Number(n) > 0) throw boom.conflict(`No se puede eliminar: tiene ${n} cobro(s) registrado(s)`);
+    await exec('DELETE FROM costos_terceros WHERE id=:id', { id });
+  }
+
+  async listarEstadosCobro() {
+    return select('SELECT id, nombre, color, descripcion, updatedAt AS updated_at FROM costos_estados_cobro ORDER BY id');
+  }
+
+  async guardarEstadoCobro(data) {
+    const nombre = texto(data?.nombre);
+    if (!nombre) throw boom.badRequest('nombre requerido');
+    const color = data.color || '#6c757d';
+    if (data.id) {
+      await exec('UPDATE costos_estados_cobro SET nombre=:nombre, color=:color, descripcion=:descripcion WHERE id=:id',
+        { nombre, color, descripcion: texto(data.descripcion), id: data.id });
+    } else {
+      await exec('INSERT INTO costos_estados_cobro (nombre, color, descripcion) VALUES (:nombre, :color, :descripcion)',
+        { nombre, color, descripcion: texto(data.descripcion) });
+    }
+  }
+
+  async eliminarEstadoCobro(id) {
+    await exec('DELETE FROM costos_estados_cobro WHERE id=:id', { id });
+  }
+
+  // Busca un tercero por nombre (sin importar mayusculas) y, si no existe, lo crea.
+  async terceroPorNombre(nombre, transaction) {
+    const n = texto(nombre);
+    if (!n) return null;
+    const filas = await select('SELECT id FROM costos_terceros WHERE LOWER(nombre)=LOWER(:n) LIMIT 1', { n }, transaction);
+    if (filas[0]) return filas[0].id;
+    const [id] = await sequelize.query("INSERT INTO costos_terceros (tipo, nombre) VALUES ('otro', :n)", { replacements: { n }, transaction });
+    return id;
+  }
+
   async listarTiposDocumento() {
     return select('SELECT id, nombre, sentido, descripcion, updatedAt AS updated_at FROM costos_tipos_documento ORDER BY nombre');
   }
@@ -366,11 +421,15 @@ class CostosLogisticosService {
     return total;
   }
 
-  async insertarItems(facturaId, items, transaction) {
+  // Inserta los items y devuelve los ids nuevos (en el mismo orden). Cada item con tercero
+  // genera un cobro: si el item ya tenia uno (it.id) y el tercero no cambio se conserva su
+  // estado y fechas; si cambio de tercero o es nuevo, nace como "Pendiente por cobrar".
+  async insertarItems(facturaId, items, transaction, cobrosPrevios = new Map()) {
+    const ids = [];
     for (const it of items || []) {
-      await exec(`INSERT INTO costos_factura_items
+      const [nuevoId] = await sequelize.query(`INSERT INTO costos_factura_items
         (factura_id, semana, mes, anho, concepto, id_contenedor, booking, divisa, cantidad, valor_unitario, nivel_asociacion, tipo_costo, metodo_distribucion)
-        VALUES (:facturaId, :semana, :mes, :anho, :concepto, :contenedor, :booking, :divisa, :cantidad, :valorUnitario, :nivel, :tipoCosto, :metodo)`, {
+        VALUES (:facturaId, :semana, :mes, :anho, :concepto, :contenedor, :booking, :divisa, :cantidad, :valorUnitario, :nivel, :tipoCosto, :metodo)`, { replacements: {
         facturaId,
         semana: texto(it.semana),
         mes: texto(it.mes),
@@ -384,8 +443,22 @@ class CostosLogisticosService {
         nivel: texto(it.nivel_asociacion),
         tipoCosto: texto(it.tipo_costo),
         metodo: it.metodo_distribucion || 'por_cajas',
-      }, transaction);
+      }, transaction });
+      ids.push(nuevoId);
+
+      const terceroId = it.tercero_id ? Number(it.tercero_id) : await this.terceroPorNombre(it.tercero_nombre_nuevo, transaction);
+      if (terceroId) {
+        const previo = it.id ? cobrosPrevios.get(Number(it.id)) : null;
+        const motivo = texto(it.cobro_motivo);
+        if (previo && previo.tercero_id === terceroId) {
+          await exec('UPDATE costos_cobros SET item_id=:nuevoId, motivo=:motivo WHERE id=:id', { nuevoId, motivo, id: previo.id }, transaction);
+          cobrosPrevios.delete(Number(it.id));
+        } else {
+          await exec('INSERT INTO costos_cobros (item_id, tercero_id, motivo) VALUES (:nuevoId, :terceroId, :motivo)', { nuevoId, terceroId, motivo }, transaction);
+        }
+      }
     }
+    return ids;
   }
 
   async validarDuplicada({ numero_factura: numero, nit_proveedor: nit, fecha }, excluirId = null) {
@@ -401,7 +474,7 @@ class CostosLogisticosService {
   }
 
   async listarFacturas(filtros = {}) {
-    const { nit_proveedor: nit, tipo, estado, advertencia, numero_factura: numero, fecha_desde: desde, fecha_hasta: hasta } = filtros;
+    const { nit_proveedor: nit, tipo, estado, advertencia, numero_factura: numero, fecha_desde: desde, fecha_hasta: hasta, concepto, semana } = filtros;
     const donde = [];
     const params = {};
     if (nit) { donde.push('f.nit_proveedor = :nit'); params.nit = nit; }
@@ -409,6 +482,8 @@ class CostosLogisticosService {
     if (numero) { donde.push('f.numero_factura LIKE :numero'); params.numero = `%${numero}%`; }
     if (desde) { donde.push('f.fecha >= :desde'); params.desde = desde; }
     if (hasta) { donde.push('f.fecha <= :hasta'); params.hasta = hasta; }
+    if (concepto) { donde.push('EXISTS (SELECT 1 FROM costos_factura_items i WHERE i.factura_id = f.id AND i.concepto LIKE :concepto)'); params.concepto = `%${concepto}%`; }
+    if (semana) { donde.push('EXISTS (SELECT 1 FROM costos_factura_items i WHERE i.factura_id = f.id AND i.semana = :semana)'); params.semana = semana; }
     if (estado === '__sin_estado__') donde.push("(f.estado IS NULL OR f.estado = '')");
     else if (estado) { donde.push('f.estado = :estado'); params.estado = estado; }
     if (advertencia === 'mismatch') donde.push("f.estado_total = 'mismatch'");
@@ -425,9 +500,13 @@ class CostosLogisticosService {
     if (!filas.length) return filas;
 
     const items = await select(`
-      SELECT id, factura_id, semana, mes, anho, concepto, id_contenedor, booking, divisa, cantidad, valor_unitario,
-             nivel_asociacion, tipo_costo, metodo_distribucion, distribuido_en
-      FROM costos_factura_items WHERE factura_id IN (:ids) ORDER BY factura_id, id
+      SELECT i.id, i.factura_id, i.semana, i.mes, i.anho, i.concepto, i.id_contenedor, i.booking, i.divisa, i.cantidad, i.valor_unitario,
+             i.nivel_asociacion, i.tipo_costo, i.metodo_distribucion, i.distribuido_en,
+             c.tercero_id, t.nombre AS tercero_nombre, c.motivo AS cobro_motivo, c.estado AS cobro_estado
+      FROM costos_factura_items i
+      LEFT JOIN costos_cobros c ON c.item_id = i.id
+      LEFT JOIN costos_terceros t ON t.id = c.tercero_id
+      WHERE i.factura_id IN (:ids) ORDER BY i.factura_id, i.id
     `, { ids: filas.map((f) => f.id) });
     const porFactura = {};
     for (const it of items) {
@@ -481,8 +560,16 @@ class CostosLogisticosService {
         fecha: texto(data.fecha), tipo: texto(data.tipo), numero: texto(data.numero_factura), nit: texto(data.nit_proveedor),
         total, estadoTotal, estado: texto(data.estado), id,
       }, transaction);
+      // Los items se reemplazan; los cobros ya registrados se reasocian a los items nuevos
+      // (por el id anterior) para no perder estado ni fechas.
+      const previos = await select(`SELECT c.id, c.item_id, c.tercero_id FROM costos_cobros c
+        JOIN costos_factura_items i ON i.id = c.item_id WHERE i.factura_id=:id`, { id }, transaction);
+      const mapaPrevios = new Map(previos.map((c) => [Number(c.item_id), c]));
+      await exec('UPDATE costos_cobros SET item_id = -id WHERE item_id IN (SELECT id FROM costos_factura_items WHERE factura_id=:id)', { id }, transaction);
       await exec('DELETE FROM costos_factura_items WHERE factura_id=:id', { id }, transaction);
-      await this.insertarItems(id, data.items, transaction);
+      await this.insertarItems(id, data.items, transaction, mapaPrevios);
+      // Cobros cuyo item ya no tiene tercero (o se quito el item): se eliminan.
+      await exec('DELETE FROM costos_cobros WHERE item_id < 0', {}, transaction);
     });
   }
 
@@ -492,6 +579,7 @@ class CostosLogisticosService {
 
   async eliminarFactura(id) {
     await sequelize.transaction(async (transaction) => {
+      await exec('DELETE FROM costos_cobros WHERE item_id IN (SELECT id FROM costos_factura_items WHERE factura_id=:id)', { id }, transaction);
       await exec('DELETE FROM costos_factura_items WHERE factura_id=:id', { id }, transaction);
       await exec('DELETE FROM costos_facturas WHERE id=:id', { id }, transaction);
     });
@@ -500,6 +588,7 @@ class CostosLogisticosService {
   async eliminarTodasFacturas() {
     const [{ total }] = await select('SELECT COUNT(*) AS total FROM costos_facturas');
     await sequelize.transaction(async (transaction) => {
+      await exec('DELETE FROM costos_cobros', {}, transaction);
       await exec('DELETE FROM costos_factura_items', {}, transaction);
       await exec('DELETE FROM costos_facturas', {}, transaction);
     });
@@ -539,6 +628,8 @@ class CostosLogisticosService {
           valor_unitario: fila.valor_unitario != null && fila.valor_unitario !== '' ? Number(fila.valor_unitario) : null,
           nivel_asociacion: fila.nivel_asociacion?.trim() || null,
           tipo_costo: fila.tipo_costo?.trim() || null,
+          tercero_nombre_nuevo: fila.tercero?.trim() || null,
+          cobro_motivo: fila.motivo_cobro?.trim() || null,
         });
       }
     }
@@ -581,6 +672,9 @@ class CostosLogisticosService {
         it.semana = null;
       }
     }
+
+    // Si el archivo trae el contenedor pero no el booking (o la semana), se completan desde la operacion.
+    for (const [, g] of grupos) await this.completarDesdeContenedor(g.items);
 
     // Nivel de asociacion: siempre se deduce de los datos del item. Si el archivo trae
     // uno distinto (o un texto que no es un nivel valido) se avisa y se usa el deducido.
@@ -685,18 +779,21 @@ class CostosLogisticosService {
   // factura; las notas crédito restan según el sentido del tipo de documento) y se reparte en
   // partes iguales entre los contenedores que cubre su nivel de asociación (contenedor, booking,
   // semana, mes o año); cada contenedor pertenece al cliente de su embarque.
-  async costoPorCliente({ desde, hasta } = {}) {
+  async costoPorCliente({ desde, hasta, semana, concepto } = {}) {
     const params = {};
     const donde = [];
     if (desde) { donde.push('f.fecha >= :desde'); params.desde = desde; }
     if (hasta) { donde.push('f.fecha <= :hasta'); params.hasta = hasta; }
+    if (concepto) { donde.push('i.concepto LIKE :concepto'); params.concepto = `%${concepto}%`; }
+    // Los items marcados para cobrar a un tercero no son costo de los clientes: viven en "Pendiente por cobrar".
+    donde.push('NOT EXISTS (SELECT 1 FROM costos_cobros cb WHERE cb.item_id = i.id)');
     const items = await select(`
       SELECT i.id, i.semana, i.mes, i.anho, i.id_contenedor, i.booking, i.divisa, i.cantidad, i.valor_unitario,
              i.nivel_asociacion, f.fecha, COALESCE(t.sentido, 'resta') AS sentido
       FROM costos_factura_items i
       JOIN costos_facturas f ON f.id = i.factura_id
       LEFT JOIN costos_tipos_documento t ON t.nombre = f.tipo
-      ${donde.length ? `WHERE ${donde.join(' AND ')}` : ''}
+      WHERE ${donde.join(' AND ')}
     `, params);
 
     const conts = await select(`
@@ -724,24 +821,40 @@ class CostosLogisticosService {
       push(porAnho, String(c.anho || ''), c);
     }
 
+    const semanaFiltro = upper(semana);
     const trms = new Map();
     const clientes = new Map();
-    const sinAsignar = { cliente: 'Sin asignar', total: 0, contenedores: new Set(), niveles: {} };
+    const nuevo = (nombre) => ({ cliente: nombre, total: 0, totalUsd: 0, contenedores: new Set(), niveles: {}, nivelesUsd: {} });
+    const sinAsignar = nuevo('Sin asignar');
+    let sinTrm = 0;
     const cliente = (c) => {
       const k = c.id_cliente || `sin-${c.cliente || ''}`;
-      if (!clientes.has(k)) clientes.set(k, { cliente: c.cliente || 'Sin cliente', total: 0, contenedores: new Set(), niveles: {} });
+      if (!clientes.has(k)) clientes.set(k, nuevo(c.cliente || 'Sin cliente'));
       return clientes.get(k);
     };
-    const sumar = (reg, monto, nivel) => { reg.total += monto; reg.niveles[nivel] = (reg.niveles[nivel] || 0) + monto; };
+    const sumar = (reg, monto, montoUsd, nivel) => {
+      reg.total += monto;
+      reg.niveles[nivel] = (reg.niveles[nivel] || 0) + monto;
+      reg.totalUsd += montoUsd;
+      reg.nivelesUsd[nivel] = (reg.nivelesUsd[nivel] || 0) + montoUsd;
+    };
 
     for (const it of items) {
-      let monto = (parseFloat(it.cantidad) || 0) * (parseFloat(it.valor_unitario) || 0);
+      const base = (parseFloat(it.cantidad) || 0) * (parseFloat(it.valor_unitario) || 0);
+      const f = ymd(it.fecha);
+      if (!trms.has(f)) trms.set(f, await this.trmParaFecha(f));
+      const trm = trms.get(f);
+      let monto;
+      let montoUsd;
       if (String(it.divisa || 'COP').toUpperCase() === 'USD') {
-        const f = ymd(it.fecha);
-        if (!trms.has(f)) trms.set(f, (await this.trmParaFecha(f)) ?? 1);
-        monto *= trms.get(f);
+        monto = base * (trm ?? 1);
+        montoUsd = base;
+      } else {
+        monto = base;
+        montoUsd = trm ? base / trm : 0;
+        if (!trm && base) sinTrm += 1;
       }
-      if (it.sentido === 'resta') monto = -monto;
+      if (it.sentido === 'resta') { monto = -monto; montoUsd = -montoUsd; }
       const nivel = it.nivel_asociacion || nivelCalculado(it) || 'sin nivel';
       let cubre = [];
       if (nivel === 'contenedor') cubre = porCont.get(upper(it.id_contenedor)) || [];
@@ -750,19 +863,97 @@ class CostosLogisticosService {
       else if (nivel === 'mes') cubre = porMes.get(upper(it.mes)) || [];
       else if (nivel === 'año') cubre = porAnho.get(String(it.anho || '')) || [];
       const unicos = [...new Map(cubre.map((c) => [upper(c.contenedor), c])).values()];
-      if (!unicos.length) { sumar(sinAsignar, monto, nivel); continue; }
+      if (!unicos.length) {
+        if (!semanaFiltro || upper(it.semana) === semanaFiltro) sumar(sinAsignar, monto, montoUsd, nivel);
+        continue;
+      }
+      // El costo se reparte entre todos los contenedores que cubre el ítem; si se filtra una
+      // semana, solo se muestra la parte que le toca a los contenedores de esa semana.
       const parte = monto / unicos.length;
+      const parteUsd = montoUsd / unicos.length;
       for (const c of unicos) {
+        if (semanaFiltro && upper(c.semana) !== semanaFiltro) continue;
         const reg = cliente(c);
-        sumar(reg, parte, nivel);
+        sumar(reg, parte, parteUsd, nivel);
         reg.contenedores.add(upper(c.contenedor));
       }
     }
 
-    const fila = (r) => ({ cliente: r.cliente, total: Math.round(r.total * 100) / 100, contenedores: r.contenedores.size, niveles: r.niveles });
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const fila = (r) => ({
+      cliente: r.cliente, total: r2(r.total), totalUsd: r2(r.totalUsd), contenedores: r.contenedores.size, niveles: r.niveles, nivelesUsd: r.nivelesUsd,
+    });
     const lista = [...clientes.values()].map(fila).sort((a, b) => b.total - a.total);
-    if (sinAsignar.total !== 0) lista.push(fila(sinAsignar));
-    return lista;
+    if (sinAsignar.total !== 0 || sinAsignar.totalUsd !== 0) lista.push(fila(sinAsignar));
+    return { filas: lista, itemsSinTrm: sinTrm };
+  }
+
+  // Seguimiento de cobros a terceros: cada fila es un item de factura marcado para cobrar.
+  // El monto es el valor del item (cantidad x valor unitario), en COP y en USD segun la TRM de la factura.
+  async listarPendientePorCobrar({ desde, hasta, tercero, estado, semana } = {}) {
+    const donde = [];
+    const params = {};
+    if (desde) { donde.push('f.fecha >= :desde'); params.desde = desde; }
+    if (hasta) { donde.push('f.fecha <= :hasta'); params.hasta = hasta; }
+    if (tercero) { donde.push('c.tercero_id = :tercero'); params.tercero = Number(tercero); }
+    if (estado) { donde.push('c.estado = :estado'); params.estado = estado; }
+    if (semana) { donde.push('i.semana = :semana'); params.semana = semana; }
+    const filas = await select(`
+      SELECT c.id, c.item_id, c.tercero_id, t.nombre AS tercero, t.tipo AS tercero_tipo, c.motivo, c.estado,
+             c.fecha_cobro, c.fecha_pago, i.concepto, i.semana, i.id_contenedor, i.booking, i.divisa, i.cantidad, i.valor_unitario,
+             f.id AS factura_id, f.fecha, f.numero_factura, f.tipo, p.nombre AS proveedor
+      FROM costos_cobros c
+      JOIN costos_factura_items i ON i.id = c.item_id
+      JOIN costos_facturas f ON f.id = i.factura_id
+      LEFT JOIN costos_terceros t ON t.id = c.tercero_id
+      LEFT JOIN costos_proveedores p ON p.nit = f.nit_proveedor
+      ${donde.length ? `WHERE ${donde.join(' AND ')}` : ''}
+      ORDER BY f.fecha DESC, c.id DESC
+    `, params);
+    const trms = new Map();
+    let sinTrm = 0;
+    const resultado = [];
+    for (const r of filas) {
+      const base = (parseFloat(r.cantidad) || 0) * (parseFloat(r.valor_unitario) || 0);
+      const f = ymd(r.fecha);
+      if (!trms.has(f)) trms.set(f, await this.trmParaFecha(f));
+      const trm = trms.get(f);
+      let cop;
+      let usd;
+      if (String(r.divisa || 'COP').toUpperCase() === 'USD') {
+        cop = base * (trm ?? 1);
+        usd = base;
+      } else {
+        cop = base;
+        usd = trm ? base / trm : 0;
+        if (!trm && base) sinTrm += 1;
+      }
+      resultado.push({
+        ...r, cantidad: num(r.cantidad), valor_unitario: num(r.valor_unitario),
+        monto_cop: Math.round(cop * 100) / 100, monto_usd: Math.round(usd * 100) / 100,
+      });
+    }
+    return { filas: resultado, itemsSinTrm: sinTrm };
+  }
+
+  async actualizarCobro(id, data = {}) {
+    const sets = [];
+    const params = { id };
+    for (const campo of ['estado', 'fecha_cobro', 'fecha_pago', 'motivo']) {
+      if (data[campo] !== undefined) { sets.push(`${campo}=:${campo}`); params[campo] = texto(data[campo]); }
+    }
+    if (params.estado === null) throw boom.badRequest('estado requerido');
+    if (!sets.length) return;
+    await exec(`UPDATE costos_cobros SET ${sets.join(', ')} WHERE id=:id`, params);
+  }
+
+  async cambiarEstadoCobroMasivo(ids = [], estado) {
+    const e = texto(estado);
+    if (!e) throw boom.badRequest('estado requerido');
+    const lista = (Array.isArray(ids) ? ids : []).map(Number).filter(Boolean);
+    if (!lista.length) return 0;
+    await exec('UPDATE costos_cobros SET estado=:e WHERE id IN (:lista)', { e, lista });
+    return lista.length;
   }
 
   // De una lista de bookings devuelve los que NO tienen ningun contenedor asociado.
@@ -777,6 +968,56 @@ class CostosLogisticosService {
     `, { unicos });
     const con = new Set(filas.map((f) => String(f.booking).trim().toUpperCase()));
     return unicos.filter((b) => !con.has(b.toUpperCase()));
+  }
+
+  // Para items con contenedor pero sin booking o sin semana, los completa con los datos del
+  // contenedor en la operacion. Solo se completa cuando el dato es unico (sin ambiguedad).
+  async completarDesdeContenedor(items = []) {
+    const pendientes = items.filter((it) => it.id_contenedor && it.id_contenedor !== 'N/A' && (!it.booking || !it.semana));
+    if (!pendientes.length) return 0;
+    const contenedores = [...new Set(pendientes.map((it) => it.id_contenedor))];
+    const filas = await select(`
+      SELECT DISTINCT ct.contenedor, e.booking, s.consecutivo AS semana
+      FROM Contenedors ct
+      JOIN Listados l ON l.id_contenedor = ct.id
+      JOIN Embarques e ON e.id = l.id_embarque
+      LEFT JOIN semanas s ON s.id = e.id_semana
+      WHERE ct.contenedor IN (:contenedores)
+    `, { contenedores });
+    const porCont = new Map();
+    for (const f of filas) {
+      if (!porCont.has(f.contenedor)) porCont.set(f.contenedor, []);
+      porCont.get(f.contenedor).push(f);
+    }
+    let completados = 0;
+    for (const it of pendientes) {
+      let cands = porCont.get(it.id_contenedor) || [];
+      if (it.semana) cands = cands.filter((c) => c.semana === it.semana);
+      if (it.booking) cands = cands.filter((c) => c.booking === it.booking);
+      const bookings = [...new Set(cands.map((c) => c.booking).filter(Boolean))];
+      const semanas = [...new Set(cands.map((c) => c.semana).filter(Boolean))];
+      if (!it.booking && bookings.length === 1) { it.booking = bookings[0]; completados += 1; }
+      if (!it.semana && semanas.length === 1) { it.semana = semanas[0]; completados += 1; }
+    }
+    return completados;
+  }
+
+  // Corrige items ya guardados que tienen contenedor pero les falta el booking o la semana.
+  async completarBookingsExistentes() {
+    const filas = await select(`SELECT id, id_contenedor, booking, semana FROM costos_factura_items
+      WHERE id_contenedor IS NOT NULL AND id_contenedor <> '' AND id_contenedor <> 'N/A'
+        AND (booking IS NULL OR booking = '' OR semana IS NULL OR semana = '')`);
+    const antes = filas.map((f) => ({ ...f }));
+    await this.completarDesdeContenedor(filas);
+    let actualizados = 0;
+    for (let i = 0; i < filas.length; i += 1) {
+      if (filas[i].booking !== antes[i].booking || filas[i].semana !== antes[i].semana) {
+        await exec('UPDATE costos_factura_items SET booking=:booking, semana=:semana WHERE id=:id',
+          { booking: filas[i].booking || null, semana: filas[i].semana || null, id: filas[i].id });
+        actualizados += 1;
+      }
+    }
+    return { revisados: filas.length, actualizados };
   }
 
   // Valida [{contenedor, booking, semana}] contra la operacion y devuelve los
