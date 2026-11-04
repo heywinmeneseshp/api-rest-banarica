@@ -681,6 +681,90 @@ class CostosLogisticosService {
     `, { t: `%${q}%` });
   }
 
+  // Costo acumulado por cliente. Cada ítem de factura se lleva a COP (USD x TRM de la fecha de la
+  // factura; las notas crédito restan según el sentido del tipo de documento) y se reparte en
+  // partes iguales entre los contenedores que cubre su nivel de asociación (contenedor, booking,
+  // semana, mes o año); cada contenedor pertenece al cliente de su embarque.
+  async costoPorCliente({ desde, hasta } = {}) {
+    const params = {};
+    const donde = [];
+    if (desde) { donde.push('f.fecha >= :desde'); params.desde = desde; }
+    if (hasta) { donde.push('f.fecha <= :hasta'); params.hasta = hasta; }
+    const items = await select(`
+      SELECT i.id, i.semana, i.mes, i.anho, i.id_contenedor, i.booking, i.divisa, i.cantidad, i.valor_unitario,
+             i.nivel_asociacion, f.fecha, COALESCE(t.sentido, 'resta') AS sentido
+      FROM costos_factura_items i
+      JOIN costos_facturas f ON f.id = i.factura_id
+      LEFT JOIN costos_tipos_documento t ON t.nombre = f.tipo
+      ${donde.length ? `WHERE ${donde.join(' AND ')}` : ''}
+    `, params);
+
+    const conts = await select(`
+      SELECT DISTINCT ct.contenedor, e.booking, e.id_cliente, c.razon_social AS cliente,
+             s.consecutivo AS semana, s.anho, s.fecha_inicio, s.fecha_fin
+      FROM Listados l
+      JOIN Contenedors ct ON ct.id = l.id_contenedor
+      LEFT JOIN Embarques e ON e.id = l.id_embarque
+      LEFT JOIN clientes c ON c.id = e.id_cliente
+      LEFT JOIN semanas s ON s.id = e.id_semana
+    `);
+    const upper = (v) => String(v || '').trim().toUpperCase();
+    for (const c of conts) c.mes = calcMesDesdeRango(c.fecha_inicio, c.fecha_fin);
+    const porCont = new Map();
+    const porBook = new Map();
+    const porSem = new Map();
+    const porMes = new Map();
+    const porAnho = new Map();
+    const push = (m, k, v) => { if (k) { if (!m.has(k)) m.set(k, []); m.get(k).push(v); } };
+    for (const c of conts) {
+      push(porCont, upper(c.contenedor), c);
+      push(porBook, upper(c.booking), c);
+      push(porSem, upper(c.semana), c);
+      push(porMes, upper(c.mes), c);
+      push(porAnho, String(c.anho || ''), c);
+    }
+
+    const trms = new Map();
+    const clientes = new Map();
+    const sinAsignar = { cliente: 'Sin asignar', total: 0, contenedores: new Set(), niveles: {} };
+    const cliente = (c) => {
+      const k = c.id_cliente || `sin-${c.cliente || ''}`;
+      if (!clientes.has(k)) clientes.set(k, { cliente: c.cliente || 'Sin cliente', total: 0, contenedores: new Set(), niveles: {} });
+      return clientes.get(k);
+    };
+    const sumar = (reg, monto, nivel) => { reg.total += monto; reg.niveles[nivel] = (reg.niveles[nivel] || 0) + monto; };
+
+    for (const it of items) {
+      let monto = (parseFloat(it.cantidad) || 0) * (parseFloat(it.valor_unitario) || 0);
+      if (String(it.divisa || 'COP').toUpperCase() === 'USD') {
+        const f = ymd(it.fecha);
+        if (!trms.has(f)) trms.set(f, (await this.trmParaFecha(f)) ?? 1);
+        monto *= trms.get(f);
+      }
+      if (it.sentido === 'resta') monto = -monto;
+      const nivel = it.nivel_asociacion || nivelCalculado(it) || 'sin nivel';
+      let cubre = [];
+      if (nivel === 'contenedor') cubre = porCont.get(upper(it.id_contenedor)) || [];
+      else if (nivel === 'booking') cubre = porBook.get(upper(it.booking)) || [];
+      else if (nivel === 'semana') cubre = porSem.get(upper(it.semana)) || [];
+      else if (nivel === 'mes') cubre = porMes.get(upper(it.mes)) || [];
+      else if (nivel === 'año') cubre = porAnho.get(String(it.anho || '')) || [];
+      const unicos = [...new Map(cubre.map((c) => [upper(c.contenedor), c])).values()];
+      if (!unicos.length) { sumar(sinAsignar, monto, nivel); continue; }
+      const parte = monto / unicos.length;
+      for (const c of unicos) {
+        const reg = cliente(c);
+        sumar(reg, parte, nivel);
+        reg.contenedores.add(upper(c.contenedor));
+      }
+    }
+
+    const fila = (r) => ({ cliente: r.cliente, total: Math.round(r.total * 100) / 100, contenedores: r.contenedores.size, niveles: r.niveles });
+    const lista = [...clientes.values()].map(fila).sort((a, b) => b.total - a.total);
+    if (sinAsignar.total !== 0) lista.push(fila(sinAsignar));
+    return lista;
+  }
+
   // De una lista de bookings devuelve los que NO tienen ningun contenedor asociado.
   async bookingsSinContenedor(bookings = []) {
     const unicos = [...new Set(bookings.map((b) => String(b || '').trim()).filter((b) => b && b !== 'N/A'))];
