@@ -88,6 +88,29 @@ router.post('/login', (req, res, next) => {
 
 /**
  * @swagger
+ * /auth/profile/{username}:
+ *   get:
+ *     summary: Perfil de OTRO usuario (rol, almacenes y transportadoras) para la opcion "Ver como". Solo Super administrador.
+ *     tags: [Auth]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Perfil del usuario consultado }
+ */
+router.get('/profile/:username',
+  passport.authenticate('jwt', { session: false }),
+  checkSuperAdminRole,
+  async (req, res, next) => {
+    try {
+      const profile = await service.getProfile(req.params.username);
+      if (!profile.usuario) return res.status(404).json({ message: 'Usuario no encontrado' });
+      return res.json(profile);
+    } catch (err) {
+      return next(err);
+    }
+  });
+
+/**
+ * @swagger
  * /auth/recovery:
  *   post:
  *     summary: POST /recovery
