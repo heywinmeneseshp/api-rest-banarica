@@ -60,6 +60,34 @@ function checkSuperAdminRole(req, res, next) {
   next();
 }
 
+// Cobertura de stock (Seguridad > Disponibles): solo el Super administrador o quien tenga el
+// permiso `disponibles_cobertura` (se asigna por usuario en `configuracion.detalles.botones`).
+const PERMISO_COBERTURA = 'disponibles_cobertura';
+
+async function checkPermisoCobertura(req, res, next) {
+  try {
+    if (normalizeRole(req.user?.id_rol) === ROLES.SUPER_ADMIN) {
+      return next();
+    }
+
+    const db = require('../models');
+    const fila = await db.configuracion.findOne({ where: { modulo: req.user?.username } });
+    let botones = [];
+    try {
+      botones = JSON.parse(fila?.detalles || '{}').botones || [];
+    } catch {
+      botones = [];
+    }
+
+    if (!Array.isArray(botones) || !botones.includes(PERMISO_COBERTURA)) {
+      return next(boom.forbidden('Usted no tiene permiso para usar la cobertura de stock'));
+    }
+    return next();
+  } catch (error) {
+    return next(error);
+  }
+}
+
 function checkAllowedRoles(allowedRoles = []) {
   return (req, res, next) => {
     const normalizedRole = normalizeRole(req.user.id_rol);
@@ -71,4 +99,4 @@ function checkAllowedRoles(allowedRoles = []) {
   };
 }
 
-module.exports = { checkApiKey, checkApiKeyOrJwt, checkSuperAdminRole, checkAllowedRoles, normalizeRole, ROLES };
+module.exports = { checkApiKey, checkApiKeyOrJwt, checkSuperAdminRole, checkPermisoCobertura, checkAllowedRoles, normalizeRole, ROLES };

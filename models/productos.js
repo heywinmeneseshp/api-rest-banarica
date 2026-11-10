@@ -35,6 +35,9 @@ module.exports = (sequelize, DataTypes) => {
     serial: DataTypes.BOOLEAN,
     permitir_traslados: DataTypes.BOOLEAN,
     costo: DataTypes.FLOAT,
+    cobertura_porcentaje: DataTypes.FLOAT,
+    pedido_sugerido: DataTypes.BOOLEAN,
+    nombre_proveedor: DataTypes.STRING,
     isBlock: DataTypes.BOOLEAN
   }, {
     sequelize,

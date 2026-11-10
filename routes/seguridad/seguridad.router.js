@@ -4,6 +4,85 @@ const passport = require("passport");
 const router = express.Router();
 const SeguridadService = require('../../services/seguridad/seguridad.service')
 const service = new SeguridadService()
+const CoberturaService = require('../../services/seguridad/cobertura.service')
+const coberturaService = new CoberturaService()
+const { checkPermisoCobertura } = require('../../middlewares/auth.handler')
+
+// Cobertura de stock (promedio mensual de consumo, alerta y pedido sugerido por proveedor).
+// Solo Super administrador o usuarios con el permiso `disponibles_cobertura`.
+const accesoCobertura = [passport.authenticate('jwt', { session: false }), checkPermisoCobertura]
+
+router.get('/cobertura', accesoCobertura, async (req, res, next) => {
+  try {
+    const almacenes = String(req.query.almacenes || '').split(',').map((a) => a.trim()).filter(Boolean)
+    res.json(await coberturaService.coberturaProductos({ almacenes, proveedor: req.query.proveedor || '' }))
+  } catch (e) {
+    next(e)
+  }
+});
+
+router.get('/cobertura/config', accesoCobertura, async (req, res, next) => {
+  try {
+    res.json(await coberturaService.obtenerConfig())
+  } catch (e) {
+    next(e)
+  }
+});
+
+router.patch('/cobertura/config', accesoCobertura, async (req, res, next) => {
+  try {
+    res.json(await coberturaService.guardarConfig(req.body || {}))
+  } catch (e) {
+    next(e)
+  }
+});
+
+router.get('/cobertura/pedidos', accesoCobertura, async (req, res, next) => {
+  try {
+    res.json(await coberturaService.listarPedidos(req.query || {}))
+  } catch (e) {
+    next(e)
+  }
+});
+
+router.patch('/cobertura/pedidos/recibido', accesoCobertura, async (req, res, next) => {
+  try {
+    const { codigo, recibido } = req.body || {}
+    if (!codigo) return res.status(400).json({ message: 'codigo requerido' })
+    return res.json(await coberturaService.marcarRecibido({ codigo, recibido, usuario: req.user?.username }))
+  } catch (e) {
+    return next(e)
+  }
+});
+
+// Registro del pedido a proveedor: devuelve el codigo (PP-00001). Con `codigo` actualiza ese pedido.
+router.post('/cobertura/pedidos', accesoCobertura, async (req, res, next) => {
+  try {
+    res.json(await coberturaService.guardarPedido({ ...(req.body || {}), usuario: req.user?.username }))
+  } catch (e) {
+    next(e)
+  }
+});
+
+router.patch('/cobertura/proveedor', accesoCobertura, async (req, res, next) => {
+  try {
+    const { consecutivo, observacion_pedido: observacion } = req.body || {}
+    if (!consecutivo) return res.status(400).json({ message: 'consecutivo requerido' })
+    return res.json(await coberturaService.guardarObservacionProveedor(consecutivo, observacion))
+  } catch (e) {
+    return next(e)
+  }
+});
+
+router.patch('/cobertura/producto', accesoCobertura, async (req, res, next) => {
+  try {
+    const { consecutivo, cobertura_porcentaje: porcentaje } = req.body || {}
+    if (!consecutivo) return res.status(400).json({ message: 'consecutivo requerido' })
+    return res.json(await coberturaService.guardarPorcentajeProducto(consecutivo, porcentaje))
+  } catch (e) {
+    return next(e)
+  }
+});
 
 /**
  * @swagger

@@ -12,6 +12,9 @@ const permitir_traslados = Joi.boolean();
 const costo = Joi.number();
 const bulto = Joi.number();
 const isBlock = Joi.boolean();
+const pedido_sugerido = Joi.boolean();
+const nombre_proveedor = Joi.string().allow('', null);
+const cobertura_porcentaje = Joi.number().allow(null);
 
 const crearProducto = Joi.object({
   consecutivo: consecutivo,
@@ -23,7 +26,10 @@ const crearProducto = Joi.object({
   serial: serial.required(),
   permitir_traslados: permitir_traslados.required(),
   costo: costo.required(),
-  isBlock: isBlock.required()
+  isBlock: isBlock.required(),
+  pedido_sugerido: pedido_sugerido,
+  nombre_proveedor: nombre_proveedor,
+  cobertura_porcentaje: cobertura_porcentaje
 })
 
 const actualizarProducto = Joi.object({
@@ -36,7 +42,10 @@ const actualizarProducto = Joi.object({
   serial: serial,
   permitir_traslados: permitir_traslados,
   costo: costo,
-  isBlock: isBlock
+  isBlock: isBlock,
+  pedido_sugerido: pedido_sugerido,
+  nombre_proveedor: nombre_proveedor,
+  cobertura_porcentaje: cobertura_porcentaje
 })
 
 module.exports = { crearProducto, actualizarProducto }
