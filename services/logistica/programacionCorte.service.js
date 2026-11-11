@@ -586,12 +586,32 @@ class ProgramacionCorteService {
   }
 
   async eliminar(id) {
-    const item = await db.programacionCorte.findByPk(id);
+    // Se lee la semana ANTES de borrar: despues ya no se puede saber a cual pertenecia la fila.
+    const item = await db.programacionCorte.findByPk(id, {
+      include: [{ model: db.Embarque, as: 'Embarque', required: false, include: [{ model: db.semanas, required: false }] }]
+    });
     if (!item) {
       throw boom.notFound('El registro de programacion no existe');
     }
+    const semanaConsecutivo = item.Embarque?.semana?.consecutivo || null;
     await item.destroy();
-    return { message: 'Registro de programacion eliminado', id };
+
+    // Igual que al cargar: se avisa a Corbana para que sincronice esa semana, pero un fallo o
+    // timeout de Corbana NUNCA debe impedir el borrado de aca (la fila ya se elimino).
+    let corbana = { ok: null, message: 'La fila no tiene semana; no se aviso a Corbana.' };
+    if (semanaConsecutivo) {
+      try {
+        const resultadoCorbana = await this.avisarCorbana(semanaConsecutivo);
+        corbana = resultadoCorbana === null
+          ? { ok: null, message: 'No configurado (falta CORBANA_API_URL o CORBANA_API_KEY).' }
+          : { ok: true, semana: semanaConsecutivo, ...resultadoCorbana };
+      } catch (error) {
+        console.error('No se pudo avisar a Corbana del borrado de una fila de Programacion de Corte:', error.message);
+        corbana = { ok: false, semana: semanaConsecutivo, message: error.message };
+      }
+    }
+
+    return { message: 'Registro de programacion eliminado', id, corbana };
   }
 }
 

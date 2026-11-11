@@ -93,6 +93,9 @@ async function startServer() {
     app.listen(port, '0.0.0.0', () => {
       console.log("My port " + port);
     });
+
+    // Conciliacion diaria con Corbana (solo en produccion y si la integracion esta configurada).
+    require('./services/logistica/corbanaSync.job').iniciar();
   } catch (error) {
     console.error('Server bootstrap failed', error);
     process.exit(1);

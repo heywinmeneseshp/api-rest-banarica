@@ -147,4 +147,15 @@ router.delete('/:id', passport.authenticate('jwt', { session: false }), async (r
   }
 });
 
+// Conciliacion con Corbana a pedido (solo Super administrador): vuelve a sincronizar las semanas
+// recientes y proximas y devuelve el resumen. La misma tarea corre sola cada madrugada.
+router.post('/sincronizar-corbana', passport.authenticate('jwt', { session: false }), require('../../middlewares/auth.handler').checkSuperAdminRole, async (req, res, next) => {
+  try {
+    const resumen = await require('../../services/logistica/corbanaSync.job').revisar({ forzar: true });
+    res.json(resumen || { omitida: true, motivo: 'Ya hay una conciliacion en curso.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
