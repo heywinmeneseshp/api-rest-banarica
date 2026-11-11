@@ -110,8 +110,9 @@ class EmbarqueService {
   }
 
   async actualizarMasivo(data) {
+    let t;
     try {
-      const t = await db.sequelize.transaction();
+      t = await db.sequelize.transaction();
 
       // 1. Obtener y mapear semanas
       // AsegÃºrate de que Op estÃ© importado: const { Op } = require('sequelize');
@@ -135,6 +136,7 @@ class EmbarqueService {
       const semanasSet = new Map(semanasValidas.map(s => [s.consecutivo, s.id]));
 
       const updatesRealizados = [];
+      const noEncontrados = [];
 
       for (const item of data) {
         // 2. ValidaciÃ³n: Asegurar que el identificador (bl) estÃ© presente.
@@ -198,27 +200,39 @@ class EmbarqueService {
 
         if (affectedRows > 0) {
           updatesRealizados.push(blNormalizado);
+        } else {
+          noEncontrados.push(blNormalizado);
         }
         // Si affectedRows es 0, significa que el registro con ese BL no se encontrÃ³.
       }
 
+      const listaNoEncontrados = (lista) => {
+        const muestra = lista.slice(0, 30).join(', ');
+        return lista.length > 30 ? `${muestra} y ${lista.length - 30} mas` : muestra;
+      };
+
       if (updatesRealizados.length === 0) {
-        await t.rollback(); // Si no se actualizÃ³ nada, revertimos la transacciÃ³n
-        throw boom.badRequest("NingÃºn registro fue actualizado. Verifique que los 'bl' sean correctos.");
+        await t.rollback(); // Si no se actualizo nada, revertimos la transaccion
+        throw boom.badRequest(`Ningun registro fue actualizado: no se encontro ningun embarque con estos BL: ${listaNoEncontrados(noEncontrados)}. Verifique que los BL existan (para crear embarques nuevos use "Cargue masivo").`);
       }
 
       await t.commit();
 
+      const mensajeBase = `Se actualizaron ${updatesRealizados.length} registros exitosamente.`;
       return {
-        mensaje: `Se actualizaron ${updatesRealizados.length} registros exitosamente.`,
-        blsActualizados: updatesRealizados
+        message: noEncontrados.length
+          ? `${mensajeBase} No se encontraron ${noEncontrados.length} BL: ${listaNoEncontrados(noEncontrados)}.`
+          : mensajeBase,
+        mensaje: mensajeBase,
+        blsActualizados: updatesRealizados,
+        blsNoEncontrados: noEncontrados
       };
     } catch (error) {
       // La transacciÃ³n NO se revierte sola: si algo falla a mitad del loop (antes de
       // llegar al commit/rollback de arriba), hay que revertirla explÃ­citamente o queda
       // abierta colgada en MySQL sosteniendo locks (mismo patrÃ³n de bug ya visto en
       // seguridad.service.js).
-      if (!t.finished) {
+      if (t && !t.finished) {
         await t.rollback();
       }
       if (error.isBoom) throw error;
@@ -227,6 +241,138 @@ class EmbarqueService {
   }
 
 
+
+  // Cargue/actualizacion masiva de embarques en un solo paso: si el BL ya existe se ACTUALIZA, si no
+  // existe se CREA. Primero pregunta: sin `allowPartial`/`confirmar` solo devuelve el resumen
+  // (que se actualizara, que se creara y que no se puede crear) y no toca la base.
+  async cargarOActualizar(payload) {
+    const filas = Array.isArray(payload) ? payload : (Array.isArray(payload?.rows) ? payload.rows : []);
+    const confirmar = payload?.allowPartial === true || payload?.confirmar === true;
+    if (filas.length === 0) throw boom.badRequest('El archivo no contiene registros.');
+
+    const texto = (v) => (v === undefined || v === null ? '' : String(v).trim());
+    const vacio = (v) => v === undefined || v === null || String(v).trim() === '';
+    const fechaExcel = (v) => {
+      // Las fechas de Excel llegan como numero de serie; se pasan a AAAA-MM-DD sin zona horaria.
+      if (typeof v === 'number' && v > 0 && v < 2958466) {
+        const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000);
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+      }
+      return v;
+    };
+
+    // Una fila por BL (si el BL se repite en el archivo, la ultima fila gana)
+    const porBl = new Map();
+    const sinBl = [];
+    filas.forEach((fila, i) => {
+      const bl = texto(fila.bl);
+      if (!bl) { sinBl.push(i + 2); return; }
+      porBl.set(bl, { ...(porBl.get(bl) || {}), ...fila, bl });
+    });
+    if (sinBl.length === filas.length) throw boom.badRequest('Ninguna fila tiene el campo "bl". El BL es el identificador del embarque.');
+
+    const existentes = await db.Embarque.findAll({
+      where: { bl: { [Op.in]: [...porBl.keys()] } }, attributes: ['id', 'bl'], raw: true
+    });
+    const idPorBl = new Map(existentes.map((e) => [e.bl, e.id]));
+
+    const formatoSemana = /^S\d{2}-\d{4}$/;
+    const obligatorios = ['id_cliente', 'id_destino', 'id_naviera', 'id_buque', 'booking'];
+    const actualizar = [];
+    const crear = [];
+    const noSePuedenCrear = [];
+
+    for (const [bl, fila] of porBl) {
+      const semana = texto(fila.id_semana || fila.semana).toUpperCase();
+      if (idPorBl.has(bl)) {
+        actualizar.push({ bl, id: idPorBl.get(bl), fila, semana });
+        continue;
+      }
+      const faltan = obligatorios.filter((c) => vacio(fila[c]));
+      if (!semana) faltan.push('semana');
+      if (faltan.length) {
+        noSePuedenCrear.push({ bl, reason: `No existe y no se puede crear: faltan ${faltan.join(', ')}` });
+      } else if (!formatoSemana.test(semana)) {
+        noSePuedenCrear.push({ bl, reason: `No existe y la semana "${semana}" no tiene el formato S00-2000` });
+      } else {
+        crear.push({ bl, fila, semana });
+      }
+    }
+    const lista = (arr, n = 30) => (arr.length > n ? `${arr.slice(0, n).join(', ')} y ${arr.length - n} mas` : arr.join(', '));
+
+    if (actualizar.length === 0 && crear.length === 0) {
+      throw boom.badRequest(`No hay nada que actualizar ni crear. ${noSePuedenCrear.map((x) => `${x.bl}: ${x.reason}`).slice(0, 10).join(' | ')}`);
+    }
+
+    if (!confirmar) {
+      return {
+        requiresUpsertConfirmation: true,
+        message: `Se actualizaran ${actualizar.length} embarque(s) existente(s) y se crearan ${crear.length} nuevo(s)`
+          + `${noSePuedenCrear.length ? `; ${noSePuedenCrear.length} no se pueden crear` : ''}. Confirma para continuar.`,
+        actualizarCount: actualizar.length,
+        crearCount: crear.length,
+        blsActualizar: actualizar.slice(0, 50).map((x) => x.bl),
+        blsCrear: crear.slice(0, 50).map((x) => x.bl),
+        noSePuedenCrear
+      };
+    }
+
+    const t = await db.sequelize.transaction();
+    try {
+      // Semanas: se crean las que no existan
+      const consecutivos = [...new Set([...actualizar, ...crear].map((x) => x.semana).filter(Boolean))];
+      const semanas = consecutivos.length
+        ? await db.semanas.findAll({ attributes: ['consecutivo', 'id'], where: { consecutivo: { [Op.in]: consecutivos } }, transaction: t })
+        : [];
+      const idSemana = new Map(semanas.map((s) => [s.consecutivo, s.id]));
+      for (const c of consecutivos) {
+        if (idSemana.has(c)) continue;
+        const m = c.match(/^S(\d{2})-(\d{4})$/);
+        if (!m) throw boom.badRequest(`La semana "${c}" no tiene el formato S00-2000`);
+        const [nueva] = await db.semanas.findOrCreate({
+          where: { consecutivo: c },
+          defaults: { consecutivo: c, semana: parseInt(m[1], 10), anho: parseInt(m[2], 10) },
+          transaction: t
+        });
+        idSemana.set(c, nueva.id);
+      }
+
+      const camposTexto = ['booking', 'viaje', 'sae', 'anuncio', 'observaciones'];
+      const camposNumero = ['id_cliente', 'id_destino', 'id_naviera', 'id_buque'];
+      const armar = (fila, semana) => {
+        const cambios = {};
+        camposTexto.forEach((c) => { if (!vacio(fila[c])) cambios[c] = texto(fila[c]); });
+        camposNumero.forEach((c) => { if (!vacio(fila[c])) cambios[c] = Number(fila[c]); });
+        ['fecha_zarpe', 'fecha_arribo'].forEach((c) => { if (!vacio(fila[c])) cambios[c] = fechaExcel(fila[c]); });
+        if (!vacio(fila.habilitado)) cambios.habilitado = [true, 1, '1', 'true', 'TRUE', 'si', 'SI', 'Si'].includes(fila.habilitado);
+        if (semana) cambios.id_semana = idSemana.get(semana);
+        return cambios;
+      };
+
+      for (const x of actualizar) {
+        const cambios = armar(x.fila, x.semana);
+        if (Object.keys(cambios).length) await db.Embarque.update(cambios, { where: { id: x.id }, transaction: t });
+      }
+      if (crear.length) {
+        await db.Embarque.bulkCreate(crear.map((x) => ({ ...armar(x.fila, x.semana), bl: x.bl, habilitado: true })), { transaction: t });
+      }
+      await t.commit();
+    } catch (error) {
+      if (!t.finished) await t.rollback();
+      if (error.isBoom) throw error;
+      throw boom.badRequest(error.message || 'Error al cargar los embarques.');
+    }
+
+    return {
+      message: `Se actualizaron ${actualizar.length} y se crearon ${crear.length} embarque(s).`
+        + `${noSePuedenCrear.length ? ` No se pudieron crear ${noSePuedenCrear.length} BL: ${lista(noSePuedenCrear.map((x) => x.bl))}.` : ''}`,
+      actualizados: actualizar.length,
+      creados: crear.length,
+      blsActualizados: actualizar.map((x) => x.bl),
+      blsCreados: crear.map((x) => x.bl),
+      noCreados: noSePuedenCrear
+    };
+  }
 
   async find() {
     return db.Embarque.findAll({

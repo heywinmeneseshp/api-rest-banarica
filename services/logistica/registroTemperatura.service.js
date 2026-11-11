@@ -492,7 +492,8 @@ class RegistroTemperaturaService {
                   { model: db.Destino },
                   { model: db.Naviera },
                   { model: db.clientes },
-                  { model: db.Buque }
+                  { model: db.Buque },
+                  { model: db.semanas }
                 ]},
                 { model: db.almacenes, as: 'almacen' },
                 { model: db.combos }

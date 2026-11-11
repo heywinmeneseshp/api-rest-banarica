@@ -143,7 +143,7 @@ router.post('/', async (req, res, next) => {
 router.post('/masivo', async (req, res, next) => {
   try {
     const body = req.body;
-    const embarqueNuevo = await service.cargueMasivo(body);
+    const embarqueNuevo = await service.cargarOActualizar(body);
     res.json({
       message: 'Embarques creados',
       data: embarqueNuevo
@@ -170,7 +170,7 @@ router.post('/masivo', async (req, res, next) => {
 router.post('/actualizar-masivo', async (req, res, next) => {
   try {
     const body = req.body;
-    const embarqueNuevo = await service.actualizarMasivo(body);
+    const embarqueNuevo = await service.cargarOActualizar(body);
     res.json({
       message: 'Embarques creados',
       data: embarqueNuevo
