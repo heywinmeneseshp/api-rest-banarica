@@ -12,6 +12,21 @@ const stockService = new StockService();
 const historialMovimientoService = new HistorialMovimientosServiceService();
 const movimientoService = new MovimientoService();
 const emailService = new EmailService();
+
+// Recepcion de seriales: campos que se sobrescriben cuando el serial ya existe.
+const CAMPOS_SOBRESCRITURA = ['cons_producto', 'cons_almacen', 'bag_pack', 's_pack', 'm_pack', 'l_pack'];
+const normalizarCampoSerial = (v) => {
+  if (v === undefined || v === null) return null;
+  const t = String(v).trim();
+  return t === '' || t === 'null' ? null : t;
+};
+// Diferencias entre el serial guardado y la fila del archivo (solo campos que el archivo trae).
+const diferenciasSerial = (actual, nuevo) => CAMPOS_SOBRESCRITURA.map((campo) => {
+  const n = normalizarCampoSerial(nuevo[campo]);
+  if (n === null) return null;
+  const a = normalizarCampoSerial(actual[campo]);
+  return a === n ? null : { campo, anterior: a, nuevo: n };
+}).filter(Boolean);
 const INSPECCION_LLENO_ALERT_MODULE = 'Inspeccion_lleno_alertas';
 
 
@@ -606,7 +621,7 @@ class SeguridadService {
     return almacenes[0];
   }
 
-  async cargarSeriales({ data, remision, pedido, semana, fecha, observaciones, username, cons_movimiento }) {
+  async cargarSeriales({ data, remision, pedido, semana, fecha, observaciones, username, cons_movimiento, sobrescribir }) {
     const consAlmacen = this.validateSerialUploadRows(data);
 
     const batchSize = 500; // TamaÃƒÂ±o del lote
@@ -626,22 +641,78 @@ class SeguridadService {
         consecutivoMovimiento = movimiento.dataValues.consecutivo;
       }
 
-      // Cada serial queda etiquetado con su movimiento, para poder revertir el archivo
+      // Seriales del archivo que YA existen: solo se sobrescriben si el usuario lo confirmo (con
+      // motivo y observaciones); si no, se rechaza la carga indicando cuales son.
+      const nombresSeriales = data.map((item) => String(item.serial).trim());
+      const existentes = [];
+      for (let i = 0; i < nombresSeriales.length; i += 1000) {
+        const encontrados = await db.serial_de_articulos.findAll({
+          where: { serial: { [Op.in]: nombresSeriales.slice(i, i + 1000) } },
+          transaction: t,
+        });
+        existentes.push(...encontrados);
+      }
+      const existentePorSerial = new Map(existentes.map((e) => [e.serial, e]));
+
+      const motivo = String(sobrescribir?.motivo || '').trim();
+      const observacionesSobrescritura = String(sobrescribir?.observaciones || '').trim();
+      if (existentes.length > 0) {
+        if (!sobrescribir) {
+          const muestra = existentes.slice(0, 20).map((e) => e.serial).join(', ');
+          throw boom.conflict(`Seriales existentes: ${existentes.length} serial(es) del archivo ya existen y deben confirmarse para sobrescribirse (${muestra}${existentes.length > 20 ? '...' : ''}).`);
+        }
+        if (motivo.length < 3 || observacionesSobrescritura.length < 3) {
+          throw boom.badRequest('Para sobrescribir seriales existentes se requiere el motivo y las observaciones.');
+        }
+      }
+
+      const filasNuevas = data.filter((item) => !existentePorSerial.has(String(item.serial).trim()));
+      const filasExistentes = data.filter((item) => existentePorSerial.has(String(item.serial).trim()));
+
+      // Cada serial NUEVO queda etiquetado con su movimiento, para poder revertir el archivo
       // completo (todos los lotes ya cargados) si un lote posterior falla.
-      const dataConMovimiento = data.map((item) => ({ ...item, cons_movimiento: consecutivoMovimiento }));
+      const dataConMovimiento = filasNuevas.map((item) => ({ ...item, cons_movimiento: consecutivoMovimiento }));
 
       for (let i = 0; i < dataConMovimiento.length; i += batchSize) {
         const batch = dataConMovimiento.slice(i, i + batchSize);
         await db.serial_de_articulos.bulkCreate(batch, { transaction: t });
       }
 
-      const countConsProductos = data.reduce((acc, item) => {
+      // Seriales existentes: se actualizan y cada campo cambiado queda en el historial.
+      let sobrescritos = 0;
+      let sinCambios = 0;
+      for (const fila of filasExistentes) {
+        const actual = existentePorSerial.get(String(fila.serial).trim());
+        const diferencias = diferenciasSerial(actual, fila);
+        if (diferencias.length === 0) { sinCambios += 1; continue; }
+        const usado = actual.available === false || Boolean(actual.id_contenedor);
+        await db.serial_historial.bulkCreate(diferencias.map((d) => ({
+          id_serial: actual.id,
+          serial: actual.serial,
+          campo: d.campo,
+          valor_anterior: d.anterior,
+          valor_nuevo: d.nuevo,
+          usado,
+          motivo,
+          observaciones: observacionesSobrescritura,
+          cons_movimiento: consecutivoMovimiento,
+          usuario: username || null,
+        })), { transaction: t });
+        const cambios = {};
+        diferencias.forEach((d) => { cambios[d.campo] = d.nuevo; });
+        await db.serial_de_articulos.update(cambios, { where: { id: actual.id }, transaction: t });
+        sobrescritos += 1;
+      }
+
+      // Stock: por defecto solo se suman los seriales nuevos; el usuario puede elegir sumar todos.
+      const filasParaStock = sobrescribir?.stockModo === 'todos' ? data : filasNuevas;
+      const countConsProductos = filasParaStock.reduce((acc, item) => {
         acc[item.cons_producto] = (acc[item.cons_producto] || 0) + 1;
         return acc;
       }, {});
 
       for (const key in countConsProductos) {
-        if (countConsProductos.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(countConsProductos, key)) {
           const cons_producto = key;
           const cantidad = countConsProductos[key];
           await stockService.addAmounts(consAlmacen, cons_producto, { cantidad: cantidad }, t)
@@ -661,9 +732,20 @@ class SeguridadService {
       }
 
       await t.commit();
-      return { bool: true, message: 'Datos cargados exitosamente', cons_movimiento: consecutivoMovimiento, total_seriales: data.length };
+      return {
+        bool: true,
+        message: sobrescritos || sinCambios
+          ? `Datos cargados: ${filasNuevas.length} nuevo(s), ${sobrescritos} sobrescrito(s) y ${sinCambios} existente(s) sin cambios.`
+          : 'Datos cargados exitosamente',
+        cons_movimiento: consecutivoMovimiento,
+        total_seriales: data.length,
+        nuevos: filasNuevas.length,
+        sobrescritos,
+        sin_cambios: sinCambios,
+      };
     } catch (e) {
       await t.rollback();
+      if (e.isBoom) throw e;
 
       // Si es error de duplicados
       if (e.original && e.original.code === 'ER_DUP_ENTRY') {
@@ -689,6 +771,52 @@ class SeguridadService {
     }
   }
 
+  // Compara el archivo con los seriales ya guardados SIN escribir nada: devuelve los que existen,
+  // si ya fueron usados (contenedor) y que campos cambiarian.
+  async verificarSeriales({ data }) {
+    this.validateSerialUploadRows(data);
+    const porSerial = new Map(data.map((r) => [String(r.serial).trim(), r]));
+    const nombres = [...porSerial.keys()];
+    const filas = [];
+    for (let i = 0; i < nombres.length; i += 1000) {
+      filas.push(...await db.serial_de_articulos.findAll({
+        where: { serial: { [Op.in]: nombres.slice(i, i + 1000) } }, raw: true,
+      }));
+    }
+    const idsContenedor = [...new Set(filas.map((f) => f.id_contenedor).filter(Boolean))];
+    const contenedores = idsContenedor.length
+      ? await db.Contenedor.findAll({ where: { id: { [Op.in]: idsContenedor } }, attributes: ['id', 'contenedor'], raw: true })
+      : [];
+    const nombreContenedor = new Map(contenedores.map((c) => [c.id, c.contenedor]));
+
+    const existentes = filas.map((f) => {
+      const cambios = diferenciasSerial(f, porSerial.get(f.serial) || {});
+      return {
+        serial: f.serial,
+        usado: f.available === false || Boolean(f.id_contenedor),
+        contenedor: nombreContenedor.get(f.id_contenedor) || null,
+        cambios,
+        sinCambios: cambios.length === 0,
+      };
+    });
+    return {
+      total: data.length,
+      nuevos: data.length - existentes.length,
+      existentes,
+      conCambios: existentes.filter((e) => !e.sinCambios).length,
+      usados: existentes.filter((e) => e.usado).length,
+    };
+  }
+
+  // Historial de sobrescrituras de un serial (o de un movimiento de recepcion).
+  async historialSerial({ serial, cons_movimiento }) {
+    const where = {};
+    if (serial) where.serial = serial;
+    if (cons_movimiento) where.cons_movimiento = cons_movimiento;
+    if (!serial && !cons_movimiento) throw boom.badRequest('Indica el serial o el movimiento.');
+    return db.serial_historial.findAll({ where, order: [['createdAt', 'DESC'], ['id', 'DESC']], limit: 2000, raw: true });
+  }
+
   // Revierte por completo un movimiento de recepcion (todos los lotes ya cargados bajo ese
   // consecutivo): elimina los seriales, revierte el stock sumado y elimina el historial y el
   // movimiento. Se usa cuando un archivo grande falla a mitad de la carga, para que el
@@ -706,20 +834,35 @@ class SeguridadService {
         transaction: t,
       });
 
-      const countConsProductos = seriales.reduce((acc, item) => {
-        acc[item.cons_producto] = (acc[item.cons_producto] || 0) + 1;
-        return acc;
-      }, {});
+      // 1) Restaurar los seriales que se sobrescribieron en este movimiento (y borrar ese historial).
+      const cambios = await db.serial_historial.findAll({ where: { cons_movimiento }, transaction: t });
+      for (const c of cambios) {
+        await db.serial_de_articulos.update({ [c.campo]: c.valor_anterior }, { where: { id: c.id_serial }, transaction: t });
+      }
+      if (cambios.length > 0) {
+        await db.serial_historial.destroy({ where: { cons_movimiento }, transaction: t });
+      }
+
+      // 2) Eliminar los seriales nuevos de este movimiento y revertir el stock que se sumo
+      //    (segun lo registrado en el historial del movimiento).
+      const sumados = await db.historial_movimientos.findAll({ where: { cons_movimiento }, transaction: t });
       const consAlmacen = seriales[0]?.cons_almacen;
 
       if (seriales.length > 0) {
         await db.serial_de_articulos.destroy({ where: { cons_movimiento }, transaction: t });
       }
 
-      if (consAlmacen) {
+      if (sumados.length > 0) {
+        for (const h of sumados) {
+          await stockService.subtractAmounts(h.cons_almacen_gestor, h.cons_producto, { cantidad: h.cantidad }, t);
+        }
+      } else if (consAlmacen) {
+        const countConsProductos = seriales.reduce((acc, item) => {
+          acc[item.cons_producto] = (acc[item.cons_producto] || 0) + 1;
+          return acc;
+        }, {});
         for (const cons_producto of Object.keys(countConsProductos)) {
-          const cantidad = countConsProductos[cons_producto];
-          await stockService.subtractAmounts(consAlmacen, cons_producto, { cantidad }, t);
+          await stockService.subtractAmounts(consAlmacen, cons_producto, { cantidad: countConsProductos[cons_producto] }, t);
         }
       }
 

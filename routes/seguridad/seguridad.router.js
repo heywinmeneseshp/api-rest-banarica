@@ -6,7 +6,7 @@ const SeguridadService = require('../../services/seguridad/seguridad.service')
 const service = new SeguridadService()
 const CoberturaService = require('../../services/seguridad/cobertura.service')
 const coberturaService = new CoberturaService()
-const { checkPermisoCobertura } = require('../../middlewares/auth.handler')
+const { checkPermisoCobertura, checkPermisoBoton } = require('../../middlewares/auth.handler')
 
 // Cobertura de stock (promedio mensual de consumo, alerta y pedido sugerido por proveedor).
 // Solo Super administrador o usuarios con el permiso `disponibles_cobertura`.
@@ -193,11 +193,39 @@ router.patch("/actualizar-seriales",
  *     responses:
  *       200: { description: OK }
  */
-router.post("/cargar-seriales", async (req, res, next) => {
+// Sobrescribir seriales existentes: solo Super administrador o quien tenga el permiso
+// `recepcion_sobrescribir`. Sin `sobrescribir` la ruta funciona como siempre.
+const permisoSobrescribir = (req, res, next) => {
+  if (!req.body?.sobrescribir) return next()
+  return passport.authenticate('jwt', { session: false })(req, res, (err) => {
+    if (err) return next(err)
+    return checkPermisoBoton('recepcion_sobrescribir')(req, res, next)
+  })
+}
+
+router.post("/cargar-seriales", permisoSobrescribir, async (req, res, next) => {
   try {
-    const data = req.body
+    const data = { ...req.body, ...(req.user?.username ? { username: req.user.username } : {}) }
     const result = await service.cargarSeriales(data);
     res.json(result)
+  } catch (e) {
+    next(e)
+  }
+});
+
+// Compara el archivo con los seriales guardados (no escribe nada). Requiere sesion.
+router.post("/verificar-seriales", passport.authenticate('jwt', { session: false }), async (req, res, next) => {
+  try {
+    res.json(await service.verificarSeriales(req.body))
+  } catch (e) {
+    next(e)
+  }
+});
+
+// Historial de sobrescrituras de un serial o de un movimiento de recepcion.
+router.get("/serial-historial", passport.authenticate('jwt', { session: false }), async (req, res, next) => {
+  try {
+    res.json(await service.historialSerial(req.query))
   } catch (e) {
     next(e)
   }
