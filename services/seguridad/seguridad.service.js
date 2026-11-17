@@ -787,7 +787,7 @@ class SeguridadService {
         FROM serial_de_articulos WHERE available = 1
         GROUP BY cons_almacen, cons_producto
       ) d ON d.cons_almacen = s.cons_almacen AND d.cons_producto = s.cons_producto
-      WHERE (s.isBlock IS NULL OR s.isBlock = 0) ${filtroAlm} ${filtroProd}
+      WHERE 1 = 1 ${filtroAlm} ${filtroProd}
     `, { replacements: { almacenes, productos }, type: db.sequelize.QueryTypes.SELECT });
 
     const cambios = filas.filter((f) => Number(f.cantidad) !== Number(f.disponibles));
