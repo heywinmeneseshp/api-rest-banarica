@@ -105,8 +105,13 @@ class StockServices {
   }
 
   async update(cons_almacen, cons_producto, changes) {
-    const updatedItem = await db.stock.update(changes, { where: { cons_almacen: cons_almacen, cons_producto: cons_producto } });
-    if (updatedItem[0] == 0) throw boom.conflict('El item no existe')
+    const where = { cons_almacen: cons_almacen, cons_producto: cons_producto };
+    // Se comprueba la existencia con un conteo: el numero de filas "afectadas" de MySQL es 0 tambien
+    // cuando el valor nuevo es igual al guardado (p. ej. dos sincronizaciones seguidas con la misma
+    // cantidad), y eso no significa que el item no exista.
+    const existe = await db.stock.count({ where });
+    if (!existe) throw boom.conflict('El item no existe')
+    await db.stock.update(changes, { where });
     return changes;
   }
 

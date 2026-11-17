@@ -75,6 +75,29 @@ router.get('/encontrar/:modulo',
 
 /**
  * @swagger
+ * /confi/perfil/{modulo}:
+ *   delete:
+ *     summary: Elimina un perfil de permisos (solo Super administrador)
+ *     tags: [Confi]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
+router.delete('/perfil/:modulo',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next) => {
+    try {
+      if (req.user?.id_rol !== 'Super administrador') {
+        return res.status(403).json({ message: 'Solo un Super administrador puede eliminar perfiles de permisos.' });
+      }
+      res.json(await service.eliminarPerfil(req.params.modulo));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+/**
+ * @swagger
  * /confi/actualizar:
  *   patch:
  *     summary: PATCH /actualizar

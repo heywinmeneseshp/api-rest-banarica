@@ -771,6 +771,52 @@ class SeguridadService {
     }
   }
 
+  // Pone el stock de los articulos de Seguridad con serial igual a la cantidad de seriales DISPONIBLES
+  // (available = true) de cada almacen. Se hace con una sola consulta agrupada (no una por articulo).
+  // Los articulos sin serial (cuyo stock no sale de seriales) no se tocan.
+  async sincronizarStockDisponible({ almacenes = [], productos = [] } = {}) {
+    const filtroAlm = almacenes.length ? 'AND s.cons_almacen IN (:almacenes)' : '';
+    const filtroProd = productos.length ? 'AND s.cons_producto IN (:productos)' : '';
+    const filas = await db.sequelize.query(`
+      SELECT s.id, s.cons_almacen, s.cons_producto, s.cantidad, COALESCE(d.disponibles, 0) AS disponibles
+      FROM stocks s
+      JOIN productos p ON p.consecutivo = s.cons_producto AND p.serial = 1
+      JOIN categorias c ON c.consecutivo = p.cons_categoria AND c.nombre = 'Seguridad'
+      LEFT JOIN (
+        SELECT cons_almacen, cons_producto, COUNT(*) AS disponibles
+        FROM serial_de_articulos WHERE available = 1
+        GROUP BY cons_almacen, cons_producto
+      ) d ON d.cons_almacen = s.cons_almacen AND d.cons_producto = s.cons_producto
+      WHERE (s.isBlock IS NULL OR s.isBlock = 0) ${filtroAlm} ${filtroProd}
+    `, { replacements: { almacenes, productos }, type: db.sequelize.QueryTypes.SELECT });
+
+    const cambios = filas.filter((f) => Number(f.cantidad) !== Number(f.disponibles));
+    if (cambios.length > 0) {
+      const t = await db.sequelize.transaction();
+      try {
+        for (const c of cambios) {
+          await db.sequelize.query('UPDATE stocks SET cantidad = :cantidad, updatedAt = NOW() WHERE id = :id',
+            { replacements: { cantidad: Number(c.disponibles), id: c.id }, transaction: t });
+        }
+        await t.commit();
+      } catch (e) {
+        await t.rollback();
+        throw boom.badRequest(e.message || 'No fue posible actualizar el stock.');
+      }
+    }
+
+    return {
+      revisados: filas.length,
+      actualizados: cambios.length,
+      cambios: cambios.map((c) => ({
+        cons_almacen: c.cons_almacen,
+        cons_producto: c.cons_producto,
+        anterior: Number(c.cantidad),
+        nuevo: Number(c.disponibles),
+      })),
+    };
+  }
+
   // Compara el archivo con los seriales ya guardados SIN escribir nada: devuelve los que existen,
   // si ya fueron usados (contenedor) y que campos cambiarian.
   async verificarSeriales({ data }) {
@@ -1163,6 +1209,24 @@ class SeguridadService {
   }
 
 
+  // El kit (bolsa) se da de salida completo, pero solo si por lo menos uno de sus seriales esta en un
+  // almacen del usuario. Evita que alguien use un kit que no tiene nada que ver con su almacen.
+  // El Super administrador queda exento.
+  async validarKitEnAlmacenDelUsuario(kits, user, transaction) {
+    if (!user || user.id_rol === 'Super administrador') return;
+    const asignados = await db.almacenes_por_usuario.findAll({
+      where: { username: user.username, habilitado: true },
+      attributes: ['id_almacen'],
+      raw: true,
+      transaction,
+    });
+    const propios = new Set(asignados.map((a) => a.id_almacen));
+    const hayUnoPropio = kits.some((k) => propios.has((k.dataValues || k).cons_almacen));
+    if (!hayUnoPropio) {
+      throw boom.forbidden('Ningun articulo de este kit esta en tu almacen: no puedes darle salida.');
+    }
+  }
+
   async inspeccionAntinarcoticos(body, user) {
     const { formulario, rechazos } = body;
 
@@ -1240,6 +1304,8 @@ class SeguridadService {
       if (kitsInventario.length === 0) {
         throw boom.badRequest(`No se encontraron articulos disponibles para el kit "${formulario.bolsa}".`);
       }
+
+      await this.validarKitEnAlmacenDelUsuario(kitsInventario, user, transaction);
 
       const [moviUso] = await db.MotivoDeUso.findOrCreate({
         where: { consecutivo: "INSP02" },
@@ -1623,6 +1689,8 @@ class SeguridadService {
       if (kitsInventario.length === 0) {
         throw boom.badRequest(`No se encontraron articulos disponibles para el kit "${formulario.bolsa}".`);
       }
+
+      await this.validarKitEnAlmacenDelUsuario(kitsInventario, user, transaction);
 
       // Ã°Å¸â€Â¹ Contar cuÃƒÂ¡ntas veces aparece cada cons_producto
       const productosCantidad = {};

@@ -1,3 +1,4 @@
+const boom = require('@hapi/boom');
 const db = require('../models');
 const { generarConsecutivoSemana } = require('../middlewares/generarId.handler');
 const env = require('../config/env');
@@ -172,6 +173,17 @@ class ConfigService {
       where,
       order: [['modulo', 'ASC']],
     });
+  }
+
+  // Elimina un perfil de permisos (modulo "perfil:<nombre>"). Solo perfiles: nunca otras configuraciones.
+  // Los usuarios que ya tenian aplicado el perfil conservan sus permisos (se copian, no se enlazan).
+  async eliminarPerfil(modulo) {
+    if (typeof modulo !== 'string' || !modulo.startsWith('perfil:')) {
+      throw boom.badRequest('Solo se pueden eliminar perfiles de permisos.');
+    }
+    const eliminados = await db.configuracion.destroy({ where: { modulo } });
+    if (!eliminados) throw boom.notFound('El perfil no existe.');
+    return { ok: true, modulo };
   }
 
   async find(modulo, options = {}) {

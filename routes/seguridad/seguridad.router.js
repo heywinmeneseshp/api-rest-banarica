@@ -213,6 +213,15 @@ router.post("/cargar-seriales", permisoSobrescribir, async (req, res, next) => {
   }
 });
 
+// Actualiza el stock de Seguridad con la cantidad de seriales disponibles (Consulta de disponibles > Resumen).
+router.post("/sincronizar-stock", passport.authenticate('jwt', { session: false }), async (req, res, next) => {
+  try {
+    res.json(await service.sincronizarStockDisponible(req.body || {}))
+  } catch (e) {
+    next(e)
+  }
+});
+
 // Compara el archivo con los seriales guardados (no escribe nada). Requiere sesion.
 router.post("/verificar-seriales", passport.authenticate('jwt', { session: false }), async (req, res, next) => {
   try {
